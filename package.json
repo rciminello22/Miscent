@@ -32,6 +32,7 @@
     "@types/node": "^26.6.4",
     "@types/react": "~19.2.2",
     "babel-preset-expo": "^57.0.14",
+    "supabase": "^2.120.0",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3",
     "vitest": "^5.0.3"
@@ -50,7 +51,10 @@
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --linked > src/data/database.types.ts",
-    "test:rls": "supabase test db"
+    "test:rls": "supabase db query --linked -f supabase/tests/privacidad.test.sql",
+    "test:rls:docker": "supabase test db",
+    "test:rls:smoke": "tsx tools/rls-smoke.ts",
+    "verify:full": "npm run verify && npm run test:rls && npm run test:rls:smoke"
   },
   "private": true
 }
