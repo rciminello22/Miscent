@@ -3,6 +3,7 @@ import { TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { sendMagicLink } from '@/data/auth';
+import { rememberOnboardingIntent, type OnboardingIntent } from '@/features/auth/onboardingIntent';
 import { Button, Screen, Stack, Text } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
@@ -36,6 +37,12 @@ export default function Email() {
     if (!valid || sending) return;
     setSending(true);
     setError(null);
+
+    // §13 O1 paso 5a / A-03 · el intent distingue el registro propio (que
+    // activa la cuenta personal) de una invitacion (que no).
+    if (intent != null) {
+      await rememberOnboardingIntent(intent as OnboardingIntent);
+    }
 
     const result = await sendMagicLink(email);
     setSending(false);

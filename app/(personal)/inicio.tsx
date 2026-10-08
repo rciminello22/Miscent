@@ -1,19 +1,28 @@
-import { useMemo } from 'react';
-import { View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { RefreshControl, ScrollView, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { ChevronRight } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { monthOf } from '@domain/calendar';
-import { radarForMonth } from '@domain/radar';
-import { formatMonth } from '@/lib/format';
-import { useSession } from '@/features/auth/SessionProvider';
-import { useToday } from '@/features/shared/useToday';
-import { demoPersonalFacts } from '@/features/shared/demoFacts';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { addMonths, monthOf } from '@domain/calendar';
+import { calculateRadar } from '@domain/radar';
+import { calculateFuture } from '@domain/future';
+import { calculateUpcomingPayments, upcomingForHome } from '@domain/upcoming';
+import { formatMonth, formatPaymentWhen } from '@/lib/format';
+import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import {
   AudienceBadge,
+  Divider,
+  EmptyState,
+  ErrorState,
   Money,
+  MonthBar,
+  Pressable,
   RadarBar,
   RadarLegendDot,
+  RadarSkeleton,
   Row,
-  Screen,
+  SectionHeader,
   Stack,
   Text,
 } from '@/ui/primitives';
@@ -23,25 +32,64 @@ import { useTheme } from '@/ui/theme';
 /**
  * §15 · Inicio.
  *
- * ⚠️ Fase 3: la pantalla está armada con su forma y su lenguaje definitivos,
- * pero los datos salen de un juego de hechos de muestra. En la Fase 5 se
- * conecta a los hechos reales del usuario; el cálculo ya es el del dominio,
- * no hay números escritos a mano.
+ * Responde cuatro preguntas en un vistazo: qué pasó con mi plata este mes, qué
+ * tengo comprometido, qué tengo que pagar próximamente y cómo vienen los
+ * próximos meses.
  *
- * Lo que NO va a cambiar: el lenguaje. "Ingresos registrados", "Gastado",
- * "Comprometido", "Sin asignar" y el texto de ayuda son los de §33, y el lint
- * de CA-00 impide que se cuelen sinónimos prohibidos.
+ * "No parece una cuenta bancaria: no hay saldo ni disponible."
+ *
+ * Todas las cifras salen del dominio sobre los hechos del usuario. No hay un
+ * solo número calculado en esta pantalla: el radar viene de `calculateRadar`
+ * (N-01 a N-08) y Próximos pagos de `calculateUpcomingPayments` (N-09), que
+ * son los mismos que validan los Casos A–G de §29.1.
  */
 export default function Inicio() {
   const theme = useTheme();
-  const today = useToday();
-  const { profile } = useSession();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { facts, expansion, today, isLoading, isError, refetch } = usePersonalFacts();
+  const [refreshing, setRefreshing] = useState(false);
 
   const month = monthOf(today);
-  const radar = useMemo(() => radarForMonth(demoPersonalFacts, month), [month]);
+
+  const radar = useMemo(() => calculateRadar(expansion, month), [expansion, month]);
+
+  // §15 · P18 · los 3 primeros pagos de los próximos 30 días.
+  const upcoming = useMemo(
+    () => upcomingForHome(calculateUpcomingPayments(expansion, today), today),
+    [expansion, today],
+  );
+
+  // §15 · 3 meses con comprometido y una barra proporcional.
+  const nextMonths = useMemo(
+    () => calculateFuture(expansion, addMonths(month, 1), 3).months,
+    [expansion, month],
+  );
+  const maxCommitted = Math.max(...nextMonths.map((item) => item.committed), 1);
+
+  const hasAnything =
+    facts.movements.length > 0 || facts.recurrences.length > 0 || facts.declaredStatements.length > 0;
+
+  async function onRefresh() {
+    setRefreshing(true);
+    // SY-01 · deslizar para actualizar.
+    await refetch();
+    setRefreshing(false);
+  }
 
   return (
-    <Screen>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
+      contentContainerStyle={{
+        paddingTop: insets.top + theme.space['3'],
+        paddingBottom: insets.bottom + 140,
+        paddingHorizontal: theme.space['5'],
+      }}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={theme.colors.brand} />
+      }
+    >
       <Stack gap="7">
         <Row justify="space-between" align="center">
           <Text variant="overline" tone="muted">
@@ -50,98 +98,209 @@ export default function Inicio() {
           <AudienceBadge audience={{ kind: 'private' }} />
         </Row>
 
-        {/* ── El radar del mes ───────────────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.duration(duration.deliberate)}>
-          <Stack gap="5">
-            <Stack gap="1">
-              <Text variant="small" tone="secondary">
-                Tus ingresos de {formatMonth(month, month)}
-              </Text>
-              <Row gap="2" align="baseline">
-                <Money amount={radar.registeredIncome} variant="display" animate />
+        {isLoading ? (
+          <RadarSkeleton />
+        ) : isError ? (
+          <ErrorState onRetry={() => void refetch()} />
+        ) : !hasAnything ? (
+          <EmptyState
+            title="Anotá tus gastos fijos y tus cuotas"
+            description="La app te muestra qué se viene, sin que armes ninguna planilla."
+            actionLabel="Cargar mis datos"
+            onAction={() => router.push('/onboarding/ingreso')}
+          />
+        ) : (
+          <>
+            {/* ── El radar del mes ─────────────────────────────────────── */}
+            <Animated.View entering={FadeInDown.duration(duration.deliberate)}>
+              <Stack gap="5">
+                <Stack gap="1">
+                  <Text variant="small" tone="secondary">
+                    Tus ingresos de {formatMonth(month, month)}
+                  </Text>
+                  <Row gap="2" align="baseline">
+                    <Money amount={radar.registeredIncome} variant="display" animate />
+                    <Text variant="small" tone="muted">
+                      registrados
+                    </Text>
+                  </Row>
+                </Stack>
+
+                <RadarBar
+                  registeredIncome={radar.registeredIncome}
+                  spent={radar.spent}
+                  committed={radar.committed}
+                />
+
+                <Stack gap="3">
+                  <RadarRow
+                    dot="spent"
+                    label="Gastado"
+                    amount={radar.spent}
+                    help="lo que registraste como pagado en el día a día"
+                  />
+                  <RadarRow
+                    dot="committed"
+                    label="Comprometido"
+                    amount={radar.committed}
+                    help="fijos, cuotas y tarjetas de este mes"
+                  />
+                  {radar.unassigned != null ? (
+                    <RadarRow
+                      dot="unassigned"
+                      label="Sin asignar"
+                      amount={radar.unassigned}
+                      help="todavía sin destino, según lo que registraste"
+                    />
+                  ) : (
+                    <Text variant="small" tone="secondary">
+                      Registrá tu ingreso para ver qué parte ya tiene destino.
+                    </Text>
+                  )}
+                </Stack>
+
+                {/* N-08 · sin alarma, con la frase exacta de la spec. */}
+                {radar.exceedsIncome && radar.unassigned != null && (
+                  <Text variant="small" tone="excess">
+                    Tus gastos y compromisos superan tus ingresos registrados por{' '}
+                    <Money
+                      amount={radar.unassigned}
+                      sign="never"
+                      variant="smallMedium"
+                      tone="excess"
+                    />
+                    .
+                  </Text>
+                )}
+              </Stack>
+            </Animated.View>
+
+            {/* ── §15 · "Con tarjeta este mes" ─────────────────────────── */}
+            {radar.cardPurchasesThisMonth.map((entry) => (
+              <Row key={entry.month} gap="2" align="baseline" style={{ flexWrap: 'wrap' }}>
+                <Text variant="small" tone="secondary">
+                  Con tarjeta este mes:
+                </Text>
+                <Money amount={entry.amount} variant="smallMedium" />
                 <Text variant="small" tone="muted">
-                  registrados
+                  → se paga en {formatMonth(entry.month, month)}
                 </Text>
               </Row>
-            </Stack>
+            ))}
 
-            <RadarBar
-              registeredIncome={radar.registeredIncome}
-              spent={radar.spent}
-              committed={radar.committed}
-            />
+            {/* ── §23.2 · Próximos pagos ───────────────────────────────── */}
+            {upcoming.length > 0 && (
+              <Animated.View entering={FadeInDown.delay(stagger(1, 80)).duration(duration.base)}>
+                <Stack gap="4">
+                  <SectionHeader
+                    title="Próximos pagos"
+                    action={
+                      <Pressable onPress={() => router.push('/(personal)/futuro')} haptic="none">
+                        <Row gap="1">
+                          <Text variant="small" tone="brand">
+                            Ver todos
+                          </Text>
+                          <ChevronRight size={14} color={theme.colors.brand} />
+                        </Row>
+                      </Pressable>
+                    }
+                  />
 
-            <Stack gap="3">
-              <RadarRow
-                dot="spent"
-                label="Gastado"
-                amount={radar.spent}
-                help="lo que registraste como pagado en el día a día"
-              />
-              <RadarRow
-                dot="committed"
-                label="Comprometido"
-                amount={radar.committed}
-                help="fijos, cuotas y tarjetas de este mes"
-              />
-              {radar.unassigned != null ? (
-                <RadarRow
-                  dot="unassigned"
-                  label="Sin asignar"
-                  amount={radar.unassigned}
-                  help="todavía sin destino, según lo que registraste"
-                />
-              ) : (
-                <Text variant="small" tone="secondary">
-                  Registrá tu ingreso para ver qué parte ya tiene destino.
-                </Text>
-              )}
-            </Stack>
+                  <Stack gap="3">
+                    {upcoming.map((payment, index) => (
+                      <Animated.View
+                        key={payment.id}
+                        entering={FadeInDown.delay(stagger(index, 60)).duration(duration.base)}
+                      >
+                        <Row gap="3" align="flex-start">
+                          <Text
+                            variant="small"
+                            tone="muted"
+                            tabular
+                            style={{ width: 54 }}
+                          >
+                            {formatPaymentWhen({ date: payment.date, month: payment.month })}
+                          </Text>
 
-            {radar.exceedsIncome && radar.unassigned != null && (
-              <Text variant="small" tone="excess">
-                Tus gastos y compromisos superan tus ingresos registrados por{' '}
-                <Money amount={radar.unassigned} sign="never" variant="smallMedium" tone="excess" />
-                .
-              </Text>
+                          <View style={{ flex: 1, gap: 2 }}>
+                            <Text variant="bodyMedium">{payment.label}</Text>
+                            {/* N-10 · todo resumen va rotulado como estimado. */}
+                            {payment.isEstimate && (
+                              <Text variant="caption" tone="muted">
+                                Estimado según lo que registraste
+                              </Text>
+                            )}
+                            {/* §7.3 · la parte del otro, siempre aclarada. */}
+                            {payment.includesOtherShare > 0 && payment.otherMemberName != null && (
+                              <Text variant="caption" tone="shared">
+                                incluye{' '}
+                                <Money amount={payment.includesOtherShare} variant="caption" tone="shared" />{' '}
+                                de {payment.otherMemberName}
+                              </Text>
+                            )}
+                            {/* G-06 · "Ya pasó", nunca "Pagado". */}
+                            {payment.hasPassed && (
+                              <Text variant="caption" tone="muted">
+                                Ya pasó
+                              </Text>
+                            )}
+                          </View>
+
+                          <Money amount={payment.amount} variant="bodyMedium" />
+                        </Row>
+                      </Animated.View>
+                    ))}
+                  </Stack>
+                </Stack>
+              </Animated.View>
             )}
-          </Stack>
-        </Animated.View>
 
-        {/* ── §15 · "Con tarjeta este mes" ──────────────────────────────── */}
-        {radar.cardPurchasesThisMonth.length > 0 && (
-          <Animated.View entering={FadeInDown.delay(stagger(1, 80)).duration(duration.base)}>
-            <Stack gap="2">
-              {radar.cardPurchasesThisMonth.map((entry) => (
-                <Row key={entry.month} gap="2" align="baseline">
-                  <Text variant="small" tone="secondary">
-                    Con tarjeta este mes:
+            {/* ── §15 · Próximos meses ─────────────────────────────────── */}
+            {nextMonths.some((item) => item.committed > 0) && (
+              <Animated.View entering={FadeInDown.delay(stagger(2, 80)).duration(duration.base)}>
+                <Stack gap="4">
+                  <SectionHeader
+                    title="Próximos meses"
+                    action={
+                      <Pressable onPress={() => router.push('/(personal)/futuro')} haptic="none">
+                        <Row gap="1">
+                          <Text variant="small" tone="brand">
+                            Futuro
+                          </Text>
+                          <ChevronRight size={14} color={theme.colors.brand} />
+                        </Row>
+                      </Pressable>
+                    }
+                  />
+
+                  <Stack gap="3">
+                    {nextMonths.map((item, index) => (
+                      <MonthBar
+                        key={item.month}
+                        month={item.month}
+                        committed={item.committed}
+                        maxCommitted={maxCommitted}
+                        index={index}
+                      />
+                    ))}
+                  </Stack>
+
+                  <Text variant="caption" tone="muted">
+                    Comprometido de cada mes, según lo que registraste.
                   </Text>
-                  <Money amount={entry.amount} variant="smallMedium" />
-                  <Text variant="small" tone="muted">
-                    → se paga en {formatMonth(entry.month, month)}
-                  </Text>
-                </Row>
-              ))}
-            </Stack>
-          </Animated.View>
+                </Stack>
+              </Animated.View>
+            )}
+
+            <Divider />
+
+            <Text variant="caption" tone="muted">
+              Tus espacios compartidos llegan en la Fase 6.
+            </Text>
+          </>
         )}
-
-        <View
-          style={{
-            padding: theme.space['4'],
-            borderRadius: theme.radius.md,
-            backgroundColor: theme.colors.surfaceSunken,
-          }}
-        >
-          <Text variant="caption" tone="muted">
-            Fase 3 · la forma y el lenguaje de Inicio son los definitivos. Próximos pagos,
-            Próximos meses y Tus espacios llegan en la Fase 5, con tus hechos reales.
-            {profile != null ? ` Sesión: ${profile.displayName}.` : ''}
-          </Text>
-        </View>
       </Stack>
-    </Screen>
+    </ScrollView>
   );
 }
 

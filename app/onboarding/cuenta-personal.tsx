@@ -17,9 +17,8 @@ import { duration } from '@/ui/motion';
  * ni se le comunica al otro miembro. §11 · "no es una migración; es activar la
  * cuenta personal del mismo usuario".
  *
- * ⚠️ Fase 3 · acá está el paso 1 (la explicación) y la activación real contra
- * la base. Los pasos 2 a 6 de O3 —ingreso, tarjetas, lo que ya debe, fijos—
- * llegan en la Fase 4, que es donde viven esos formularios.
+ * Este es el paso 1. Los pasos 2 a 6 siguen en ingreso → tarjetas → deuda →
+ * fijos → listo, y cada uno guarda lo suyo al avanzar.
  */
 export default function CuentaPersonal() {
   const router = useRouter();
@@ -41,7 +40,8 @@ export default function CuentaPersonal() {
 
     await refreshProfile();
     setActivating(false);
-    // El RouteGuard la lleva al Estado A sola, al ver el nuevo estado.
+    // O3 sigue con el ingreso (paso 2). El RouteGuard deja pasar /onboarding.
+    router.push('/onboarding/ingreso');
   }
 
   return (

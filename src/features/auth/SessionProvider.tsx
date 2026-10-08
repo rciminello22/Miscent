@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/data/supabase';
+import { displayNameFromEmail, takeOnboardingIntent } from './onboardingIntent';
 
 /**
  * Sesión y estado de cuenta.
@@ -48,7 +49,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       .eq('id', userId)
       .maybeSingle();
 
-    if (error != null || data == null) return null;
+    if (error != null) return null;
+    if (data == null) return null;
 
     return {
       id: data.id,
@@ -56,6 +58,30 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       hasPersonalAccount: data.has_personal_account,
       timezone: data.timezone,
     };
+  }
+
+  /**
+   * La primera vez que alguien entra, no tiene perfil: lo crea acá.
+   *
+   * §13 O1 paso 5a · el registro por cuenta propia activa la cuenta personal
+   * en los tres casos, porque crear un espacio la requiere (P5).
+   * A-03 / CA-05 · aceptar una invitación NO la activa. Por eso la diferencia
+   * depende del intent que quedó guardado al pedir el enlace.
+   */
+  async function ensureProfile(nextSession: Session): Promise<Profile | null> {
+    const existing = await loadProfile(nextSession.user.id);
+    if (existing != null) return existing;
+
+    const intent = await takeOnboardingIntent();
+
+    const { error } = await supabase.from('profiles').insert({
+      id: nextSession.user.id,
+      display_name: displayNameFromEmail(nextSession.user.email),
+      has_personal_account: intent != null,
+    });
+
+    if (error != null) return null;
+    return loadProfile(nextSession.user.id);
   }
 
   useEffect(() => {
@@ -67,7 +93,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
       setSession(data.session);
       if (data.session != null) {
-        setProfile(await loadProfile(data.session.user.id));
+        setProfile(await ensureProfile(data.session));
       }
       setLoading(false);
     })();
@@ -79,7 +105,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setProfile(null);
         return;
       }
-      void loadProfile(nextSession.user.id).then((next) => {
+      void ensureProfile(nextSession).then((next) => {
         if (active) setProfile(next);
       });
     });

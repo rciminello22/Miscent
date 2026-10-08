@@ -1,10 +1,9 @@
 import { useMemo } from 'react';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { addMonths, monthOf } from '@domain/calendar';
-import { futureFrom } from '@domain/future';
+import { calculateFuture } from '@domain/future';
 import { formatMonth } from '@/lib/format';
-import { useToday } from '@/features/shared/useToday';
-import { demoPersonalFacts } from '@/features/shared/demoFacts';
+import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import {
   AudienceBadge,
   Card,
@@ -26,15 +25,17 @@ import { duration } from '@/ui/motion';
  * meses y qué tengo que pagar? No necesita saber cuánta plata va a tener el
  * usuario, y no lo pretende.
  *
- * ⚠️ Fase 3 · los seis meses, el ingreso previsto, Sin asignar y la línea de
- * cuotas que terminan ya salen del dominio (`futureFrom`), con hechos de
- * muestra. En la Fase 4 se cambian por los del usuario; el cálculo no cambia.
+ * Los seis meses, el ingreso previsto, Sin asignar y la línea de cuotas que
+ * terminan salen de `calculateFuture` sobre los hechos del usuario. Ninguna
+ * cifra se calcula en esta pantalla.
+ *
+ * §23.3 "Tus cuotas y tus fijos" llega en la Fase 5.
  */
 export default function Futuro() {
-  const today = useToday();
+  const { expansion, today, isLoading } = usePersonalFacts();
   const from = addMonths(monthOf(today), 1);
 
-  const future = useMemo(() => futureFrom(demoPersonalFacts, from, 6), [from]);
+  const future = useMemo(() => calculateFuture(expansion, from, 6), [expansion, from]);
   const maxCommitted = Math.max(...future.months.map((month) => month.committed), 1);
   const hasCommitments = future.months.some((month) => month.committed > 0);
 
