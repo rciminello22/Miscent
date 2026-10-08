@@ -1,0 +1,108 @@
+import { View } from 'react-native';
+import { Tabs, useRouter } from 'expo-router';
+import { CalendarRange, House, Plus, ReceiptText, Users } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, Text } from '@/ui/primitives';
+import { useTheme } from '@/ui/theme';
+
+/**
+ * §14 Estado A · usuario con cuenta personal.
+ *
+ * Cuatro secciones, y cada una responde UNA pregunta:
+ *   Inicio       · ¿Qué pasó con mi plata este mes?
+ *   Movimientos  · ¿Qué registré?
+ *   Futuro       · ¿Cómo vienen mis próximos meses?
+ *   Compartidos  · lista de espacios
+ *
+ * El "+ Agregar" no es una sección: es una acción, y la spec la quiere
+ * "siempre visible". Por eso va como botón flotante y no como quinta pestaña.
+ */
+export default function PersonalLayout() {
+  const theme = useTheme();
+
+  return (
+    <View style={{ flex: 1 }}>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          sceneStyle: { backgroundColor: theme.colors.background },
+          tabBarActiveTintColor: theme.colors.brand,
+          tabBarInactiveTintColor: theme.colors.textMuted,
+          tabBarStyle: {
+            backgroundColor: theme.colors.surface,
+            borderTopColor: theme.colors.border,
+          },
+          tabBarLabelStyle: { ...theme.typography.caption, marginTop: 2 },
+        }}
+      >
+        <Tabs.Screen
+          name="inicio"
+          options={{
+            title: 'Inicio',
+            tabBarIcon: ({ color, size }) => <House size={size - 2} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="movimientos"
+          options={{
+            title: 'Movimientos',
+            tabBarIcon: ({ color, size }) => <ReceiptText size={size - 2} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="futuro"
+          options={{
+            title: 'Futuro',
+            tabBarIcon: ({ color, size }) => <CalendarRange size={size - 2} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="compartidos"
+          options={{
+            title: 'Compartidos',
+            tabBarIcon: ({ color, size }) => <Users size={size - 2} color={color} />,
+          }}
+        />
+      </Tabs>
+
+      <AddButton />
+    </View>
+  );
+}
+
+/** §17 · el formulario único Agregar, a un toque desde cualquier sección. */
+function AddButton() {
+  const theme = useTheme();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+
+  return (
+    <Pressable
+      onPress={() => router.push('/agregar')}
+      accessibilityRole="button"
+      accessibilityLabel="Agregar un gasto o un ingreso"
+      style={{
+        position: 'absolute',
+        right: theme.space['5'],
+        bottom: insets.bottom + 72,
+        height: 52,
+        paddingHorizontal: theme.space['5'],
+        borderRadius: theme.radius.pill,
+        backgroundColor: theme.colors.brand,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.space['2'],
+        shadowColor: '#000',
+        shadowOpacity: theme.scheme === 'dark' ? 0.4 : 0.18,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 6,
+      }}
+    >
+      <Plus size={18} color={theme.colors.textOnBrand} />
+      <Text variant="smallMedium" tone="onBrand">
+        Agregar
+      </Text>
+    </Pressable>
+  );
+}

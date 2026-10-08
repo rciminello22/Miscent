@@ -1,0 +1,120 @@
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import type { Session } from '@supabase/supabase-js';
+import { supabase } from '@/data/supabase';
+
+/**
+ * Sesión y estado de cuenta.
+ *
+ * El estado de cuenta es lo que decide qué árbol de navegación ve el usuario
+ * (§14), y es una de las decisiones de producto más importantes:
+ *
+ *   Estado A · tiene cuenta personal → Inicio, Movimientos, Futuro, Compartidos
+ *   Estado B · NO tiene cuenta personal → sus espacios, SIN barra de pestañas
+ *
+ * K0 · "Ser miembro de un espacio no es tener cuenta personal. El invitado
+ * nunca siente que tiene una cuenta incompleta." Por eso el Estado B no es un
+ * Estado A con cosas deshabilitadas: es otro árbol. CA-06 exige que no haya
+ * pestañas bloqueadas ni candados.
+ */
+
+export type AccountState = 'loading' | 'signed-out' | 'guest' | 'personal';
+
+export type Profile = {
+  id: string;
+  displayName: string;
+  hasPersonalAccount: boolean;
+  timezone: string;
+};
+
+type SessionContextValue = {
+  session: Session | null;
+  profile: Profile | null;
+  /** §14 · qué árbol de navegación corresponde. */
+  accountState: AccountState;
+  refreshProfile: () => Promise<void>;
+};
+
+const SessionContext = createContext<SessionContextValue | null>(null);
+
+export function SessionProvider({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  async function loadProfile(userId: string): Promise<Profile | null> {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, display_name, has_personal_account, timezone')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error != null || data == null) return null;
+
+    return {
+      id: data.id,
+      displayName: data.display_name,
+      hasPersonalAccount: data.has_personal_account,
+      timezone: data.timezone,
+    };
+  }
+
+  useEffect(() => {
+    let active = true;
+
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!active) return;
+
+      setSession(data.session);
+      if (data.session != null) {
+        setProfile(await loadProfile(data.session.user.id));
+      }
+      setLoading(false);
+    })();
+
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+
+      if (nextSession == null) {
+        setProfile(null);
+        return;
+      }
+      void loadProfile(nextSession.user.id).then((next) => {
+        if (active) setProfile(next);
+      });
+    });
+
+    return () => {
+      active = false;
+      subscription.subscription.unsubscribe();
+    };
+  }, []);
+
+  const value = useMemo<SessionContextValue>(() => {
+    const accountState: AccountState = loading
+      ? 'loading'
+      : session == null
+        ? 'signed-out'
+        : profile?.hasPersonalAccount === true
+          ? 'personal'
+          : 'guest';
+
+    return {
+      session,
+      profile,
+      accountState,
+      refreshProfile: async () => {
+        if (session == null) return;
+        setProfile(await loadProfile(session.user.id));
+      },
+    };
+  }, [session, profile, loading]);
+
+  return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
+}
+
+export function useSession(): SessionContextValue {
+  const value = useContext(SessionContext);
+  if (value == null) throw new Error('useSession necesita un <SessionProvider> arriba.');
+  return value;
+}
