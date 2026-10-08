@@ -46,7 +46,11 @@
     "test:dominio": "vitest run src/domain",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tools",
     "lint:lenguaje": "tsx tools/language-lint.cli.ts",
-    "verify": "npm run typecheck && npm run test && npm run lint:lenguaje"
+    "verify": "npm run typecheck && npm run test && npm run lint:lenguaje",
+    "db:push": "supabase db push",
+    "db:reset": "supabase db reset",
+    "db:types": "supabase gen types typescript --linked > src/data/database.types.ts",
+    "test:rls": "supabase test db"
   },
   "private": true
 }
