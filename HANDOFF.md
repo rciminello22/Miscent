@@ -98,8 +98,9 @@ radar/
 │   └── test/render.tsx       renderWithTheme
 │
 ├── supabase/
-│   ├── migrations/           4 migraciones: schema, rls, operations, fix_pgcrypto
-│   └── tests/privacidad.test.sql   26 asserts pgTAP
+│   ├── migrations/           5 migraciones: schema, rls, operations, fix_pgcrypto,
+│   │                         deleted_shared_records (SY-02)
+│   └── tests/privacidad.test.sql   32 asserts pgTAP
 │
 └── tools/language-lint.*     automatiza CA-00
 ```
@@ -136,15 +137,17 @@ radar/
 
 ## 4. Estado: qué está hecho
 
-**13 commits, fases 0 a 9.** `git log --oneline` para verlos.
+**Fases 0 a 10.** `git log --oneline` para verlos. **El Must está completo.**
 
 | Área | Estado |
 |---|---|
 | Dominio (§29 completo) | ✅ Los 7 casos de §29.1 pasan exactos |
-| Supabase + RLS | ✅ 12 tablas, 29 políticas, 6 RPC · **26/26 asserts** |
+| Supabase + RLS | ✅ 13 tablas, 30 políticas, 6 RPC, 1 trigger · **32/32 asserts** |
 | UI base | ✅ Tokens claro/oscuro, motion, 14 primitivas propias |
-| O1 · O2 · O3 | ✅ Completos |
-| Agregar (§17) | ✅ Con vista previa de cuotas |
+| O1 · O2 · O3 | ✅ Completos, con T-07/Q-06 derivados del último cierre |
+| Enlace mágico en Expo Go | ✅ Por tunnel, con pantalla `/auth/callback` (ver §6) |
+| Agregar (§17) | ✅ Con vista previa de cuotas y fecha editable (Hoy · Ayer · Otra) |
+| SY-02 | ✅ Registro de borrados por trigger: nombra a quien eliminó, sin suponer |
 | Inicio (§15) | ✅ Radar, con tarjeta este mes, próximos pagos, próximos meses |
 | Futuro (§23) | ✅ 23.1 + 23.2 + 23.3 |
 | Movimientos (§16) | ✅ Con gastos compartidos y filtros |
@@ -164,9 +167,9 @@ npm run verify:full  # + los de RLS
 
 | Nivel | Qué | Cuántos |
 |---|---|---|
-| 1 · Dominio (vitest) | Casos A–G, CA-*, casos de uso | 136 |
-| 2 · Autorización (pgTAP) | PR-01, PR-02, CA-11..13, CA-47, CA-48 | 26 |
-| 3 · Componentes (jest-expo) | El lenguaje **obligatorio** | 21 |
+| 1 · Dominio (vitest) | Casos A–G, CA-*, casos de uso | 148 |
+| 2 · Autorización (pgTAP) | PR-01, PR-02, CA-11..13, CA-47, CA-48, SY-02, SA-06 | 32 |
+| 3 · Componentes (jest-expo) | El lenguaje **obligatorio** | 28 |
 | 4 · Lint de lenguaje | **Automatiza CA-00** | en CI |
 
 El nivel 4 ya cazó **4 errores míos** ("te quedaría", "el saldo", "Te quedan N
@@ -177,13 +180,7 @@ cuotas"). El nivel 3 encontró **2 bugs reales**.
 ## 5. Qué falta
 
 ### Del Must
-- **T-07 · el vencimiento del resumen pendiente** se deriva del mes actual y
-  puede quedar en el pasado. §13 O3 paso 4 lo quiere pedido, no derivado.
-  Ver §9 de este documento
-- **SY-02** · "Martina eliminó este gasto. ¿Querés volver a crearlo?"
-- **La fecha de un gasto no es editable** (siempre hoy). §17 campo 10 la quiere
-  editable con default hoy. **Es el gap que más molesta al probar**: impide
-  cargar un gasto de ayer y probar T-03 con una compra posterior al cierre.
+Nada. T-07, SY-02 y la fecha editable se cerraron el 9/10.
 
 ### Recomendaciones y Should
 - SA-04 · preguntarle a quien queda si adopta el fijo detenido
@@ -266,7 +263,7 @@ npm run verify:full        # + RLS
 npm run test:dominio       # solo el dominio (~600ms)
 npm run test:componentes   # jest-expo
 npm run lint:lenguaje      # CA-00
-npm run test:rls           # 26 asserts (necesita supabase login)
+npm run test:rls           # 32 asserts (necesita supabase login)
 npm run test:rls:smoke     # RLS con la anon key (no necesita login)
 npm run db:push            # migraciones
 npm run db:types           # regenerar tipos desde el esquema
@@ -283,7 +280,7 @@ directorio de trabajo:
 | Proyecto | Qué tiene |
 |---|---|
 | **`cimin`** | Las 10 memorias de las fases 0 a 9 (decisiones y gotchas de cada una) y el resumen de sesión. Quedaron ahí porque el cwd era `C:\Users\cimin\...` |
-| `radar-sueldo-comprometido` | La auditoría previa del 7/10 (#265, #266, #267) y las decisiones F1–F4 (ver abajo) |
+| `radar-sueldo-comprometido` | La auditoría previa del 7/10 (#265, #266, #267), las decisiones F1–F4 (ver abajo) y todo lo del 9/10 en adelante: auth por tunnel, fecha editable, SY-02. **Desde acá, pasar siempre `project` explícito** |
 
 ```
 mem_context()   # lista las recientes de los dos, sin filtrar por proyecto
@@ -307,20 +304,16 @@ las coincidencias son convergencia independiente. Verificado el 9/10:
 | **F3** | C-03 no dice quién absorbe el peso impar en un 50/50 | **El slot 1, no el pagador**: si fuera el pagador, editar "quién pagó" cambiaría las partes y el saldo |
 | **F4** | T-08 "fecha hoy" mandaría los consumos al resumen equivocado | **El razonamiento de la auditoría no se sostiene.** "Consumos *desde* el último cierre" son posteriores al cierre, así que van al próximo resumen, que es lo que da fechar hoy. Verificado con T-03 en los dos escenarios |
 
-### ⚠️ Pero investigando F4 apareció un bug real en T-07
+### Investigando F4 aparecieron dos bugs en O3 paso 4 (arreglados, `b1e98ea`)
 
-`app/onboarding/deuda.tsx:68`
+Los dos venían de deducir "el último resumen" del mes calendario en lugar del
+cierre de la tarjeta:
 
-```ts
-dueDate: dateInMonth(monthOf(today), card.dueDay ?? 28)
-```
+- **T-07**: `dateInMonth(mes actual, dueDay)` fallaba **después** del cierre
+  (cierre 25, vence 5, hoy 28/10 → guardaba 5/10 en vez de 5/11). Antes del
+  cierre daba bien: al 9/10, el resumen cerrado el 25/9 vence de verdad el 5/10.
+- **Q-06**: `lastStatementMonth` era "el mes pasado" y generaba una cuota que
+  ya estaba en el último resumen: contada dos veces en el Comprometido.
 
-Deriva el vencimiento del **mes actual**: si hoy es 9/10 y la tarjeta vence el
-5, guarda **5/10**, una fecha que ya pasó. El resumen pendiente declarado
-aparece como "Ya pasó" apenas se carga, en vez de en su próximo vencimiento.
-
-Y hay algo más de fondo: **§13 O3 paso 4 dice "si no: monto y vencimiento"**.
-El usuario tiene que poder **indicar** el vencimiento. La UI hoy solo pide el
-monto y deriva la fecha.
-
-**Pendiente de arreglar.** Es chico y está acotado a esa pantalla.
+Ahora los dos salen de `lastClosedStatement(card, today)`, en el dominio, y el
+vencimiento se muestra y se puede corregir (§13 O3 paso 4: "monto y vencimiento").
