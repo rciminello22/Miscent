@@ -14,7 +14,6 @@ import { WhereFrom, type BreakdownTarget } from '@/features/breakdown/WhereFrom'
 import { CardPurchasesThisMonth, RadarSummary } from '@/features/radar/RadarSummary';
 import {
   AudienceBadge,
-  Divider,
   EmptyState,
   ErrorState,
   Money,
@@ -30,6 +29,7 @@ import {
 } from '@/ui/primitives';
 import { duration, stagger } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
+import { SpacesOnHome } from '@/features/spaces/SpacesOnHome';
 
 /**
  * §15 · Inicio.
@@ -244,11 +244,8 @@ export default function Inicio() {
               </Animated.View>
             )}
 
-            <Divider />
-
-            <Text variant="caption" tone="muted">
-              Tus espacios compartidos llegan en la Fase 6.
-            </Text>
+            {/* §15 · Tus espacios. Si no hay ninguno, el bloque no aparece. */}
+            <SpacesOnHome />
           </>
         )}
       </Stack>
