@@ -225,9 +225,17 @@ datos, y cifrado/ubicación/uso para entrenar IA del proveedor. La base está en
   no arrancaba. Verificar con `npx expo install --check`.
 - **expo-router necesita `app/index.tsx` para `/`**: un redirect en `useEffect`
   llega tarde y el router ya mostró "Unmatched Route".
-- **Deep link en Expo Go**: `exp://<IP-LOCAL>:8081/--/auth/callback`, no
-  127.0.0.1. Está cargada `exp://192.168.1.46:8081/--/...` como URL específica.
-  **Si cambia la red hay que actualizarla y pushear.**
+- **Enlace mágico en Expo Go: SIEMPRE `npm run start:tunnel`.** Con `npm start`
+  el deep link es `exp://192.168.x.x:8081/...`, y GoTrue rechaza cualquier IP
+  literal que no sea loopback **antes de mirar la allowlist**: cae al site_url
+  `radar://`, que Expo Go no abre ("Se ha producido un error"). Está permitida
+  `exp://znfuh80-rciminello22-8081.exp.direct/--/auth/callback` (subdominio
+  fijo por la cuenta de Expo). Nunca un comodín `*.exp.direct`: el dominio es
+  compartido y el flujo implícito manda los tokens en la URL.
+- **Probar un redirect sin gastar mails** (el SMTP integrado tiene rate limit):
+  `curl -s -o /dev/null -w "%{redirect_url}" "$URL/auth/v1/verify?token=x&type=magiclink&redirect_to=<URL>"`.
+  Si vuelve a `<URL>#error=...`, está permitida; si vuelve a `radar://`, no.
+  Ojo: `127.0.0.1` pasa siempre (RFC 8252), así que no prueba nada.
 - Renzo usa **Windows sin Android SDK** (`ANDROID_HOME` sin definir), así que
   `expo run:android` no corre. Prueba con **Expo Go en iPhone**.
 
@@ -251,7 +259,8 @@ datos, y cifrado/ubicación/uso para entrenar IA del proveedor. La base está en
 ## 7. Comandos
 
 ```bash
-npm start                  # Expo (Expo Go por QR)
+npm start                  # Expo (Expo Go por QR) · el enlace mágico NO vuelve
+npm run start:tunnel       # Expo por tunnel · usar este para probar el login
 npm run verify             # typecheck + vitest + jest + lint de lenguaje
 npm run verify:full        # + RLS
 npm run test:dominio       # solo el dominio (~600ms)

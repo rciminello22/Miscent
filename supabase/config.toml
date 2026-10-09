@@ -160,11 +160,13 @@ site_url = "radar://auth/callback"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-# La segunda es la IP de la maquina de desarrollo: Expo Go usa
-# exp://<IP-local>:8081/--/... para el deep link, no 127.0.0.1. Si cambia la
-# red, hay que actualizarla y volver a pushear. En un build propio alcanza
-# radar://, que es el scheme de la app.
-additional_redirect_urls = ["radar://auth/callback", "exp://192.168.1.46:8081/--/auth/callback", "exp://127.0.0.1:8081/--/auth/callback", "http://127.0.0.1:8081/auth/callback"]
+# La segunda es el tunnel de Expo (npm run start:tunnel) para probar en Expo Go.
+# NO sirve una IP de LAN (exp://192.168.x.x): GoTrue rechaza cualquier IP
+# literal que no sea loopback ANTES de mirar esta lista. Las de 127.0.0.1
+# pasan siempre (RFC 8252); quedan solo como documentacion. NUNCA un comodin
+# *.exp.direct: el dominio es compartido y el flujo implicito manda los tokens
+# en la URL. En un build propio alcanza radar://, que es el scheme de la app.
+additional_redirect_urls = ["radar://auth/callback", "exp://znfuh80-rciminello22-8081.exp.direct/--/auth/callback", "exp://127.0.0.1:8081/--/auth/callback", "http://127.0.0.1:8081/auth/callback"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
