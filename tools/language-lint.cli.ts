@@ -10,7 +10,16 @@ import { lintSource, type Violation } from './language-lint';
 
 const ROOTS = ['src', 'app'];
 const EXTENSIONS = ['.ts', '.tsx'];
-const SKIP_DIRS = new Set(['node_modules', '__tests__', '.expo']);
+const SKIP_DIRS = new Set(['node_modules', '__tests__', '.expo', 'test']);
+
+/**
+ * Los tests quedan afuera, y no es una concesión: un test que verifica que
+ * "disponible" NO aparece tiene que poder nombrar la palabra. Si el linter los
+ * revisara, la única forma de testear la regla sería violarla.
+ */
+function isTestFile(name: string): boolean {
+  return name.endsWith('.test.ts') || name.endsWith('.test.tsx') || name.endsWith('.spec.tsx');
+}
 
 function walk(dir: string, found: string[] = []): string[] {
   let entries: string[];
@@ -23,7 +32,7 @@ function walk(dir: string, found: string[] = []): string[] {
     const full = join(dir, entry);
     if (statSync(full).isDirectory()) {
       if (!SKIP_DIRS.has(entry)) walk(full, found);
-    } else if (EXTENSIONS.some((ext) => entry.endsWith(ext)) && !entry.endsWith('.test.ts')) {
+    } else if (EXTENSIONS.some((ext) => entry.endsWith(ext)) && !isTestFile(entry)) {
       found.push(full);
     }
   }

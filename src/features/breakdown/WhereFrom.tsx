@@ -229,7 +229,7 @@ function OccurrenceList({
               <View style={{ flex: 1, gap: 2 }}>
                 <Row gap="2" align="center">
                   <Text variant="smallMedium" numberOfLines={1} style={{ flexShrink: 1 }}>
-                    {occurrence.label}
+                    {prettyLabel(occurrence.label)}
                   </Text>
                   {/* §12 · el ícono de audiencia en cada fila. */}
                   <AudienceIcon

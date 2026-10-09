@@ -1,0 +1,87 @@
+import { View } from 'react-native';
+import type { UpcomingPayment } from '@domain/upcoming';
+import { formatPaymentWhen } from '@/lib/format';
+import { Money, Row, Text } from '@/ui/primitives';
+
+/**
+ * §23.2 · una fila de Próximos pagos.
+ *
+ * Extraída de la pantalla porque concentra tres textos que la spec declara
+ * obligatorios, y los tres son fáciles de olvidar:
+ *
+ *   N-10 / CA-35 · "Estimado según lo que registraste" en TODO resumen de
+ *                   tarjeta. No es una aclaración opcional: el resumen real
+ *                   del banco va a diferir, y la app no promete conciliar
+ *   §7.3        · "incluye $X de Martina" cuando el pago lleva la parte de
+ *                   otro miembro. Sin eso, el usuario leería el total como si
+ *                   fuera todo suyo y las dos lentes se mezclarían
+ *   G-06 / CA-37 · "Ya pasó", NUNCA "Pagado". La app no verifica pagos
+ *
+ * T-05 · y cuando no se conoce el día, se muestra el mes y se avisa que las
+ * fechas son aproximadas. Nunca se inventa una fecha.
+ */
+
+export const UPCOMING_COPY = {
+  estimate: 'Estimado según lo que registraste',
+  approximate: 'Fechas aproximadas',
+  /** G-06 · el estado correcto. "Pagado" está prohibido (CA-45). */
+  past: 'Ya pasó',
+  includes: 'incluye',
+} as const;
+
+export function UpcomingPaymentRow({
+  payment,
+  /** El nombre legible del medio de pago, que la pantalla resuelve. */
+  label,
+}: {
+  payment: UpcomingPayment;
+  label?: string;
+}) {
+  return (
+    <Row gap="3" align="flex-start">
+      <Text variant="small" tone="muted" tabular style={{ width: 58 }}>
+        {formatPaymentWhen({ date: payment.date, month: payment.month })}
+      </Text>
+
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text variant="smallMedium">{label ?? payment.label}</Text>
+
+        {/* N-10 / CA-35 */}
+        {payment.isEstimate && (
+          <Text variant="caption" tone="muted">
+            {UPCOMING_COPY.estimate}
+          </Text>
+        )}
+
+        {/* §7.3 · la parte del otro, siempre aclarada. */}
+        {payment.includesOtherShare > 0 && payment.otherMemberName != null && (
+          <Text variant="caption" tone="shared">
+            {UPCOMING_COPY.includes}{' '}
+            <Money
+              amount={payment.includesOtherShare}
+              variant="caption"
+              tone="shared"
+            />{' '}
+            de {payment.otherMemberName}
+          </Text>
+        )}
+
+        {/* T-05 */}
+        {payment.approximate && (
+          <Text variant="caption" tone="muted">
+            {UPCOMING_COPY.approximate}
+          </Text>
+        )}
+
+        {/* G-06 / CA-37 / CA-45 */}
+        {payment.hasPassed && (
+          <Text variant="caption" tone="muted">
+            {UPCOMING_COPY.past}
+          </Text>
+        )}
+      </View>
+
+      <Money amount={payment.amount} variant="smallMedium" />
+    </Row>
+  );
+}

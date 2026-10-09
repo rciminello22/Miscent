@@ -11,6 +11,7 @@ import { calculateUpcomingPayments, upcomingForHome } from '@domain/upcoming';
 import { formatMonth, formatPaymentWhen } from '@/lib/format';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { WhereFrom, type BreakdownTarget } from '@/features/breakdown/WhereFrom';
+import { CardPurchasesThisMonth, RadarSummary } from '@/features/radar/RadarSummary';
 import {
   AudienceBadge,
   Divider,
@@ -133,85 +134,11 @@ export default function Inicio() {
           />
         ) : (
           <>
-            {/* ── El radar del mes ─────────────────────────────────────── */}
-            <Animated.View entering={FadeInDown.duration(duration.deliberate)}>
-              <Stack gap="5">
-                <Stack gap="1">
-                  <Text variant="small" tone="secondary">
-                    Tus ingresos de {formatMonth(month, month)}
-                  </Text>
-                  <Row gap="2" align="baseline">
-                    <Money amount={radar.registeredIncome} variant="display" animate />
-                    <Text variant="small" tone="muted">
-                      registrados
-                    </Text>
-                  </Row>
-                </Stack>
+            {/* §15 · el radar del mes, extraído para poder testear su lenguaje. */}
+            <RadarSummary radar={radar} month={month} onOpenBreakdown={setBreakdown} />
 
-                <RadarBar
-                  registeredIncome={radar.registeredIncome}
-                  spent={radar.spent}
-                  committed={radar.committed}
-                />
-
-                <Stack gap="3">
-                  <RadarRow
-                    onPress={() => setBreakdown('spent')}
-                    dot="spent"
-                    label="Gastado"
-                    amount={radar.spent}
-                    help="lo que registraste como pagado en el día a día"
-                  />
-                  <RadarRow
-                    onPress={() => setBreakdown('committed')}
-                    dot="committed"
-                    label="Comprometido"
-                    amount={radar.committed}
-                    help="fijos, cuotas y tarjetas de este mes"
-                  />
-                  {radar.unassigned != null ? (
-                    <RadarRow
-                      onPress={() => setBreakdown('unassigned')}
-                      dot="unassigned"
-                      label="Sin asignar"
-                      amount={radar.unassigned}
-                      help="todavía sin destino, según lo que registraste"
-                    />
-                  ) : (
-                    <Text variant="small" tone="secondary">
-                      Registrá tu ingreso para ver qué parte ya tiene destino.
-                    </Text>
-                  )}
-                </Stack>
-
-                {/* N-08 · sin alarma, con la frase exacta de la spec. */}
-                {radar.exceedsIncome && radar.unassigned != null && (
-                  <Text variant="small" tone="excess">
-                    Tus gastos y compromisos superan tus ingresos registrados por{' '}
-                    <Money
-                      amount={radar.unassigned}
-                      sign="never"
-                      variant="smallMedium"
-                      tone="excess"
-                    />
-                    .
-                  </Text>
-                )}
-              </Stack>
-            </Animated.View>
-
-            {/* ── §15 · "Con tarjeta este mes" ─────────────────────────── */}
-            {radar.cardPurchasesThisMonth.map((entry) => (
-              <Row key={entry.month} gap="2" align="baseline" style={{ flexWrap: 'wrap' }}>
-                <Text variant="small" tone="secondary">
-                  Con tarjeta este mes:
-                </Text>
-                <Money amount={entry.amount} variant="smallMedium" />
-                <Text variant="small" tone="muted">
-                  → se paga en {formatMonth(entry.month, month)}
-                </Text>
-              </Row>
-            ))}
+            {/* §15 · "Con tarjeta este mes: $X → se paga en noviembre". */}
+            <CardPurchasesThisMonth entries={radar.cardPurchasesThisMonth} month={month} />
 
             {/* ── §23.2 · Próximos pagos ───────────────────────────────── */}
             {upcoming.length > 0 && (
@@ -333,46 +260,5 @@ export default function Inicio() {
         month={month}
       />
     </ScrollView>
-  );
-}
-
-function RadarRow({
-  dot,
-  label,
-  amount,
-  help,
-  onPress,
-}: {
-  dot: 'spent' | 'committed' | 'unassigned';
-  label: string;
-  amount: number;
-  help: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      scaleOnPress={false}
-      haptic="none"
-      accessibilityRole="button"
-      accessibilityHint="Ver de dónde sale esta cifra"
-      accessibilityLabel={label}
-    >
-      <Row gap="3" align="flex-start">
-        <View style={{ marginTop: 7 }}>
-          <RadarLegendDot color={dot} />
-        </View>
-
-        <View style={{ flex: 1, gap: 1 }}>
-          <Row justify="space-between" align="baseline">
-            <Text variant="bodyMedium">{label}</Text>
-            <Money amount={amount} variant="bodyMedium" animate sign="never" />
-          </Row>
-          <Text variant="caption" tone="muted">
-            {help}
-          </Text>
-        </View>
-      </Row>
-    </Pressable>
   );
 }

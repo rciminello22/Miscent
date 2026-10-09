@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    /*
+     * Los globals de jest (describe, it, expect) solo existen en los tests de
+     * componentes. Declararlos en el tsconfig de la app los haría visibles en
+     * el código de producción, donde no deberían estar.
+     */
+    "types": ["jest", "react", "react-native"]
+  },
+  /* El `extends` hereda el `exclude` del padre, que excluye justamente esto. */
+  "exclude": ["node_modules"],
+  "include": ["src/**/*.spec.tsx", "src/test/**/*.tsx"]
+}

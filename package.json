@@ -33,9 +33,14 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^14.1.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^26.6.4",
     "@types/react": "~19.2.2",
     "babel-preset-expo": "^57.0.14",
+    "jest": "^29.7.0",
+    "jest-expo": "^57.0.5",
+    "react-test-renderer": "^19.2.0",
     "supabase": "^2.120.0",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3",
@@ -49,16 +54,17 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:dominio": "vitest run src/domain",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tools",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tools && tsc --noEmit -p tsconfig.spec.json",
     "lint:lenguaje": "tsx tools/language-lint.cli.ts",
-    "verify": "npm run typecheck && npm run test && npm run lint:lenguaje",
+    "verify": "npm run typecheck && npm run test && npm run test:componentes && npm run lint:lenguaje",
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --linked > src/data/database.types.ts",
     "test:rls": "supabase db query --linked -f supabase/tests/privacidad.test.sql",
     "test:rls:docker": "supabase test db",
     "test:rls:smoke": "tsx tools/rls-smoke.ts",
-    "verify:full": "npm run verify && npm run test:rls && npm run test:rls:smoke"
+    "verify:full": "npm run verify && npm run test:rls && npm run test:rls:smoke",
+    "test:componentes": "jest"
   },
   "private": true
 }
