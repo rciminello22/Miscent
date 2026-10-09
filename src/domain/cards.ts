@@ -11,6 +11,7 @@
 
 import {
   addMonths,
+  compareDates,
   dateInMonth,
   firstDateWithDayAfter,
   firstDateWithDayOnOrAfter,
@@ -77,6 +78,34 @@ export function resolveCardPayment(card: PaymentMethod, purchaseDate: IsoDate): 
   }
 
   return { month: nextMonth, dueDate: null, approximate: true };
+}
+
+/**
+ * T-07 · Q-06 · el último resumen CERRADO a `today`: el que el usuario tiene
+ * en la mano al activar la cuenta ("abrí tu último resumen").
+ *
+ * El cierre es estrictamente anterior a hoy: el día del cierre el resumen
+ * todavía recibe compras (T-03). Por eso los consumos de hoy (T-08) caen
+ * siempre en el resumen siguiente a este, nunca en el mismo.
+ *
+ * No repite las reglas de T-03 a T-05: busca la última compra que entró en
+ * ese resumen y le pregunta a `resolveCardPayment` cuándo se paga.
+ */
+export function lastClosedStatement(card: PaymentMethod, today: IsoDate): CardPaymentSchedule {
+  return resolveCardPayment(card, lastPurchaseOfClosedStatement(card, today));
+}
+
+function lastPurchaseOfClosedStatement(card: PaymentMethod, today: IsoDate): IsoDate {
+  const month = monthOf(today);
+
+  // T-05 · sin día de cierre, el "resumen" es el mes calendario: el último
+  // cerrado es el del mes pasado.
+  if (card.closingDay == null) return dateInMonth(addMonths(month, -1), 31);
+
+  const closingThisMonth = dateInMonth(month, card.closingDay);
+  return compareDates(closingThisMonth, today) < 0
+    ? closingThisMonth
+    : dateInMonth(addMonths(month, -1), card.closingDay);
 }
 
 /**

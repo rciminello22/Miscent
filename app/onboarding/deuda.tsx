@@ -3,9 +3,9 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { addMonths, dateInMonth, monthOf } from '@domain/calendar';
+import { addMonths, monthOf, type IsoDate } from '@domain/calendar';
+import { lastClosedStatement } from '@domain/cards';
 import { planExistingInstallments } from '@domain/installments';
-import type { PaymentMethod } from '@domain/types';
 import { formatMonth, formatPesos } from '@/lib/format';
 import { queryKeys } from '@/data/queryClient';
 import { createDeclaredStatement } from '@/data/repositories/mutations';
@@ -14,6 +14,7 @@ import { useSession } from '@/features/auth/SessionProvider';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { useToday } from '@/features/shared/useToday';
 import { AmountInput } from '@/features/add/AmountInput';
+import { DateField } from '@/features/add/DateField';
 import { Field, Segmented } from '@/features/add/fields';
 import { StepShell } from '@/features/onboarding/StepShell';
 import { NumberField } from '@/features/onboarding/NumberField';
@@ -48,12 +49,26 @@ export default function Deuda() {
 
   const [lastPaid, setLastPaid] = useState<'yes' | 'no'>('yes');
   const [pendingAmount, setPendingAmount] = useState(0);
+  // null = el usuario no la tocó: vale la que se deduce de la tarjeta.
+  const [pendingDueDate, setPendingDueDate] = useState<IsoDate | null>(null);
   const [installmentAmount, setInstallmentAmount] = useState(0);
   const [paidCount, setPaidCount] = useState<number | null>(null);
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [recentSpending, setRecentSpending] = useState(0);
 
-  const lastStatementMonth = addMonths(monthOf(today), -1);
+  /**
+   * El resumen que el usuario tiene en la mano: el último CERRADO. De él salen
+   * el vencimiento propuesto para T-07 y el mes desde el que Q-06 genera las
+   * cuotas que faltan. No es "el mes pasado": después del cierre, el último
+   * resumen cerrado ya es el que vence el mes que viene.
+   */
+  const lastStatement = card != null ? lastClosedStatement(card, today) : null;
+  const lastStatementMonth = lastStatement?.month ?? monthOf(today);
+
+  // §13 O3 paso 4 · "si no: monto y vencimiento". T-05 · sin día de
+  // vencimiento conocido no se inventa: el usuario lo elige.
+  const dueDate = pendingDueDate ?? lastStatement?.dueDate ?? null;
+  const needsDueDate = lastPaid === 'no' && pendingAmount > 0 && dueDate == null;
 
   const save = useMutation({
     mutationFn: async () => {
@@ -61,11 +76,11 @@ export default function Deuda() {
       const userId = session.user.id;
 
       // T-07 · resumen pendiente declarado.
-      if (lastPaid === 'no' && pendingAmount > 0) {
+      if (lastPaid === 'no' && pendingAmount > 0 && dueDate != null) {
         await createDeclaredStatement(userId, {
           paymentMethodId: card.id,
           amount: pendingAmount,
-          dueDate: dateInMonth(monthOf(today), card.dueDay ?? 28),
+          dueDate,
         });
       }
 
@@ -121,6 +136,7 @@ export default function Deuda() {
       setIndex(index + 1);
       setLastPaid('yes');
       setPendingAmount(0);
+      setPendingDueDate(null);
       setInstallmentAmount(0);
       setPaidCount(null);
       setTotalCount(null);
@@ -143,6 +159,7 @@ export default function Deuda() {
       description="Esto es lo que hace que tus próximos meses sean reales desde hoy."
       help="Abrí tu último resumen o la app del banco. Si no te acordás de algo, dejalo vacío y cargalo después."
       saving={save.isPending}
+      continueDisabled={needsDueDate}
       onContinue={() => void save.mutateAsync()}
       onSkip={next}
       continueLabel={index + 1 < cards.length ? 'Siguiente tarjeta' : 'Continuar'}
@@ -162,11 +179,23 @@ export default function Deuda() {
 
         {lastPaid === 'no' && (
           <Animated.View entering={FadeInDown.duration(duration.base)}>
-            <Field label="¿De cuánto es?">
-              <View>
-                <AmountInput value={pendingAmount} onChange={setPendingAmount} autoFocus={false} />
-              </View>
-            </Field>
+            <Stack gap="6">
+              <Field label="¿De cuánto es?">
+                <View>
+                  <AmountInput value={pendingAmount} onChange={setPendingAmount} autoFocus={false} />
+                </View>
+              </Field>
+
+              <Field label="¿Cuándo vence?" hint="Fijate la fecha en el resumen.">
+                <DateField
+                  value={dueDate}
+                  onChange={setPendingDueDate}
+                  fallback={today}
+                  placeholder="Elegí la fecha"
+                  accessibilityLabel="Vencimiento del resumen"
+                />
+              </Field>
+            </Stack>
           </Animated.View>
         )}
 

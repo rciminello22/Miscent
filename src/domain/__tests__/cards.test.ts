@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { resolveCardPayment } from '../cards';
+import { lastClosedStatement, resolveCardPayment } from '../cards';
+import { addMonths } from '../calendar';
 import type { PaymentMethod } from '../types';
 
 function card(closingDay: number | null, dueDay: number | null): PaymentMethod {
@@ -81,5 +82,74 @@ describe('tarjetas · T-03, T-05', () => {
       dueDate: '2026-05-10',
       approximate: false,
     });
+  });
+});
+
+/**
+ * T-07 y Q-06 hablan del "último resumen cerrado" al activar la cuenta. El
+ * cierre es ESTRICTAMENTE anterior a hoy: el día del cierre el resumen todavía
+ * recibe compras (T-03 · "igual o posterior a la compra").
+ */
+describe('último resumen cerrado · T-07, Q-06', () => {
+  it('cierre 25, vence 5, hoy 9/10: el último cerró el 25/9 y vence el 5/10 (ya pasó, y es correcto)', () => {
+    expect(lastClosedStatement(card(25, 5), '2026-10-09')).toEqual({
+      month: '2026-10',
+      dueDate: '2026-10-05',
+      approximate: false,
+    });
+  });
+
+  it('cierre 25, vence 5, hoy 28/10: ya cerró el de octubre, vence el 5/11', () => {
+    expect(lastClosedStatement(card(25, 5), '2026-10-28').dueDate).toBe('2026-11-05');
+  });
+
+  it('el día del cierre el resumen sigue abierto: el último cerrado es el anterior', () => {
+    expect(lastClosedStatement(card(25, 5), '2026-10-25').dueDate).toBe('2026-10-05');
+  });
+
+  it('cierre 3, vence 15, hoy 9/10: cerró el 3/10, vence el 15/10', () => {
+    expect(lastClosedStatement(card(3, 15), '2026-10-09').dueDate).toBe('2026-10-15');
+  });
+
+  it('T-04 · cierre 31 en un mes de 28 días: cerró el 28/2', () => {
+    expect(lastClosedStatement(card(31, 10), '2026-03-15').dueDate).toBe('2026-03-10');
+  });
+
+  it('T-05 · solo cierre: el mes siguiente al cierre, sin día', () => {
+    expect(lastClosedStatement(card(25, null), '2026-10-28')).toEqual({
+      month: '2026-11',
+      dueDate: null,
+      approximate: true,
+    });
+  });
+
+  it('T-05 · solo vencimiento: lo del mes pasado se paga este mes', () => {
+    expect(lastClosedStatement(card(null, 5), '2026-10-09')).toEqual({
+      month: '2026-10',
+      dueDate: '2026-10-05',
+      approximate: true,
+    });
+  });
+
+  it('T-05 · sin días: este mes, sin inventar un día', () => {
+    expect(lastClosedStatement(card(null, null), '2026-10-09')).toEqual({
+      month: '2026-10',
+      dueDate: null,
+      approximate: true,
+    });
+  });
+
+  it('T-08 · los consumos de hoy caen SIEMPRE en el resumen siguiente al último cerrado', () => {
+    const tarjetas = [card(25, 5), card(3, 15), card(31, 10), card(25, null), card(null, 5), card(null, null)];
+    const dias = ['2026-10-01', '2026-10-03', '2026-10-04', '2026-10-24', '2026-10-25', '2026-10-26', '2026-10-31', '2026-02-28'];
+
+    for (const tarjeta of tarjetas) {
+      for (const hoy of dias) {
+        const cerrado = lastClosedStatement(tarjeta, hoy);
+        expect(resolveCardPayment(tarjeta, hoy).month, `${JSON.stringify(tarjeta)} · ${hoy}`).toBe(
+          addMonths(cerrado.month, 1),
+        );
+      }
+    }
   });
 });
