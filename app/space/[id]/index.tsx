@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Plus, UserPlus } from 'lucide-react-native';
+import { ArrowLeft, MoreHorizontal, Plus, UserPlus } from 'lucide-react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addMonths, monthOf } from '@domain/calendar';
@@ -15,6 +15,7 @@ import {
   putExtraSentence,
 } from '@/features/spaces/balanceCopy';
 import { useDeleteSharedExpense, useSpace } from '@/features/spaces/useSpaces';
+import { SpaceMenu } from '@/features/spaces/SpaceMenu';
 import {
   AudienceBadge,
   Button,
@@ -59,6 +60,7 @@ export default function Space() {
   const { derived, today, isLoading, isError, refetch } = useSpace(spaceId);
   const deleteExpense = useDeleteSharedExpense(spaceId);
   const [refreshing, setRefreshing] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const currentMonth = monthOf(today);
 
@@ -157,10 +159,29 @@ export default function Space() {
             <ArrowLeft size={20} color={theme.colors.textSecondary} />
           </Pressable>
 
-          {/* §12 · el encabezado dice quién lo ve. */}
-          <AudienceBadge
-            audience={{ kind: 'shared', otherMemberName: other.displayName }}
-          />
+          <Row gap="3" align="center">
+            {/* §12 · el encabezado dice quién lo ve. */}
+            <AudienceBadge
+              audience={{ kind: 'shared', otherMemberName: other.displayName }}
+            />
+
+            {/* §24 · Renombrar · Invitar · Salir */}
+            <Pressable
+              onPress={() => setMenuOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Opciones del espacio"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: theme.radius.pill,
+                backgroundColor: theme.colors.surfaceSunken,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <MoreHorizontal size={16} color={theme.colors.textSecondary} />
+            </Pressable>
+          </Row>
         </Row>
 
         {/* ── El saldo compartido ──────────────────────────────────────── */}
@@ -342,6 +363,15 @@ export default function Space() {
           />
         )}
       </Stack>
+
+      <SpaceMenu
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        spaceId={spaceId}
+        spaceName={derived.facts.space.name}
+        otherMemberName={other.displayName}
+        otherHasAccess={other.status !== 'no_access'}
+      />
     </ScrollView>
   );
 }

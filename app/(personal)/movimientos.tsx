@@ -4,12 +4,17 @@ import { useRouter } from 'expo-router';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { addMonths, isSameMonth, monthOf } from '@domain/calendar';
-import { resolveCardPayment } from '@domain/cards';
-import { installmentAmounts } from '@domain/installments';
-import type { PersonalMovement } from '@domain/types';
+import { addMonths, monthOf } from '@domain/calendar';
 import { formatDayMonth, formatMonth, formatPesos } from '@/lib/format';
-import { categoryLabel } from '@/features/add/categories';
+import { prettyLabel } from '@/features/add/categories';
+import { Chip } from '@/features/add/fields';
+import {
+  buildMovementList,
+  filterMovements,
+  spacesInMonth,
+  type MovementFilter,
+  type MovementRow,
+} from '@/features/movements/buildMovementList';
 import { useDeleteMovement, usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import {
   AudienceIcon,
@@ -28,13 +33,17 @@ import { useTheme } from '@/ui/theme';
 /**
  * §16 · Movimientos. "Ver qué se registró en un mes y corregir errores."
  *
- * Un detalle que la diferencia del radar: acá se listan los HECHOS, no las
- * ocurrencias. §16 es explícita — "Compra en cuotas: una sola vez, en su fecha
- * de compra". Las cuotas se ven mes a mes en Futuro, no repetidas acá.
+ * Dos reglas que ordenan la pantalla:
+ *
+ * 1. Se listan **hechos**, no ocurrencias: una compra en cuotas aparece una
+ *    sola vez, en su fecha de compra. Las cuotas se ven mes a mes en Futuro.
+ * 2. De un gasto compartido, la cifra principal es **tu parte** (K9), y el
+ *    total va en gris al lado. Son las dos lentes de §7.3, y nunca se mezclan
+ *    en el mismo número.
  *
  * §39 declara el riesgo de esta pantalla: puede empujar a "registrar por
- * registrar". Se mitiga mostrando el EFECTO de cada movimiento ("se paga en
- * noviembre", "6 cuotas de $30.000"), que es lo que lo vuelve útil.
+ * registrar". Se mitiga mostrando el EFECTO de cada movimiento, que es lo que
+ * lo vuelve útil: "se paga en noviembre", "6 cuotas de $30.000".
  */
 export default function Movimientos() {
   const theme = useTheme();
@@ -44,36 +53,42 @@ export default function Movimientos() {
   const deleteMovement = useDeleteMovement();
 
   const [month, setMonth] = useState(() => monthOf(today));
+  const [filter, setFilter] = useState<MovementFilter>('all');
   const [refreshing, setRefreshing] = useState(false);
 
-  const movements = useMemo(
+  const rows = useMemo(
     () =>
-      facts.movements
-        .filter((movement) => isSameMonth(movement.date, month))
-        .sort((a, b) => (a.date < b.date ? 1 : -1)),
-    [facts.movements, month],
+      buildMovementList({
+        facts,
+        month,
+        monthName: (value) => formatMonth(value, month),
+        formatAmount: formatPesos,
+      }),
+    [facts, month],
   );
+
+  const spaces = useMemo(() => spacesInMonth(facts, month), [facts, month]);
+  const visible = useMemo(() => filterMovements(rows, filter), [rows, filter]);
 
   async function onRefresh() {
     setRefreshing(true);
+    // SY-01 · deslizar para ver los cambios del otro miembro.
     await refetch();
     setRefreshing(false);
   }
 
-  function confirmDelete(movement: PersonalMovement) {
+  function confirmDelete(row: MovementRow) {
+    if (!row.deletable) return;
+
     // X-01 · eliminar un hecho recalcula todo lo que depende de él.
-    Alert.alert(
-      '¿Eliminar este movimiento?',
-      'Tu radar y tu Futuro se recalculan sin él.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: () => void deleteMovement.mutateAsync(movement.id),
-        },
-      ],
-    );
+    Alert.alert('¿Eliminar este movimiento?', 'Tu radar y tu Futuro se recalculan sin él.', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: () => void deleteMovement.mutateAsync(row.id.replace('movement:', '')),
+      },
+    ]);
   }
 
   return (
@@ -115,13 +130,37 @@ export default function Movimientos() {
           </Pressable>
         </Row>
 
+        {/* §16 · "Filtros: Todos · Personales · uno por espacio". */}
+        {spaces.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: theme.space['2'] }}
+          >
+            <Chip label="Todos" selected={filter === 'all'} onPress={() => setFilter('all')} />
+            <Chip
+              label="Personales"
+              selected={filter === 'personal'}
+              onPress={() => setFilter('personal')}
+            />
+            {spaces.map((space) => (
+              <Chip
+                key={space.id}
+                label={space.name}
+                selected={filter === space.id}
+                onPress={() => setFilter(space.id)}
+              />
+            ))}
+          </ScrollView>
+        )}
+
         {isLoading ? (
           <Stack gap="4">
             <Skeleton height={56} />
             <Skeleton height={56} />
             <Skeleton height={56} />
           </Stack>
-        ) : movements.length === 0 ? (
+        ) : visible.length === 0 ? (
           <EmptyState
             title={`Todavía no registraste nada en ${formatMonth(month, monthOf(today))}.`}
             actionLabel="Agregar"
@@ -129,27 +168,29 @@ export default function Movimientos() {
           />
         ) : (
           <Stack gap="0">
-            {movements.map((movement, index) => (
+            {visible.map((row, index) => (
               <Animated.View
-                key={movement.id}
+                key={row.id}
                 layout={LinearTransition}
-                entering={FadeInDown.delay(stagger(index, 40)).duration(duration.base)}
+                entering={FadeInDown.delay(stagger(index, 35)).duration(duration.base)}
               >
-                <MovementRow
-                  movement={movement}
-                  paymentMethods={facts.paymentMethods}
-                  onLongPress={() => confirmDelete(movement)}
+                <MovementItem
+                  row={row}
+                  onPress={() =>
+                    row.spaceId != null ? router.push(`/space/${row.spaceId}`) : undefined
+                  }
+                  onLongPress={() => confirmDelete(row)}
                 />
-                {index < movements.length - 1 && <Divider />}
+                {index < visible.length - 1 && <Divider />}
               </Animated.View>
             ))}
           </Stack>
         )}
 
-        {movements.length > 0 && (
+        {visible.length > 0 && (
           <Text variant="caption" tone="muted">
-            Mantené presionado un movimiento para eliminarlo. Los gastos compartidos
-            aparecen acá a partir de la Fase 6.
+            Mantené presionado un movimiento propio para eliminarlo. Los de un espacio se
+            editan desde el espacio, para que el otro miembro también lo vea.
           </Text>
         )}
       </Stack>
@@ -157,77 +198,66 @@ export default function Movimientos() {
   );
 }
 
-function MovementRow({
-  movement,
-  paymentMethods,
+function MovementItem({
+  row,
+  onPress,
   onLongPress,
 }: {
-  movement: PersonalMovement;
-  paymentMethods: ReturnType<typeof usePersonalFacts>['facts']['paymentMethods'];
+  row: MovementRow;
+  onPress: () => void;
   onLongPress: () => void;
 }) {
   const theme = useTheme();
-  const method = paymentMethods.find((item) => item.id === movement.paymentMethodId) ?? null;
-
-  /** §16 · las etiquetas que muestran el efecto del movimiento. */
-  const label = useMemo(() => {
-    if (movement.kind === 'income') return 'Ingreso registrado';
-
-    if (movement.installments != null) {
-      const [first] = installmentAmounts(movement.amount, movement.installments.count);
-      return `${movement.installments.count} cuotas de ${formatPesos(first ?? 0)}`;
-    }
-
-    if (method?.kind === 'card') {
-      const schedule = resolveCardPayment(method, movement.date);
-      return `Se paga en ${formatMonth(schedule.month, monthOf(movement.date))}`;
-    }
-
-    return method?.name ?? null;
-  }, [movement, method]);
+  const isPayment = row.kind === 'member-payment';
+  const isIncome = row.kind === 'personal-income';
 
   return (
     <Pressable
+      onPress={onPress}
       onLongPress={onLongPress}
       haptic="none"
       scaleOnPress={false}
-      accessibilityLabel={`${movement.description ?? categoryLabel(movement.category)}`}
+      accessibilityLabel={prettyLabel(row.label)}
       style={{ paddingVertical: theme.space['4'] }}
     >
-      <Row gap="3" align="center">
+      <Row gap="3" align="flex-start">
         <View style={{ flex: 1, gap: 3 }}>
           <Row gap="2" align="center">
             <Text variant="bodyMedium" numberOfLines={1} style={{ flexShrink: 1 }}>
-              {movement.description ?? categoryLabel(movement.category)}
+              {prettyLabel(row.label)}
             </Text>
-            {/* §12 · el ícono de audiencia en cada fila de las listas. */}
-            <AudienceIcon audience={{ kind: 'private' }} size={12} />
+            {/* §12 · el ícono de una o dos personas en cada fila. */}
+            <AudienceIcon audience={row.audience} size={12} />
           </Row>
 
-          <Row gap="2" align="baseline">
+          <Text variant="caption" tone="muted">
+            {[formatDayMonth(row.date), row.context, row.effect]
+              .filter((part) => part != null && part !== '')
+              .join(' · ')}
+          </Text>
+
+          {/* P-04 · la nota que evita el malentendido más común. */}
+          {row.note != null && (
             <Text variant="caption" tone="muted">
-              {formatDayMonth(movement.date)}
+              {row.note}
             </Text>
-            {label != null && (
-              <>
-                <Text variant="caption" tone="muted">
-                  ·
-                </Text>
-                <Text variant="caption" tone="muted">
-                  {label}
-                </Text>
-              </>
-            )}
-          </Row>
+          )}
         </View>
 
-        <Money
-          amount={movement.amount}
-          variant="bodyMedium"
-          tone={movement.kind === 'income' ? 'brand' : 'default'}
-        />
+        <View style={{ alignItems: 'flex-end', gap: 2 }}>
+          <Money
+            amount={row.amount}
+            variant="bodyMedium"
+            tone={isIncome ? 'brand' : isPayment ? 'shared' : 'default'}
+          />
+          {/* §16 · el total del gasto compartido, en gris. */}
+          {row.total != null && row.total !== row.amount && (
+            <Text variant="caption" tone="muted" tabular>
+              de {formatPesos(row.total)}
+            </Text>
+          )}
+        </View>
       </Row>
     </Pressable>
   );
 }
-
