@@ -10,6 +10,7 @@ import { createQueryClient, wireAppStateToQueries } from '@/data/queryClient';
 import { completeMagicLink } from '@/data/auth';
 import { SessionProvider, useSession } from '@/features/auth/SessionProvider';
 import { setMagicLinkStatus } from '@/features/auth/magicLinkStatus';
+import { resetTo } from '@/features/shared/navigation';
 import { PendingInvitation } from '@/features/auth/PendingInvitation';
 import { ThemeProvider } from '@/ui/theme';
 import { fontsToLoad } from '@/ui/tokens';
@@ -132,20 +133,22 @@ function RouteGuard() {
     // el mismo destino y el orden entre ellas no está garantizado.
     if (group == null) return;
 
+    // Cambiar de árbol limpia el historial: las pantallas del login no pueden
+    // quedar debajo de la app, ni las de la app debajo del login.
     if (accountState === 'signed-out' && !inAuth) {
-      router.replace('/(auth)/bienvenida');
+      resetTo(router, '/(auth)/bienvenida');
       return;
     }
 
     if (group != null && SHARED_ROUTES.has(group)) return;
 
     if (accountState === 'guest' && !inGuest) {
-      router.replace('/(guest)/espacios');
+      resetTo(router, '/(guest)/espacios');
       return;
     }
 
     if (accountState === 'personal' && !inPersonal) {
-      router.replace('/(personal)/inicio');
+      resetTo(router, '/(personal)/inicio');
     }
   }, [accountState, segments, router]);
 

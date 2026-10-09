@@ -14,7 +14,9 @@ import {
   previousMonthSentence,
   putExtraSentence,
 } from '@/features/spaces/balanceCopy';
-import { useSpace } from '@/features/spaces/useSpaces';
+import { useSpace, useSpaces } from '@/features/spaces/useSpaces';
+import { spaceBackTarget } from '@/features/spaces/spaceNavigation';
+import { resetTo } from '@/features/shared/navigation';
 import { useSession } from '@/features/auth/SessionProvider';
 import { SpaceMenu } from '@/features/spaces/SpaceMenu';
 import {
@@ -57,20 +59,23 @@ export default function Space() {
   const { accountState } = useSession();
 
   /**
-   * Se puede llegar acá SIN historial: con un solo espacio, Compartidos y la
-   * pantalla del invitado entran directo con `replace` (§14), y lo mismo
-   * hacen crear un espacio o aceptar una invitación. Un `back()` a secas
-   * tiraba "GO_BACK was not handled" y dejaba al usuario sin salida.
+   * "Volver" va a un destino FIJO (spaceBackTarget), nunca a "lo que haya
+   * atrás": el historial podía tener las pantallas del login, o una lista que
+   * con un solo espacio entra directo otra vez. Las dos cosas terminaban en
+   * un loop sin salida.
    *
-   * Para el invitado, este espacio ES su pantalla principal (§33 U1): sin
-   * historial no hay a dónde volver, y en su lugar va el acceso al Perfil.
+   * Para el invitado con un solo espacio, el espacio ES su pantalla principal
+   * (§33 U1): no hay a dónde volver, y en su lugar va el acceso al Perfil.
    */
-  const canGoBack = router.canGoBack();
-  const isGuestHome = accountState === 'guest' && !canGoBack;
+  const { data: mySpaces } = useSpaces();
+  const backTarget = spaceBackTarget({
+    accountState: accountState === 'personal' ? 'personal' : 'guest',
+    spaceCount: mySpaces?.length ?? null,
+  });
+  const isGuestHome = backTarget == null;
 
   function goBack() {
-    if (canGoBack) router.back();
-    else router.replace('/(personal)/inicio');
+    if (backTarget != null) resetTo(router, backTarget);
   }
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
