@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { encodeIntent, intentFor, type OnboardingIntent } from './authFlow';
 
 /**
  * Qué eligió el usuario en O1 paso 2, guardado mientras va al mail y vuelve.
@@ -13,28 +14,43 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * que saber por cuál de los dos entró. Si no, un usuario que se registró solo
  * quedaría en Estado B sin espacios: una pantalla inútil.
  *
- * El flag se borra en cuanto se usa.
+ * Se guarda CON el email que lo pidió (authFlow.intentFor), y se borra en
+ * cuanto entra CUALQUIER usuario, lo use o no.
  */
 
 const KEY = 'radar.onboarding.intent';
 
-export type OnboardingIntent = 'personal' | 'shared' | 'both';
+export type { OnboardingIntent };
 
-export async function rememberOnboardingIntent(intent: OnboardingIntent): Promise<void> {
+export async function rememberOnboardingIntent(
+  email: string,
+  intent: OnboardingIntent,
+): Promise<void> {
   try {
-    await AsyncStorage.setItem(KEY, intent);
+    await AsyncStorage.setItem(KEY, encodeIntent(email, intent));
   } catch {
     // Si el almacenamiento falla, el usuario queda en Estado B y puede
     // activar su cuenta a mano. Degrada, no rompe.
   }
 }
 
-export async function takeOnboardingIntent(): Promise<OnboardingIntent | null> {
+/** Invitación o "Ya tengo cuenta": ninguna elección previa tiene que sobrevivir. */
+export async function forgetOnboardingIntent(): Promise<void> {
   try {
-    const value = await AsyncStorage.getItem(KEY);
-    if (value == null) return null;
     await AsyncStorage.removeItem(KEY);
-    return value === 'personal' || value === 'shared' || value === 'both' ? value : null;
+  } catch {
+    // Nada que hacer: intentFor igual exige que el email coincida.
+  }
+}
+
+/** La consume siempre; devuelve la elección solo si es de `sessionEmail`. */
+export async function takeOnboardingIntent(
+  sessionEmail: string | undefined,
+): Promise<OnboardingIntent | null> {
+  try {
+    const stored = await AsyncStorage.getItem(KEY);
+    if (stored != null) await AsyncStorage.removeItem(KEY);
+    return intentFor(stored, sessionEmail);
   } catch {
     return null;
   }

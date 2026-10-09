@@ -11,6 +11,7 @@ import type { Session } from '@supabase/supabase-js';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/data/supabase';
 import { displayNameFromEmail, takeOnboardingIntent } from './onboardingIntent';
+import { deriveAccountState, type AccountState } from './authFlow';
 
 /**
  * Sesión y estado de cuenta.
@@ -27,7 +28,7 @@ import { displayNameFromEmail, takeOnboardingIntent } from './onboardingIntent';
  * pestañas bloqueadas ni candados.
  */
 
-export type AccountState = 'loading' | 'signed-out' | 'guest' | 'personal';
+export type { AccountState };
 
 export type Profile = {
   id: string;
@@ -50,6 +51,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  /** Con sesión, mientras el perfil no llegó: el estado es 'loading', no 'guest'. */
+  const [profileLoading, setProfileLoading] = useState(false);
 
   /**
    * PR-02 / CA-13 · la caché de queries es del USUARIO, no de la app. Varias
@@ -95,49 +98,71 @@ export function SessionProvider({ children }: { children: ReactNode }) {
    *
    * §13 O1 paso 5a · el registro por cuenta propia activa la cuenta personal
    * en los tres casos, porque crear un espacio la requiere (P5).
-   * A-03 / CA-05 · aceptar una invitación NO la activa. Por eso la diferencia
-   * depende del intent que quedó guardado al pedir el enlace.
+   * A-03 / CA-05 · aceptar una invitación NO la activa. La diferencia la da la
+   * elección de "Empezar", que vale SOLO para el email que la pidió.
    */
   async function ensureProfile(nextSession: Session): Promise<Profile | null> {
+    // Se consume SIEMPRE, aunque el perfil ya exista: una elección que no se
+    // usa no puede quedar en el teléfono para el próximo usuario nuevo.
+    const intent = await takeOnboardingIntent(nextSession.user.email);
+
     const existing = await loadProfile(nextSession.user.id);
     if (existing != null) return existing;
 
-    const intent = await takeOnboardingIntent();
-
-    const { error } = await supabase.from('profiles').insert({
+    await supabase.from('profiles').insert({
       id: nextSession.user.id,
       display_name: displayNameFromEmail(nextSession.user.email),
       has_personal_account: intent != null,
     });
 
-    if (error != null) return null;
+    // Si el insert falló porque otro pedido lo creó antes, igual hay perfil.
     return loadProfile(nextSession.user.id);
   }
+
+  /**
+   * El perfil se pide UNA vez por usuario. getSession y el evento inicial de
+   * onAuthStateChange llegan casi juntos: con dos ensureProfile en paralelo,
+   * uno consumía la elección y el otro podía crear el perfil sin ella.
+   */
+  const profileRequestFor = useRef<string | null>(null);
 
   useEffect(() => {
     let active = true;
 
+    function adopt(next: Session | null) {
+      publishSession(next);
+
+      if (next == null) {
+        profileRequestFor.current = null;
+        setProfile(null);
+        setProfileLoading(false);
+        return;
+      }
+
+      // Mismo usuario (refresh del token, evento repetido): el perfil ya está
+      // o ya viene. Volver a pedirlo pisaría un refreshProfile más nuevo.
+      if (profileRequestFor.current === next.user.id) return;
+      profileRequestFor.current = next.user.id;
+
+      setProfile(null);
+      setProfileLoading(true);
+
+      void ensureProfile(next).then((loaded) => {
+        if (!active || currentUserId.current !== next.user.id) return;
+        setProfile(loaded);
+        setProfileLoading(false);
+      });
+    }
+
     void (async () => {
       const { data } = await supabase.auth.getSession();
       if (!active) return;
-
-      publishSession(data.session);
-      if (data.session != null) {
-        setProfile(await ensureProfile(data.session));
-      }
+      adopt(data.session);
       setLoading(false);
     })();
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      publishSession(nextSession);
-
-      if (nextSession == null) {
-        setProfile(null);
-        return;
-      }
-      void ensureProfile(nextSession).then((next) => {
-        if (active) setProfile(next);
-      });
+      adopt(nextSession);
     });
 
     return () => {
@@ -147,13 +172,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<SessionContextValue>(() => {
-    const accountState: AccountState = loading
-      ? 'loading'
-      : session == null
-        ? 'signed-out'
-        : profile?.hasPersonalAccount === true
-          ? 'personal'
-          : 'guest';
+    const accountState = deriveAccountState({
+      sessionLoading: loading,
+      hasSession: session != null,
+      profileLoading,
+      profile,
+    });
 
     return {
       session,
@@ -164,7 +188,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setProfile(await loadProfile(session.user.id));
       },
     };
-  }, [session, profile, loading]);
+  }, [session, profile, loading, profileLoading]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

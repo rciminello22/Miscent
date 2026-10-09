@@ -1,9 +1,11 @@
 import * as Linking from 'expo-linking';
 import { supabase } from './supabase';
+import { describeAuthError } from './authErrors';
 
 /**
  * Identidad. A-01 / P1 / CA-49 · "Registro e inicio de sesión por email con
- * enlace mágico, sin contraseña."
+ * enlace mágico, sin contraseña." Desde el 9/10, en testeo, el mismo mail trae
+ * además un código de 8 dígitos (verifyEmailCode).
  *
  * No hay formulario de contraseña en ninguna parte de la app. No es una
  * simplificación: es la decisión P1, y además saca de encima toda la
@@ -26,14 +28,19 @@ export function authRedirectUrl(): string {
  * El mismo flujo sirve para registrarse y para volver a entrar: el usuario no
  * tiene que saber en cuál de los dos está.
  */
-export async function sendMagicLink(email: string): Promise<MagicLinkResult> {
+export async function sendMagicLink(
+  email: string,
+  options: { createUser: boolean },
+): Promise<MagicLinkResult> {
   const normalized = email.trim().toLowerCase();
 
   const { error } = await supabase.auth.signInWithOtp({
     email: normalized,
     options: {
       emailRedirectTo: authRedirectUrl(),
-      shouldCreateUser: true,
+      // "Ya tengo cuenta" pide el enlace SIN crear usuario: una cuenta nueva
+      // solo nace por "Empezar" o por una invitación, nunca por accidente.
+      shouldCreateUser: options.createUser,
     },
   });
 
@@ -41,6 +48,25 @@ export async function sendMagicLink(email: string): Promise<MagicLinkResult> {
     return { status: 'error', message: describeAuthError(error.message) };
   }
   return { status: 'sent' };
+}
+
+/**
+ * El código de 8 dígitos del mismo mail. Decisión del 9/10 para la etapa de
+ * testeo (revisar antes de producción): entra sin depender de que el enlace
+ * se abra bien. `type: 'email'` sirve tanto para un registro nuevo como para
+ * un usuario que vuelve.
+ */
+export async function verifyEmailCode(
+  email: string,
+  code: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { error } = await supabase.auth.verifyOtp({
+    email: email.trim().toLowerCase(),
+    token: code,
+    type: 'email',
+  });
+
+  return error == null ? { ok: true } : { ok: false, message: describeAuthError(error.message) };
 }
 
 /**
@@ -88,28 +114,4 @@ export async function signOut(): Promise<void> {
 
 function asString(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
-}
-
-/**
- * Mensajes de error en el idioma del producto.
- *
- * §13 O1 paso 4 · "Enlace vencido: 'Pedí uno nuevo'". Nunca se muestra el
- * texto crudo del proveedor: el usuario no tiene que leer "OTP expired".
- */
-function describeAuthError(raw: string): string {
-  const message = raw.toLowerCase();
-
-  if (message.includes('expired')) {
-    return 'El enlace venció. Pedí uno nuevo.';
-  }
-  if (message.includes('invalid') || message.includes('not found')) {
-    return 'Este enlace ya no sirve. Pedí uno nuevo.';
-  }
-  if (message.includes('rate') || message.includes('too many')) {
-    return 'Pedimos varios enlaces seguidos. Esperá un minuto y probá otra vez.';
-  }
-  if (message.includes('network') || message.includes('fetch')) {
-    return 'No pudimos conectarnos. Revisá tu conexión y probá de nuevo.';
-  }
-  return 'No pudimos entrar. Probá de nuevo en un momento.';
 }

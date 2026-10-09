@@ -95,6 +95,16 @@ export default function Bienvenida() {
             onPress={() => router.push({ pathname: '/(auth)/privacidad', params: { intent: intent ?? 'both' } })}
           />
 
+          {/* Quien vuelve entra directo: no elige nada ni se le crea nada. */}
+          <Pressable
+            onPress={() => router.push({ pathname: '/(auth)/email', params: { mode: 'login' } })}
+            haptic="none"
+          >
+            <Text variant="small" tone="brand" align="center">
+              Ya tengo cuenta
+            </Text>
+          </Pressable>
+
           {/* O1 paso 1 · "Tengo una invitación" lleva a O2, que necesita la invitación. */}
           <Pressable onPress={() => router.push('/(auth)/invitacion')} haptic="none">
             <Text variant="small" tone="brand" align="center">

@@ -54,7 +54,8 @@ export default function Invite() {
     // Sin sesión todavía: el token espera y se usa al volver del enlace.
     if (session == null) {
       await rememberInvitationToken(rawToken);
-      router.push('/(auth)/email');
+      // A-03 · por una invitación se crea un usuario SIN cuenta personal.
+      router.push({ pathname: '/(auth)/email', params: { mode: 'invite' } });
       return;
     }
 

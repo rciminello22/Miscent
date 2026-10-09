@@ -21,7 +21,7 @@ import { takeInvitationToken } from './invitationToken';
  * Corre una sola vez por sesión establecida.
  */
 export function PendingInvitation() {
-  const { session, refreshProfile } = useSession();
+  const { session, profile, refreshProfile } = useSession();
   const router = useRouter();
   const queryClient = useQueryClient();
   /**
@@ -33,7 +33,10 @@ export function PendingInvitation() {
   const handledFor = useRef<string | null>(null);
 
   useEffect(() => {
-    if (session == null || handledFor.current === session.user.id) return;
+    // Espera al PERFIL, no solo a la sesión: space_members.user_id tiene FK a
+    // profiles, y aceptar antes de que el perfil exista fallaba (el error que
+    // vio la invitada el 9/10, con la invitación sin usar).
+    if (session == null || profile == null || handledFor.current === session.user.id) return;
     handledFor.current = session.user.id;
 
     void (async () => {
@@ -56,7 +59,7 @@ export function PendingInvitation() {
       await queryClient.invalidateQueries({ queryKey: queryKeys.spaces });
       router.replace(`/space/${result.spaceId}`);
     })();
-  }, [session, refreshProfile, queryClient, router]);
+  }, [session, profile, refreshProfile, queryClient, router]);
 
   return null;
 }
