@@ -8,9 +8,9 @@
 -- `authenticated`, igual que un cliente de la app. No hay atajos: si una
 -- política está mal, el test lo ve.
 --
--- 26 asserts. Cubre: PR-01, PR-02, CA-05, CA-11, CA-12, CA-13, CA-22, CA-40,
+-- 32 asserts. Cubre: PR-01, PR-02, CA-05, CA-11, CA-12, CA-13, CA-22, CA-40,
 -- CA-47, CA-48, C-02, C-05, E-01, E-02, I-02, I-04, I-07, K1, K3, K4, P5,
--- SA-02, X-02 y la asimetría de shared_payment_details.
+-- SA-02, SA-06, SY-02, X-02 y la asimetría de shared_payment_details.
 --
 -- Se corre de dos formas, y las dos funcionan sobre este mismo archivo:
 --   npm run test:rls      (pgTAP vía Docker, con salida TAP)
@@ -25,7 +25,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
 
-select plan(26);
+select plan(32);
 
 -- ───────────────────────────────────────────────────────────────────────────
 -- Montaje: Renzo (con cuenta personal), Martina (invitada, Estado B) y Juan.
@@ -347,6 +347,52 @@ insert into tests.results(line) select is(
 
 
 -- ───────────────────────────────────────────────────────────────────────────
+-- SY-02 · "Martina eliminó este gasto. ¿Querés volver a crearlo?"
+--
+-- Para nombrar a quien eliminó hay que saberlo de verdad: si lo borró Renzo
+-- desde otro teléfono, culpar a Martina es justo lo que §39 llama "la app
+-- como árbitro de la pareja".
+-- ───────────────────────────────────────────────────────────────────────────
+
+select tests.authenticate_as('22222222-2222-2222-2222-222222222222');
+delete from shared_expenses where id = 'bbbbbbbb-0000-0000-0000-000000000001';
+
+select tests.authenticate_as('11111111-1111-1111-1111-111111111111');
+
+insert into tests.results(line) select is(
+  (select deleted_by_slot from deleted_shared_records
+   where source_id = 'bbbbbbbb-0000-0000-0000-000000000001'),
+  2::smallint,
+  'SY-02 · Renzo sabe que el gasto lo eliminó Martina'
+);
+
+-- Martina no puede borrar el detalle de pago de Renzo (C-05), así que sin el
+-- trigger quedaba huérfano para siempre.
+insert into tests.results(line) select is(
+  (select count(*)::int from shared_payment_details
+   where source_id = 'bbbbbbbb-0000-0000-0000-000000000001'),
+  0,
+  'C-05 · al eliminar un gasto compartido se va también el detalle privado de pago'
+);
+
+insert into tests.results(line) select throws_ok(
+  $$ insert into deleted_shared_records (source_id, space_id, deleted_by_slot)
+     values (gen_random_uuid(), tests.get('casa_id')::uuid, 2) $$,
+  '42501',
+  null,
+  'SY-02 · nadie puede inventar un borrado a nombre del otro'
+);
+
+select tests.authenticate_as('33333333-3333-3333-3333-333333333333');
+
+insert into tests.results(line) select is(
+  (select count(*)::int from deleted_shared_records),
+  0,
+  'PR-02 · Juan no ve lo que se elimina en Casa'
+);
+
+
+-- ───────────────────────────────────────────────────────────────────────────
 -- SA-02 / CA-40 · al salir se pierde el acceso y el historial queda
 -- ───────────────────────────────────────────────────────────────────────────
 
@@ -366,6 +412,39 @@ insert into tests.results(line) select is(
    where space_id = tests.get('casa_id')::uuid and slot = 2),
   'Martina',
   'K4 / CA-40 · el nombre de quien salió queda en el historial como ex miembro'
+);
+
+-- SA-06 · sin miembros con acceso, el espacio se elimina, y con él sus
+-- gastos. El trigger de SY-02 se dispara en esa cascada: no tiene que trabar
+-- la eliminación ni dejar registros de borrado sueltos.
+select tests.authenticate_as('11111111-1111-1111-1111-111111111111');
+
+insert into shared_expenses (
+  space_id, amount, date, category,
+  payer_slot, split_mode, share_slot_1, share_slot_2,
+  created_by_slot, updated_by_slot
+) values (
+  tests.get('viaje_id')::uuid, 60000, '2026-10-12', 'otros',
+  1, 'even', 30000, 30000, 1, 1
+);
+
+select tests.authenticate_as('33333333-3333-3333-3333-333333333333');
+select app_leave_space(tests.get('viaje_id')::uuid);
+
+select tests.authenticate_as('11111111-1111-1111-1111-111111111111');
+
+insert into tests.results(line) select lives_ok(
+  $$ select app_leave_space(tests.get('viaje_id')::uuid) $$,
+  'SA-06 · el último en salir elimina el espacio aunque tenga gastos'
+);
+
+select tests.as_service();
+
+insert into tests.results(line) select is(
+  (select count(*)::int from deleted_shared_records
+   where space_id = tests.get('viaje_id')::uuid),
+  0,
+  'SA-06 · eliminar el espacio entero no deja registros de borrado'
 );
 
 

@@ -81,6 +81,35 @@ export type Database = {
           },
         ]
       }
+      deleted_shared_records: {
+        Row: {
+          deleted_at: string
+          deleted_by_slot: number
+          source_id: string
+          space_id: string
+        }
+        Insert: {
+          deleted_at?: string
+          deleted_by_slot: number
+          source_id: string
+          space_id: string
+        }
+        Update: {
+          deleted_at?: string
+          deleted_by_slot?: number
+          source_id?: string
+          space_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deleted_shared_records_space_id_fkey"
+            columns: ["space_id"]
+            isOneToOne: false
+            referencedRelation: "spaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           created_at: string

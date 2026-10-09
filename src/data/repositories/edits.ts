@@ -183,6 +183,31 @@ export type SharedExpenseEdit = {
   spaceId: string;
 };
 
+/** SY-02 · el gasto que se estaba editando ya no existe. */
+export class SharedExpenseDeletedError extends Error {
+  constructor() {
+    super('Este gasto ya no existe.');
+    this.name = 'SharedExpenseDeletedError';
+  }
+}
+
+/**
+ * SY-02 · quién eliminó un gasto compartido, según el registro que deja el
+ * trigger de la base. `null` si no hay registro: no se inventa a nadie.
+ */
+export async function fetchSharedExpenseDeletion(
+  sourceId: string,
+): Promise<{ deletedBySlot: Slot } | null> {
+  const { data } = await supabase
+    .from('deleted_shared_records')
+    .select('deleted_by_slot')
+    .eq('source_id', sourceId)
+    .maybeSingle();
+
+  if (data == null) return null;
+  return { deletedBySlot: data.deleted_by_slot === 1 ? 1 : 2 };
+}
+
 /** X-02 / K3 · los dos miembros editan, y se registra el último editor. */
 export async function updateSharedExpense(
   id: string,
@@ -199,7 +224,7 @@ export async function updateSharedExpense(
         })
       : null;
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('shared_expenses')
     .update({
       amount: input.amount,
@@ -211,9 +236,15 @@ export async function updateSharedExpense(
       ...installmentColumns(plan),
       updated_by_slot: input.mySlot,
     })
-    .eq('id', id);
+    .eq('id', id)
+    .select('id');
 
   if (error != null) throw new Error('No pudimos guardar los cambios.');
+
+  // SY-02 · un UPDATE sobre una fila que ya no existe NO es un error para
+  // Postgres: actualiza cero filas y responde OK. Sin este control, la
+  // pantalla creía haber guardado y el detalle de pago quedaba huérfano.
+  if (data.length === 0) throw new SharedExpenseDeletedError();
 
   // C-05 · el detalle de pago sigue a quien pagó: si ahora pagó el otro, el
   // medio propio deja de tener sentido y se borra.

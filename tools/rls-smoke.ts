@@ -29,6 +29,7 @@ const TABLES = [
   'shared_payment_details',
   'member_payments',
   'invitations',
+  'deleted_shared_records',
 ] as const;
 
 function readEnv(): { url: string; anonKey: string } {

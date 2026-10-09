@@ -2,25 +2,28 @@ import { useMemo, useState } from 'react';
 import { Alert, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Trash2, X } from 'lucide-react-native';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { monthOf } from '@domain/calendar';
 import { scheduleInstallments } from '@domain/installments';
 import { calculateSharedBalance } from '@domain/shared-balance';
 import { resolveShares } from '@domain/split';
-import type { Category, Split } from '@domain/types';
+import type { Category, SharedExpense, Split } from '@domain/types';
 import { formatDayMonth, formatInstallment, formatMonth } from '@/lib/format';
 import { queryKeys } from '@/data/queryClient';
 import {
   endSharedInstallmentsNow,
+  fetchSharedExpenseDeletion,
+  SharedExpenseDeletedError,
   updateSharedExpense,
 } from '@/data/repositories/edits';
-import { deleteSharedExpense } from '@/data/repositories/spaces';
+import { createSharedExpense, deleteSharedExpense } from '@/data/repositories/spaces';
 import { useSession } from '@/features/auth/SessionProvider';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { useSpace } from '@/features/spaces/useSpaces';
 import { balanceSentence } from '@/features/spaces/balanceCopy';
 import { SplitPicker } from '@/features/spaces/SplitPicker';
+import { DeletedWhileEditing, type DeletedBy } from '@/features/spaces/DeletedWhileEditing';
 import { AmountInput } from '@/features/add/AmountInput';
 import { CategoryGrid } from '@/features/add/CategoryGrid';
 import { EXPENSE_CATEGORIES, prettyLabel } from '@/features/add/categories';
@@ -74,9 +77,20 @@ export default function GastoCompartido() {
   const { derived, today } = useSpace(spaceId);
   const { facts: personalFacts } = usePersonalFacts();
 
-  const expense = derived?.facts.expenses.find((item) => item.id === expenseId);
+  const live = derived?.facts.expenses.find((item) => item.id === expenseId);
 
   const [editing, setEditing] = useState(false);
+  /**
+   * SY-02 · una copia del gasto tal como estaba al tocar Editar. Si el otro
+   * miembro lo elimina mientras tanto, SY-01 refresca, el gasto desaparece de
+   * `facts`, y sin esta copia la pantalla tiraba todo lo escrito.
+   */
+  const [snapshot, setSnapshot] = useState<SharedExpense | null>(null);
+  const [saveFoundItDeleted, setSaveFoundItDeleted] = useState(false);
+
+  const expense = live ?? (editing ? snapshot ?? undefined : undefined);
+  const deletedWhileEditing =
+    editing && snapshot != null && (saveFoundItDeleted || (derived != null && live == null));
   const [amount, setAmount] = useState(expense?.amount ?? 0);
   const [category, setCategory] = useState<Category | null>(expense?.category ?? null);
   const [payerIsMe, setPayerIsMe] = useState(expense?.payerSlot === derived?.mySlot);
@@ -122,7 +136,46 @@ export default function GastoCompartido() {
       await invalidate();
       setEditing(false);
     },
-    onError: (error: Error) => Alert.alert('No pudimos guardarlo', error.message),
+    onError: (error: Error) => {
+      if (error instanceof SharedExpenseDeletedError) {
+        setSaveFoundItDeleted(true);
+        return;
+      }
+      Alert.alert('No pudimos guardarlo', error.message);
+    },
+  });
+
+  // SY-02 · quién lo eliminó, según el registro de la base. Nunca se supone.
+  const deletion = useQuery({
+    queryKey: ['shared-expense-deletion', expenseId],
+    queryFn: () => fetchSharedExpenseDeletion(expenseId),
+    enabled: deletedWhileEditing,
+  });
+
+  // SY-02 · "¿Querés volver a crearlo?": con lo que estaba en el formulario.
+  const recreate = useMutation({
+    mutationFn: async () => {
+      if (snapshot == null || derived == null || category == null) return;
+
+      await createSharedExpense({
+        spaceId,
+        amount,
+        date: snapshot.date,
+        category,
+        description: description.trim() === '' ? null : description.trim(),
+        payerSlot: payerIsMe ? derived.mySlot : derived.other.slot,
+        split,
+        mySlot: derived.mySlot,
+        installmentCount,
+        pinnedFirstMonth: null,
+        myPaymentMethod: payerIsMe ? method : null,
+      });
+    },
+    onSuccess: async () => {
+      await invalidate();
+      router.back();
+    },
+    onError: (error: Error) => Alert.alert('No pudimos crearlo', error.message),
   });
 
   const remove = useMutation({
@@ -179,6 +232,13 @@ export default function GastoCompartido() {
   const iPaid = expense.payerSlot === mySlot;
 
   const categories = EXPENSE_CATEGORIES;
+
+  const deletedBy: DeletedBy =
+    deletion.data == null
+      ? 'unknown'
+      : deletion.data.deletedBySlot === mySlot
+        ? 'me'
+        : 'other';
 
   function confirmDelete() {
     const after =
@@ -339,6 +399,8 @@ export default function GastoCompartido() {
                 variant="secondary"
                 fullWidth
                 onPress={() => {
+                  setSnapshot(expense);
+                  setSaveFoundItDeleted(false);
                   setAmount(expense.amount);
                   setCategory(expense.category);
                   setPayerIsMe(iPaid);
@@ -362,6 +424,18 @@ export default function GastoCompartido() {
         ) : (
           <Animated.View entering={FadeInDown.duration(duration.base)}>
             <Stack gap="6">
+              {/* SY-02 · espera a saber quién fue antes de nombrar a nadie. */}
+              {deletedWhileEditing && !deletion.isPending && (
+                <DeletedWhileEditing
+                  deletedBy={deletedBy}
+                  otherName={other.displayName}
+                  spaceName={derived.facts.space.name}
+                  recreating={recreate.isPending}
+                  onRecreate={() => void recreate.mutateAsync()}
+                  onDiscard={() => router.back()}
+                />
+              )}
+
               <AmountInput value={amount} onChange={setAmount} autoFocus={false} />
 
               <Field label="Categoría">
@@ -441,33 +515,38 @@ export default function GastoCompartido() {
               </Field>
 
               {/* X-04 · el aviso de que cambia el saldo de los dos. */}
-              <Card tone="sunken">
-                <Text variant="small" tone="secondary">
-                  Al guardar, {other.displayName} va a ver los cambios y lo que se deben se
-                  recalcula.
-                  {installmentCount != null && installmentCount >= 2
-                    ? ' Las cuotas se regeneran con estos datos.'
-                    : ''}
-                </Text>
-              </Card>
-
-              <Stack gap="2">
-                <Button
-                  label="Guardar cambios"
-                  variant="shared"
-                  size="lg"
-                  fullWidth
-                  haptic="success"
-                  disabled={amount <= 0 || category == null}
-                  loading={save.isPending}
-                  onPress={() => void save.mutateAsync()}
-                />
-                <Pressable onPress={() => setEditing(false)} haptic="none">
-                  <Text variant="small" tone="muted" align="center">
-                    Cancelar
+              {!deletedWhileEditing && (
+                <Card tone="sunken">
+                  <Text variant="small" tone="secondary">
+                    Al guardar, {other.displayName} va a ver los cambios y lo que se deben se
+                    recalcula.
+                    {installmentCount != null && installmentCount >= 2
+                      ? ' Las cuotas se regeneran con estos datos.'
+                      : ''}
                   </Text>
-                </Pressable>
-              </Stack>
+                </Card>
+              )}
+
+              {/* Con el gasto eliminado no hay nada que guardar: la salida es el aviso de arriba. */}
+              {!deletedWhileEditing && (
+                <Stack gap="2">
+                  <Button
+                    label="Guardar cambios"
+                    variant="shared"
+                    size="lg"
+                    fullWidth
+                    haptic="success"
+                    disabled={amount <= 0 || category == null}
+                    loading={save.isPending}
+                    onPress={() => void save.mutateAsync()}
+                  />
+                  <Pressable onPress={() => setEditing(false)} haptic="none">
+                    <Text variant="small" tone="muted" align="center">
+                      Cancelar
+                    </Text>
+                  </Pressable>
+                </Stack>
+              )}
             </Stack>
           </Animated.View>
         )}
