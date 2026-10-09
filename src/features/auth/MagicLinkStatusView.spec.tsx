@@ -28,7 +28,7 @@ describe('MagicLinkStatusView', () => {
     );
 
     expect(view.getByText('El enlace venció. Pedí uno nuevo.')).toBeTruthy();
-    fireEvent.press(view.getByRole('button', { name: 'Pedir un enlace nuevo' }));
+    await fireEvent.press(view.getByRole('button', { name: 'Pedir un enlace nuevo' }));
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });
