@@ -94,3 +94,13 @@ export function orderByUsage(
     return categories.indexOf(a) - categories.indexOf(b);
   });
 }
+
+/**
+ * Etiqueta legible de un label que puede ser una categoria o un texto libre
+ * (la descripcion que escribio el usuario).
+ */
+export function prettyLabel(label: string): string {
+  const known = ALL.find((meta) => meta.value === label);
+  if (known != null) return known.label;
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}

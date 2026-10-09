@@ -1,22 +1,30 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { RefreshControl, ScrollView, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { addMonths, monthOf } from '@domain/calendar';
-import { calculateFuture } from '@domain/future';
-import { formatMonth } from '@/lib/format';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { addMonths, monthOf, type Month } from '@domain/calendar';
+import { activeInstallmentPlans, calculateFuture } from '@domain/future';
+import { calculateUpcomingPayments, upcomingFrom } from '@domain/upcoming';
+import { formatInstallment, formatMonth, formatPaymentWhen } from '@/lib/format';
+import { prettyLabel } from '@/features/add/categories';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import {
   AudienceBadge,
+  AudienceIcon,
   Card,
+  Divider,
   EmptyState,
   Money,
   MonthBar,
+  Pressable,
   Row,
-  Screen,
   SectionHeader,
+  Skeleton,
   Stack,
   Text,
 } from '@/ui/primitives';
-import { duration } from '@/ui/motion';
+import { duration, stagger } from '@/ui/motion';
+import { useTheme } from '@/ui/theme';
 
 /**
  * §23 · Futuro. "Futuro es el corazón del producto."
@@ -25,22 +33,67 @@ import { duration } from '@/ui/motion';
  * meses y qué tengo que pagar? No necesita saber cuánta plata va a tener el
  * usuario, y no lo pretende.
  *
- * Los seis meses, el ingreso previsto, Sin asignar y la línea de cuotas que
- * terminan salen de `calculateFuture` sobre los hechos del usuario. Ninguna
- * cifra se calcula en esta pantalla.
- *
- * §23.3 "Tus cuotas y tus fijos" llega en la Fase 5.
+ * Tres bloques, los de la spec:
+ *   §23.1 · los próximos 6 meses, con comprometido, ingreso previsto y sin
+ *           asignar, más la línea de cuotas que terminan
+ *   §23.2 · Próximos pagos del mes elegido, con el resumen estimado de cada
+ *           tarjeta y la parte de otros miembros aclarada
+ *   §23.3 · Tus cuotas y tus fijos
  */
 export default function Futuro() {
-  const { expansion, today, isLoading } = usePersonalFacts();
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const { facts, expansion, today, isLoading, refetch } = usePersonalFacts();
+
   const from = addMonths(monthOf(today), 1);
+  const [selectedMonth, setSelectedMonth] = useState<Month>(from);
+  const [refreshing, setRefreshing] = useState(false);
 
   const future = useMemo(() => calculateFuture(expansion, from, 6), [expansion, from]);
   const maxCommitted = Math.max(...future.months.map((month) => month.committed), 1);
   const hasCommitments = future.months.some((month) => month.committed > 0);
 
+  // §23.2 · "en Futuro, todos los del mes elegido".
+  const payments = useMemo(
+    () =>
+      upcomingFrom(calculateUpcomingPayments(expansion, today), today).filter(
+        (payment) => payment.month === selectedMonth,
+      ),
+    [expansion, today, selectedMonth],
+  );
+
+  // §23.3 · cada compra en cuotas activa, con lo que falta.
+  const plans = useMemo(() => activeInstallmentPlans(expansion, today), [expansion, today]);
+
+  const fixed = facts.recurrences.filter(
+    (recurrence) => recurrence.kind === 'expense' && recurrence.spaceId == null,
+  );
+
+  const selected = future.months.find((month) => month.month === selectedMonth);
+
+  async function onRefresh() {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }
+
   return (
-    <Screen>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
+      contentContainerStyle={{
+        paddingTop: insets.top + theme.space['3'],
+        paddingBottom: insets.bottom + 140,
+        paddingHorizontal: theme.space['5'],
+      }}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => void onRefresh()}
+          tintColor={theme.colors.brand}
+        />
+      }
+    >
       <Stack gap="7">
         <Row justify="space-between" align="center">
           <Text variant="overline" tone="muted">
@@ -49,37 +102,55 @@ export default function Futuro() {
           <AudienceBadge audience={{ kind: 'private' }} />
         </Row>
 
-        {!hasCommitments ? (
+        {isLoading ? (
+          <Stack gap="3">
+            <Skeleton width={200} height={26} />
+            {[0, 1, 2, 3, 4, 5].map((index) => (
+              <Skeleton key={index} height={14} />
+            ))}
+          </Stack>
+        ) : !hasCommitments ? (
           <EmptyState
             title="No tenés nada comprometido todavía."
             description="Cargá tus fijos y cuotas."
           />
         ) : (
           <>
+            {/* ── §23.1 · los próximos 6 meses ─────────────────────────── */}
             <Animated.View entering={FadeInDown.duration(duration.deliberate)}>
               <Stack gap="4">
                 <Text variant="title">Tus próximos 6 meses</Text>
 
                 <Stack gap="3">
                   {future.months.map((month, index) => (
-                    <MonthBar
+                    <Pressable
                       key={month.month}
-                      month={month.month}
-                      committed={month.committed}
-                      maxCommitted={maxCommitted}
-                      index={index}
-                      highlighted={index === 0}
-                    />
+                      onPress={() => setSelectedMonth(month.month)}
+                      scaleOnPress={false}
+                      haptic="none"
+                      accessibilityRole="button"
+                      accessibilityLabel={formatMonth(month.month, from)}
+                      accessibilityState={{ selected: month.month === selectedMonth }}
+                    >
+                      <MonthBar
+                        month={month.month}
+                        committed={month.committed}
+                        maxCommitted={maxCommitted}
+                        index={index}
+                        highlighted={month.month === selectedMonth}
+                      />
+                    </Pressable>
                   ))}
                 </Stack>
 
                 <Text variant="caption" tone="muted">
-                  Tu parte de fijos, cuotas y tarjetas que se pagan cada mes.
+                  Tu parte de fijos, cuotas y tarjetas que se pagan cada mes. Tocá un mes
+                  para ver su detalle.
                 </Text>
               </Stack>
             </Animated.View>
 
-            {/* §23.1 · "En marzo terminan 2 cuotas: tu comprometido baja $X por mes." */}
+            {/* §23.1 · "tu comprometido baja $X por mes" */}
             {future.endingInstallments.map((ending) => (
               <Animated.View key={ending.month} entering={FadeInDown.duration(duration.base)}>
                 <Card tone="brand">
@@ -93,16 +164,17 @@ export default function Futuro() {
               </Animated.View>
             ))}
 
-            {/* El detalle del primer mes: ingreso previsto y sin asignar. */}
-            {future.months[0] != null && (
+            {/* ── El mes elegido ───────────────────────────────────────── */}
+            {selected != null && (
               <Stack gap="4">
-                <SectionHeader title={formatMonth(future.months[0].month, from)} />
+                <SectionHeader title={formatMonth(selected.month, from)} />
                 <Card>
                   <Stack gap="3">
-                    <DetailRow label="Comprometido" amount={future.months[0].committed} />
-                    <DetailRow label="Ingreso previsto" amount={future.months[0].expectedIncome} />
-                    {future.months[0].unassigned != null ? (
-                      <DetailRow label="Sin asignar" amount={future.months[0].unassigned} />
+                    <DetailRow label="Comprometido" amount={selected.committed} />
+                    <DetailRow label="Ingreso previsto" amount={selected.expectedIncome} />
+                    <Divider />
+                    {selected.unassigned != null ? (
+                      <DetailRow label="Sin asignar" amount={selected.unassigned} emphasis />
                     ) : (
                       <Text variant="small" tone="secondary">
                         Sin ingreso registrado
@@ -112,20 +184,180 @@ export default function Futuro() {
                 </Card>
               </Stack>
             )}
+
+            {/* ── §23.2 · Próximos pagos del mes elegido ───────────────── */}
+            {payments.length > 0 && (
+              <Stack gap="4">
+                <SectionHeader title="Próximos pagos" />
+
+                <Stack gap="0">
+                  {payments.map((payment, index) => (
+                    <Animated.View
+                      key={payment.id}
+                      entering={FadeInDown.delay(stagger(index, 50)).duration(duration.base)}
+                    >
+                      <Row
+                        gap="3"
+                        align="flex-start"
+                        style={{ paddingVertical: theme.space['3'] }}
+                      >
+                        <Text variant="small" tone="muted" tabular style={{ width: 58 }}>
+                          {formatPaymentWhen({ date: payment.date, month: payment.month })}
+                        </Text>
+
+                        <View style={{ flex: 1, gap: 2 }}>
+                          <Text variant="smallMedium">{payment.label}</Text>
+
+                          {/* N-10 · todo resumen va rotulado. */}
+                          {payment.isEstimate && (
+                            <Text variant="caption" tone="muted">
+                              Estimado según lo que registraste
+                            </Text>
+                          )}
+
+                          {/* §7.3 · la parte del otro, siempre aclarada. */}
+                          {payment.includesOtherShare > 0 && payment.otherMemberName != null && (
+                            <Text variant="caption" tone="shared">
+                              incluye{' '}
+                              <Money
+                                amount={payment.includesOtherShare}
+                                variant="caption"
+                                tone="shared"
+                              />{' '}
+                              de {payment.otherMemberName}
+                            </Text>
+                          )}
+
+                          {/* T-05 · el modo aproximado se declara. */}
+                          {payment.approximate && (
+                            <Text variant="caption" tone="muted">
+                              Fechas aproximadas
+                            </Text>
+                          )}
+
+                          {/* G-06 · "Ya pasó", nunca "Pagado". */}
+                          {payment.hasPassed && (
+                            <Text variant="caption" tone="muted">
+                              Ya pasó
+                            </Text>
+                          )}
+                        </View>
+
+                        <Money amount={payment.amount} variant="smallMedium" />
+                      </Row>
+                      {index < payments.length - 1 && <Divider />}
+                    </Animated.View>
+                  ))}
+                </Stack>
+
+                <Text variant="caption" tone="muted">
+                  Son los pagos que hacés vos. Lo que paga otra persona, aunque te
+                  corresponda una parte, se ve en el espacio compartido.
+                </Text>
+              </Stack>
+            )}
+
+            {/* ── §23.3 · Tus cuotas ───────────────────────────────────── */}
+            {plans.length > 0 && (
+              <Stack gap="4">
+                <SectionHeader title="Tus cuotas" />
+
+                <Stack gap="3">
+                  {plans.map((plan, index) => (
+                    <Animated.View
+                      key={plan.purchaseId}
+                      entering={FadeInDown.delay(stagger(index, 50)).duration(duration.base)}
+                    >
+                      <Card>
+                        <Stack gap="2">
+                          <Row justify="space-between" align="baseline">
+                            <Row gap="2" align="center" style={{ flexShrink: 1 }}>
+                              <Text variant="bodyMedium" numberOfLines={1}>
+                                {prettyLabel(plan.label)}
+                              </Text>
+                              {plan.spaceName != null && (
+                                <AudienceIcon
+                                  audience={{ kind: 'shared', otherMemberName: '' }}
+                                  size={12}
+                                />
+                              )}
+                            </Row>
+                            <Text variant="smallMedium" tone="secondary" tabular>
+                              {formatInstallment(plan.current, plan.count)}
+                            </Text>
+                          </Row>
+
+                          <Row justify="space-between" align="baseline">
+                            <Text variant="caption" tone="muted">
+                              {plan.spaceName != null ? `${plan.spaceName} · tu parte · ` : ''}
+                              termina en {formatMonth(plan.endsOn, from)}
+                            </Text>
+                            <Money amount={plan.remaining} variant="small" tone="secondary" />
+                          </Row>
+                        </Stack>
+                      </Card>
+                    </Animated.View>
+                  ))}
+                </Stack>
+
+                <Text variant="caption" tone="muted">
+                  A la derecha, tu parte de lo que falta.
+                </Text>
+              </Stack>
+            )}
+
+            {/* ── §23.3 · Tus fijos ────────────────────────────────────── */}
+            {fixed.length > 0 && (
+              <Stack gap="4">
+                <SectionHeader title="Tus fijos" />
+
+                <Stack gap="0">
+                  {fixed.map((recurrence, index) => (
+                    <View key={recurrence.id}>
+                      <Row
+                        justify="space-between"
+                        align="baseline"
+                        style={{ paddingVertical: theme.space['3'] }}
+                      >
+                        <View style={{ flex: 1, gap: 2 }}>
+                          <Text variant="smallMedium">{prettyLabel(recurrence.category)}</Text>
+                          <Text variant="caption" tone="muted">
+                            cada día {recurrence.dayOfMonth}
+                            {recurrence.endMonth != null
+                              ? ` · hasta ${formatMonth(recurrence.endMonth, from)}`
+                              : ''}
+                          </Text>
+                        </View>
+                        <Money amount={recurrence.amount} variant="smallMedium" />
+                      </Row>
+                      {index < fixed.length - 1 && <Divider />}
+                    </View>
+                  ))}
+                </Stack>
+              </Stack>
+            )}
           </>
         )}
       </Stack>
-    </Screen>
+    </ScrollView>
   );
 }
 
-function DetailRow({ label, amount }: { label: string; amount: number }) {
+function DetailRow({
+  label,
+  amount,
+  emphasis = false,
+}: {
+  label: string;
+  amount: number;
+  emphasis?: boolean;
+}) {
   return (
     <Row justify="space-between" align="baseline">
-      <Text variant="body" tone="secondary">
+      <Text variant={emphasis ? 'bodyMedium' : 'body'} tone={emphasis ? 'default' : 'secondary'}>
         {label}
       </Text>
-      <Money amount={amount} variant="bodyMedium" />
+      <Money amount={amount} variant={emphasis ? 'heading' : 'bodyMedium'} animate />
     </Row>
   );
 }

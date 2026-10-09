@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChevronRight } from 'lucide-react-native';
+import { ChevronRight, UserRound } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addMonths, monthOf } from '@domain/calendar';
@@ -10,6 +10,7 @@ import { calculateFuture } from '@domain/future';
 import { calculateUpcomingPayments, upcomingForHome } from '@domain/upcoming';
 import { formatMonth, formatPaymentWhen } from '@/lib/format';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
+import { WhereFrom, type BreakdownTarget } from '@/features/breakdown/WhereFrom';
 import {
   AudienceBadge,
   Divider,
@@ -49,6 +50,8 @@ export default function Inicio() {
   const insets = useSafeAreaInsets();
   const { facts, expansion, today, isLoading, isError, refetch } = usePersonalFacts();
   const [refreshing, setRefreshing] = useState(false);
+  // M18 · cada cifra del radar se puede abrir y ver de qué está hecha.
+  const [breakdown, setBreakdown] = useState<BreakdownTarget>(null);
 
   const month = monthOf(today);
 
@@ -95,7 +98,26 @@ export default function Inicio() {
           <Text variant="overline" tone="muted">
             {formatMonth(month, month)}
           </Text>
-          <AudienceBadge audience={{ kind: 'private' }} />
+
+          <Row gap="3" align="center">
+            <AudienceBadge audience={{ kind: 'private' }} />
+            {/* §14 · Perfil es un ícono, no una sección. */}
+            <Pressable
+              onPress={() => router.push('/(personal)/perfil')}
+              accessibilityRole="button"
+              accessibilityLabel="Perfil"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: theme.radius.pill,
+                backgroundColor: theme.colors.surfaceSunken,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <UserRound size={16} color={theme.colors.textSecondary} />
+            </Pressable>
+          </Row>
         </Row>
 
         {isLoading ? (
@@ -134,12 +156,14 @@ export default function Inicio() {
 
                 <Stack gap="3">
                   <RadarRow
+                    onPress={() => setBreakdown('spent')}
                     dot="spent"
                     label="Gastado"
                     amount={radar.spent}
                     help="lo que registraste como pagado en el día a día"
                   />
                   <RadarRow
+                    onPress={() => setBreakdown('committed')}
                     dot="committed"
                     label="Comprometido"
                     amount={radar.committed}
@@ -147,6 +171,7 @@ export default function Inicio() {
                   />
                   {radar.unassigned != null ? (
                     <RadarRow
+                      onPress={() => setBreakdown('unassigned')}
                       dot="unassigned"
                       label="Sin asignar"
                       amount={radar.unassigned}
@@ -300,6 +325,13 @@ export default function Inicio() {
           </>
         )}
       </Stack>
+
+      <WhereFrom
+        target={breakdown}
+        onClose={() => setBreakdown(null)}
+        expansion={expansion}
+        month={month}
+      />
     </ScrollView>
   );
 }
@@ -309,26 +341,38 @@ function RadarRow({
   label,
   amount,
   help,
+  onPress,
 }: {
   dot: 'spent' | 'committed' | 'unassigned';
   label: string;
   amount: number;
   help: string;
+  onPress: () => void;
 }) {
   return (
-    <Row gap="3" align="flex-start">
-      <View style={{ marginTop: 7 }}>
-        <RadarLegendDot color={dot} />
-      </View>
-      <View style={{ flex: 1, gap: 1 }}>
-        <Row justify="space-between" align="baseline">
-          <Text variant="bodyMedium">{label}</Text>
-          <Money amount={amount} variant="bodyMedium" animate sign="never" />
-        </Row>
-        <Text variant="caption" tone="muted">
-          {help}
-        </Text>
-      </View>
-    </Row>
+    <Pressable
+      onPress={onPress}
+      scaleOnPress={false}
+      haptic="none"
+      accessibilityRole="button"
+      accessibilityHint="Ver de dónde sale esta cifra"
+      accessibilityLabel={label}
+    >
+      <Row gap="3" align="flex-start">
+        <View style={{ marginTop: 7 }}>
+          <RadarLegendDot color={dot} />
+        </View>
+
+        <View style={{ flex: 1, gap: 1 }}>
+          <Row justify="space-between" align="baseline">
+            <Text variant="bodyMedium">{label}</Text>
+            <Money amount={amount} variant="bodyMedium" animate sign="never" />
+          </Row>
+          <Text variant="caption" tone="muted">
+            {help}
+          </Text>
+        </View>
+      </Row>
+    </Pressable>
   );
 }

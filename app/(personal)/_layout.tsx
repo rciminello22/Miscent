@@ -63,6 +63,8 @@ export default function PersonalLayout() {
             tabBarIcon: ({ color, size }) => <Users size={size - 2} color={color} />,
           }}
         />
+        {/* §14 · Perfil se abre con un ícono desde Inicio, no es una sección. */}
+        <Tabs.Screen name="perfil" options={{ href: null }} />
       </Tabs>
 
       <AddButton />
