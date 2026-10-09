@@ -1,7 +1,7 @@
 # Handoff · Radar del sueldo comprometido
 
 Contexto para retomar el proyecto en una sesión nueva.
-Última actualización: 9 de octubre de 2026 · HEAD `8248288` · working tree limpio.
+Última actualización: 9 de octubre de 2026 · working tree limpio.
 
 ---
 
@@ -177,6 +177,9 @@ cuotas"). El nivel 3 encontró **2 bugs reales**.
 ## 5. Qué falta
 
 ### Del Must
+- **T-07 · el vencimiento del resumen pendiente** se deriva del mes actual y
+  puede quedar en el pasado. §13 O3 paso 4 lo quiere pedido, no derivado.
+  Ver §9 de este documento
 - **SY-02** · "Martina eliminó este gasto. ¿Querés volver a crearlo?"
 - **La fecha de un gasto no es editable** (siempre hoy). §17 campo 10 la quiere
   editable con default hoy. **Es el gap que más molesta al probar**: impide
@@ -265,12 +268,50 @@ npx expo install --check   # verificar versiones del SDK
 
 ## 8. Dónde está el contexto largo
 
-En **engram**, proyecto `radar-sueldo-comprometido`. Hay una memoria por fase
-con las decisiones y los gotchas:
+En **engram**, pero ojo con el scope, porque engram deriva el proyecto del
+directorio de trabajo:
+
+| Proyecto | Qué tiene |
+|---|---|
+| **`cimin`** | Las 10 memorias de las fases 0 a 9 (decisiones y gotchas de cada una) y el resumen de sesión. Quedaron ahí porque el cwd era `C:\Users\cimin\...` |
+| `radar-sueldo-comprometido` | La auditoría previa del 7/10 (#265, #266, #267) y las decisiones F1–F4 (ver abajo) |
 
 ```
-mem_context()   # las lista todas
+mem_context()   # lista las recientes de los dos, sin filtrar por proyecto
 ```
 
-Ojo: `mem_search` busca en el scope del cwd. Si corrés desde `C:\Users\cimin`
-no va a encontrar las de `radar-sueldo-comprometido`; usar `mem_context`.
+`mem_search` SÍ filtra por el proyecto del cwd. Para las de la auditoría hay
+que pasar `project: "radar-sueldo-comprometido"` explícito.
+
+---
+
+## 9. Las cuatro ambigüedades de la spec (F1–F4)
+
+Una auditoría previa al código (7/10, observación #266 de engram) detectó
+cuatro ambigüedades en la V1.1.2. El código se escribió **sin verla**, así que
+las coincidencias son convergencia independiente. Verificado el 9/10:
+
+| # | Ambigüedad | Cómo quedó |
+|---|---|---|
+| **F1** | §29.1 Caso B dice "(o a Gastado, una vez pasada la fecha)" y contradice a §7.2, N-02 y §15 | **Siempre `committed`.** Manda la precedencia 7 > 29 > 29.1. Rotulado "Ya pasó" |
+| **F2** | "Fecha de impacto" de una cuota no está en el glosario, y decide cuándo cambia el saldo | **= la fecha de pago de la cuota** (Q-02 vencimiento, Q-03 mismo día). Además se PERSISTE, porque deriva de la tarjeta del pagador que el otro no puede ver (PR-02) |
+| **F3** | C-03 no dice quién absorbe el peso impar en un 50/50 | **El slot 1, no el pagador**: si fuera el pagador, editar "quién pagó" cambiaría las partes y el saldo |
+| **F4** | T-08 "fecha hoy" mandaría los consumos al resumen equivocado | **El razonamiento de la auditoría no se sostiene.** "Consumos *desde* el último cierre" son posteriores al cierre, así que van al próximo resumen, que es lo que da fechar hoy. Verificado con T-03 en los dos escenarios |
+
+### ⚠️ Pero investigando F4 apareció un bug real en T-07
+
+`app/onboarding/deuda.tsx:68`
+
+```ts
+dueDate: dateInMonth(monthOf(today), card.dueDay ?? 28)
+```
+
+Deriva el vencimiento del **mes actual**: si hoy es 9/10 y la tarjeta vence el
+5, guarda **5/10**, una fecha que ya pasó. El resumen pendiente declarado
+aparece como "Ya pasó" apenas se carga, en vez de en su próximo vencimiento.
+
+Y hay algo más de fondo: **§13 O3 paso 4 dice "si no: monto y vencimiento"**.
+El usuario tiene que poder **indicar** el vencimiento. La UI hoy solo pide el
+monto y deriva la fecha.
+
+**Pendiente de arreglar.** Es chico y está acotado a esa pantalla.
