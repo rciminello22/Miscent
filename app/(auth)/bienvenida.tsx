@@ -95,7 +95,8 @@ export default function Bienvenida() {
             onPress={() => router.push({ pathname: '/(auth)/privacidad', params: { intent: intent ?? 'both' } })}
           />
 
-          <Pressable onPress={() => router.push('/(auth)/email')} haptic="none">
+          {/* O1 paso 1 · "Tengo una invitación" lleva a O2, que necesita la invitación. */}
+          <Pressable onPress={() => router.push('/(auth)/invitacion')} haptic="none">
             <Text variant="small" tone="brand" align="center">
               Tengo una invitación
             </Text>

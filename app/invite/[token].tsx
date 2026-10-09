@@ -10,6 +10,7 @@ import {
 } from '@/data/repositories/invitations';
 import { rememberInvitationToken } from '@/features/auth/invitationToken';
 import { useSession } from '@/features/auth/SessionProvider';
+import { parseInvitationToken } from '@/features/auth/invitationLink';
 import { Button, Card, Pressable, Screen, Stack, Text } from '@/ui/primitives';
 import { duration, stagger } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
@@ -43,7 +44,9 @@ export default function Invite() {
     null,
   );
 
-  const rawToken = token != null ? decodeURIComponent(token) : '';
+  // Normaliza lo que llegue: codificado una vez, dos (enlaces viejos) o nada.
+  // decodeURIComponent a secas explotaba con un "%" mal formado.
+  const rawToken = parseInvitationToken(token ?? '') ?? '';
 
   async function accept() {
     if (rawToken === '') return;

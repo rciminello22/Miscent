@@ -18,9 +18,15 @@ export type InvitationState = {
   expiresAt: string;
 };
 
-/** El enlace que el usuario comparte por donde quiera. La app no manda mensajes. */
+/**
+ * El enlace que el usuario comparte por donde quiera. La app no manda mensajes.
+ *
+ * El token va SIN encodeURIComponent: createURL ya le aplica encodeURI al
+ * path, y codificar antes lo hacía dos veces ("=" → %3D → %253D). El token es
+ * seguro para una URL tal cual (A–Z, a–z, 0–9, "_", "-", "=").
+ */
 export function invitationLink(token: string): string {
-  return Linking.createURL(`/invite/${encodeURIComponent(token)}`);
+  return Linking.createURL(`/invite/${token}`);
 }
 
 /**

@@ -201,7 +201,9 @@ export default function Invitar() {
                       icon={<Share2 size={15} color={theme.colors.textOnBrand} />}
                       onPress={() =>
                         void Share.share({
-                          message: `Te invito a ${facts.space.name}, para anotar los gastos que compartimos: ${link}`,
+                          // WhatsApp y compañía no vuelven tocable un enlace que no
+                          // sea http(s): el mensaje dice cómo usarlo igual.
+                          message: `Te invito a ${facts.space.name}, para anotar los gastos que compartimos: ${link}\n\nSi no se abre al tocarlo, copialo, abrí la app y tocá "Tengo una invitación".`,
                         })
                       }
                     />
