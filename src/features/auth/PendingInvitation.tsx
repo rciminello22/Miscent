@@ -24,11 +24,17 @@ export function PendingInvitation() {
   const { session, refreshProfile } = useSession();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const handled = useRef(false);
+  /**
+   * Para QUÉ usuario ya se miró el token pendiente. No alcanza con un "ya lo
+   * hice": este componente vive en el layout raíz y no se desmonta, así que
+   * si alguien cierra sesión y entra otra persona sin cerrar la app (dos
+   * cuentas en un teléfono), la segunda nunca aceptaba su invitación.
+   */
+  const handledFor = useRef<string | null>(null);
 
   useEffect(() => {
-    if (session == null || handled.current) return;
-    handled.current = true;
+    if (session == null || handledFor.current === session.user.id) return;
+    handledFor.current = session.user.id;
 
     void (async () => {
       const token = await takeInvitationToken();

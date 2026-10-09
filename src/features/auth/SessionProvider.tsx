@@ -1,5 +1,14 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/data/supabase';
 import { displayNameFromEmail, takeOnboardingIntent } from './onboardingIntent';
 
@@ -41,6 +50,27 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  /**
+   * PR-02 / CA-13 · la caché de queries es del USUARIO, no de la app. Varias
+   * keys no llevan el id (['spaces'], ['space-facts', id]): sin vaciarla, si
+   * Renzo cierra sesión y entra Martina en el mismo teléfono, ella veía la
+   * lista de espacios de él (con sus saldos) hasta que llegaba el refetch.
+   *
+   * Se vacía ANTES de publicar la sesión nueva: con un efecto, la primera
+   * pantalla de Martina se pintaba un frame con los datos de Renzo.
+   */
+  const queryClient = useQueryClient();
+  const currentUserId = useRef<string | null>(null);
+
+  function publishSession(next: Session | null) {
+    const nextUserId = next?.user.id ?? null;
+    if (currentUserId.current !== nextUserId) {
+      if (currentUserId.current != null) queryClient.clear();
+      currentUserId.current = nextUserId;
+    }
+    setSession(next);
+  }
 
   async function loadProfile(userId: string): Promise<Profile | null> {
     const { data, error } = await supabase
@@ -91,7 +121,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const { data } = await supabase.auth.getSession();
       if (!active) return;
 
-      setSession(data.session);
+      publishSession(data.session);
       if (data.session != null) {
         setProfile(await ensureProfile(data.session));
       }
@@ -99,7 +129,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     })();
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
+      publishSession(nextSession);
 
       if (nextSession == null) {
         setProfile(null);
