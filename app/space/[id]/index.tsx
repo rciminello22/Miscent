@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, MoreHorizontal, Plus, UserPlus } from 'lucide-react-native';
+import { ArrowLeft, CircleUser, MoreHorizontal, Plus, UserPlus } from 'lucide-react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addMonths, monthOf } from '@domain/calendar';
@@ -15,6 +15,7 @@ import {
   putExtraSentence,
 } from '@/features/spaces/balanceCopy';
 import { useSpace } from '@/features/spaces/useSpaces';
+import { useSession } from '@/features/auth/SessionProvider';
 import { SpaceMenu } from '@/features/spaces/SpaceMenu';
 import {
   AudienceBadge,
@@ -53,6 +54,24 @@ import { useTheme } from '@/ui/theme';
 export default function Space() {
   const theme = useTheme();
   const router = useRouter();
+  const { accountState } = useSession();
+
+  /**
+   * Se puede llegar acá SIN historial: con un solo espacio, Compartidos y la
+   * pantalla del invitado entran directo con `replace` (§14), y lo mismo
+   * hacen crear un espacio o aceptar una invitación. Un `back()` a secas
+   * tiraba "GO_BACK was not handled" y dejaba al usuario sin salida.
+   *
+   * Para el invitado, este espacio ES su pantalla principal (§33 U1): sin
+   * historial no hay a dónde volver, y en su lugar va el acceso al Perfil.
+   */
+  const canGoBack = router.canGoBack();
+  const isGuestHome = accountState === 'guest' && !canGoBack;
+
+  function goBack() {
+    if (canGoBack) router.back();
+    else router.replace('/(personal)/inicio');
+  }
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const spaceId = id ?? '';
@@ -132,13 +151,25 @@ export default function Space() {
     >
       <Stack gap="7">
         <Row justify="space-between" align="center">
-          <Pressable
-            onPress={() => router.back()}
-            accessibilityLabel="Volver"
-            style={{ padding: theme.space['1'], marginLeft: -theme.space['1'] }}
-          >
-            <ArrowLeft size={20} color={theme.colors.textSecondary} />
-          </Pressable>
+          {isGuestHome ? (
+            <Pressable
+              onPress={() => router.push('/(guest)/perfil')}
+              accessibilityRole="button"
+              accessibilityLabel="Perfil"
+              style={{ padding: theme.space['1'], marginLeft: -theme.space['1'] }}
+            >
+              <CircleUser size={22} color={theme.colors.textSecondary} />
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={goBack}
+              accessibilityRole="button"
+              accessibilityLabel="Volver"
+              style={{ padding: theme.space['1'], marginLeft: -theme.space['1'] }}
+            >
+              <ArrowLeft size={20} color={theme.colors.textSecondary} />
+            </Pressable>
+          )}
 
           <Row gap="3" align="center">
             {/* §12 · el encabezado dice quién lo ve. */}

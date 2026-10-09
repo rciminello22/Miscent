@@ -3,6 +3,7 @@ import { Alert, RefreshControl, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { CircleUser } from 'lucide-react-native';
 import { useSpaces } from '@/features/spaces/useSpaces';
 import { SpaceList } from '@/features/spaces/SpaceList';
 import { useSession } from '@/features/auth/SessionProvider';
@@ -11,6 +12,7 @@ import {
   Card,
   EmptyState,
   Pressable,
+  Row,
   Skeleton,
   Stack,
   Text,
@@ -90,9 +92,19 @@ export default function Espacios() {
       }
     >
       <Stack gap="7">
-        <Text variant="overline" tone="muted">
-          Tus espacios
-        </Text>
+        <Row justify="space-between" align="center">
+          <Text variant="overline" tone="muted">
+            Tus espacios
+          </Text>
+          {/* §14 Estado B · el Perfil, sin barra de pestañas. */}
+          <Pressable
+            onPress={() => router.push('/(guest)/perfil')}
+            accessibilityRole="button"
+            accessibilityLabel="Perfil"
+          >
+            <CircleUser size={22} color={theme.colors.textSecondary} />
+          </Pressable>
+        </Row>
 
         {isLoading ? (
           <Stack gap="3">
