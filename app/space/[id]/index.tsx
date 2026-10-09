@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, MoreHorizontal, Plus, UserPlus } from 'lucide-react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
@@ -14,7 +14,7 @@ import {
   previousMonthSentence,
   putExtraSentence,
 } from '@/features/spaces/balanceCopy';
-import { useDeleteSharedExpense, useSpace } from '@/features/spaces/useSpaces';
+import { useSpace } from '@/features/spaces/useSpaces';
 import { SpaceMenu } from '@/features/spaces/SpaceMenu';
 import {
   AudienceBadge,
@@ -58,7 +58,6 @@ export default function Space() {
   const spaceId = id ?? '';
 
   const { derived, today, isLoading, isError, refetch } = useSpace(spaceId);
-  const deleteExpense = useDeleteSharedExpense(spaceId);
   const [refreshing, setRefreshing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -88,24 +87,6 @@ export default function Space() {
     setRefreshing(false);
   }
 
-  function confirmDelete(occurrence: SpaceOccurrence) {
-    if (derived == null) return;
-
-    // §33 U7 / X-03 · se confirma con el nuevo saldo y con que el otro
-    // también deja de verlo.
-    Alert.alert(
-      `¿Eliminar ${prettyLabel(occurrence.label)}?`,
-      `${derived.other.displayName} también lo va a dejar de ver.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: () => void deleteExpense.mutateAsync(occurrence.sourceId),
-        },
-      ],
-    );
-  }
 
   if (isLoading) {
     return (
@@ -334,7 +315,13 @@ export default function Space() {
                     mySlot={derived.mySlot}
                     otherName={other.displayName}
                     myName={me.displayName}
-                    onLongPress={() => confirmDelete(occurrence)}
+                    onPress={
+                      // Un fijo compartido se edita desde su propio fijo; un
+                      // gasto, desde el detalle del gasto.
+                      occurrence.sourceKind === 'expense'
+                        ? () => router.push(`/space/${spaceId}/gasto/${occurrence.sourceId}`)
+                        : undefined
+                    }
                   />
                   {index < movements.length - 1 && <Divider />}
                 </Animated.View>
@@ -426,14 +413,14 @@ function SharedRow({
   otherName,
   myName,
   showMonth = false,
-  onLongPress,
+  onPress,
 }: {
   occurrence: SpaceOccurrence;
   mySlot: 1 | 2;
   otherName: string;
   myName: string;
   showMonth?: boolean;
-  onLongPress?: () => void;
+  onPress?: () => void;
 }) {
   const theme = useTheme();
   const iPaid = occurrence.payerSlot === mySlot;
@@ -441,9 +428,10 @@ function SharedRow({
 
   return (
     <Pressable
-      onLongPress={onLongPress}
+      onPress={onPress}
       haptic="none"
       scaleOnPress={false}
+      accessibilityRole={onPress != null ? 'button' : undefined}
       accessibilityLabel={prettyLabel(occurrence.label)}
       style={{ paddingVertical: theme.space['3'] }}
     >
