@@ -6,7 +6,8 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { addMonths, dayOf, monthOf } from '@domain/calendar';
 import { planInstallments } from '@domain/installments';
 import { resolveCardPayment } from '@domain/cards';
-import type { Category, PaymentMethod } from '@domain/types';
+import { resolveShares } from '@domain/split';
+import type { Category, Split } from '@domain/types';
 import { formatMonth } from '@/lib/format';
 import { useSession } from '@/features/auth/SessionProvider';
 import {
@@ -30,6 +31,13 @@ import {
 } from '@/features/add/fields';
 import { InstallmentPreview } from '@/features/add/InstallmentPreview';
 import { PastDateField } from '@/features/add/DateField';
+import { SplitPicker } from '@/features/spaces/SplitPicker';
+import {
+  useCreateSharedExpense,
+  useCreateSharedRecurrence,
+  useSpace,
+  useSpaces,
+} from '@/features/spaces/useSpaces';
 import {
   AudienceBadge,
   Button,
@@ -56,8 +64,10 @@ import { useTheme } from '@/ui/theme';
  * contra cargar un gasto personal en un espacio por error, que §32 clasifica
  * como "rompe privacidad".
  *
- * Fase 4 · el destino es siempre "Solo yo" porque todavía no hay espacios.
- * El selector con los chips por espacio y el reparto llegan en la Fase 6.
+ * M3 · destino "Solo yo" por defecto + un chip por espacio. Con un espacio
+ * elegido aparecen quién pagó (§17 campo 5) y el reparto (campo 6), y se
+ * guarda como gasto compartido: el mismo dato que se carga desde adentro del
+ * espacio. Los ingresos son siempre personales (campo 1).
  */
 export default function Agregar() {
   const theme = useTheme();
@@ -76,11 +86,34 @@ export default function Agregar() {
   const [repeats, setRepeats] = useState(false);
   // §17 campo 10 · hoy por defecto; nunca una fecha futura.
   const [date, setDate] = useState(today);
+
+  // §17 campo 4 · CA-10 · null = "Solo yo", el default. Si no, un espacio.
+  const [destination, setDestination] = useState<string | null>(null);
+  // §17 campos 5 y 6 · solo con un espacio elegido.
+  const [payerIsMe, setPayerIsMe] = useState(true);
+  const [split, setSplit] = useState<Split>({ mode: 'even' });
+
+  const { data: spaces } = useSpaces();
+  const { derived: space } = useSpace(destination ?? '');
+  const createSharedExpense = useCreateSharedExpense(destination ?? '');
+  const createSharedRecurrence = useCreateSharedRecurrence(destination ?? '');
+  const isShared = destination != null && space != null;
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const method = facts.paymentMethods.find((item) => item.id === paymentMethodId) ?? null;
+  // C-05 · el medio de pago es un detalle privado de quien pagó: si pagó el
+  // otro miembro, no hay medio propio que valga.
+  const iPay = !isShared || payerIsMe;
+  const method = iPay
+    ? (facts.paymentMethods.find((item) => item.id === paymentMethodId) ?? null)
+    : null;
   const isCard = method?.kind === 'card';
+
+  const myShareRatio = useMemo(() => {
+    if (!isShared || space == null || amount === 0) return 1;
+    const shares = resolveShares(amount, split);
+    return (space.mySlot === 1 ? shares.slot1 : shares.slot2) / amount;
+  }, [isShared, space, amount, split]);
 
   // §17 · "más usadas primero".
   const categories = useMemo(() => {
@@ -140,6 +173,41 @@ export default function Agregar() {
     setSaving(true);
 
     try {
+      // M3 · con un espacio elegido, es un gasto compartido (§18).
+      if (isShared && space != null && kind === 'expense') {
+        const payerSlot = payerIsMe ? space.mySlot : space.other.slot;
+
+        if (repeats) {
+          await createSharedRecurrence.mutateAsync({
+            spaceId: space.facts.space.id,
+            amount,
+            category,
+            dayOfMonth: dayOf(date),
+            startMonth: monthOf(date),
+            payerSlot,
+            split,
+            myPaymentMethodId: payerIsMe ? paymentMethodId : null,
+            mySlot: space.mySlot,
+          });
+        } else {
+          await createSharedExpense.mutateAsync({
+            spaceId: space.facts.space.id,
+            amount,
+            date,
+            category,
+            description: description.trim() === '' ? null : description.trim(),
+            payerSlot,
+            split,
+            mySlot: space.mySlot,
+            installmentCount,
+            pinnedFirstMonth: null,
+            myPaymentMethod: payerIsMe ? method : null,
+          });
+        }
+        router.back();
+        return;
+      }
+
       if (repeats && kind === 'expense') {
         // §21 · un fijo mensual, no un gasto puntual.
         await createRecurrence.mutateAsync({
@@ -208,7 +276,11 @@ export default function Agregar() {
               setCategory(null);
               setInstallmentCount(null);
               setRepeats(false);
-              if (next === 'income') setPaymentMethodId(null);
+              if (next === 'income') {
+                setPaymentMethodId(null);
+                // §17 campo 1 · los ingresos son siempre personales.
+                setDestination(null);
+              }
             }}
           />
         )}
@@ -221,16 +293,78 @@ export default function Agregar() {
           <CategoryGrid categories={categories} value={category} onChange={setCategory} />
         </Field>
 
-        {/* §17 campo 4 · CA-10 · "Solo yo" por defecto, con la audiencia visible. */}
+        {/* §17 campo 4 · CA-10 · "Solo yo" por defecto + un chip por espacio,
+            con la audiencia visible. Los ingresos son siempre personales. */}
         <Field label="Destino">
-          <Row gap="2">
-            <Chip label="Solo yo" selected onPress={() => {}} />
+          <Row gap="2" style={{ flexWrap: 'wrap' }}>
+            <Chip
+              label="Solo yo"
+              selected={destination == null}
+              onPress={() => setDestination(null)}
+            />
+            {kind === 'expense' &&
+              (spaces ?? []).map((item) => (
+                <Chip
+                  key={item.id}
+                  label={item.name}
+                  selected={destination === item.id}
+                  onPress={() => {
+                    setDestination(item.id);
+                    setPayerIsMe(true);
+                    setSplit({ mode: 'even' });
+                  }}
+                />
+              ))}
           </Row>
-          <AudienceBadge audience={{ kind: 'private' }} />
+          {/* PR-03 · siempre dice quién lo va a ver. */}
+          <AudienceBadge
+            audience={
+              isShared && space != null
+                ? { kind: 'shared', otherMemberName: space.other.displayName }
+                : { kind: 'private' }
+            }
+          />
         </Field>
 
-        {/* §17 campo 7 */}
-        {kind === 'expense' && facts.paymentMethods.length > 0 && (
+        {/* §17 campos 5 y 6 · solo con un espacio elegido. */}
+        {isShared && space != null && (
+          <Animated.View entering={FadeIn.duration(duration.quick)}>
+            <Stack gap="7">
+              {/* G-06 · quién fue DECLARADO como pagador. */}
+              <Field label="¿Quién pagó?">
+                <Row gap="2">
+                  <Chip label="Yo" selected={payerIsMe} onPress={() => setPayerIsMe(true)} />
+                  <Chip
+                    label={space.other.displayName}
+                    selected={!payerIsMe}
+                    onPress={() => {
+                      setPayerIsMe(false);
+                      // C-05 · el medio de pago es privado de quien pagó.
+                      setPaymentMethodId(null);
+                    }}
+                  />
+                </Row>
+              </Field>
+
+              {/* P3 · 50/50 o personalizado por monto, sin porcentajes. */}
+              {amount > 0 && (
+                <Field label="¿Cómo lo reparten?">
+                  <SplitPicker
+                    total={amount}
+                    split={split}
+                    onChange={setSplit}
+                    mySlot={space.mySlot}
+                    myName={space.me.displayName}
+                    otherName={space.other.displayName}
+                  />
+                </Field>
+              )}
+            </Stack>
+          </Animated.View>
+        )}
+
+        {/* §17 campo 7 · solo si pagó el usuario. */}
+        {kind === 'expense' && iPay && facts.paymentMethods.length > 0 && (
           <Field label="¿Con qué lo pagaste?">
             <PaymentMethodPicker
               methods={facts.paymentMethods}
@@ -293,6 +427,8 @@ export default function Agregar() {
             expansion={expansion}
             total={amount}
             plan={plan}
+            // K9 · en un espacio, al radar llega solo tu parte.
+            myShareRatio={myShareRatio}
             today={today}
           />
         )}
