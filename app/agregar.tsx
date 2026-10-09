@@ -3,7 +3,7 @@ import { Alert, Switch, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { X } from 'lucide-react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import { addMonths, monthOf } from '@domain/calendar';
+import { addMonths, dayOf, monthOf } from '@domain/calendar';
 import { planInstallments } from '@domain/installments';
 import { resolveCardPayment } from '@domain/cards';
 import type { Category, PaymentMethod } from '@domain/types';
@@ -29,6 +29,7 @@ import {
   Segmented,
 } from '@/features/add/fields';
 import { InstallmentPreview } from '@/features/add/InstallmentPreview';
+import { PastDateField } from '@/features/add/DateField';
 import {
   AudienceBadge,
   Button,
@@ -73,6 +74,8 @@ export default function Agregar() {
   const [paymentMethodId, setPaymentMethodId] = useState<string | null>(null);
   const [installmentCount, setInstallmentCount] = useState<number | null>(null);
   const [repeats, setRepeats] = useState(false);
+  // §17 campo 10 · hoy por defecto; nunca una fecha futura.
+  const [date, setDate] = useState(today);
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -92,11 +95,11 @@ export default function Agregar() {
   const plan = useMemo(() => {
     if (kind === 'income' || installmentCount == null || installmentCount < 2) return null;
     return planInstallments({
-      purchaseDate: today,
+      purchaseDate: date,
       count: installmentCount,
       card: isCard ? method : null,
     });
-  }, [kind, installmentCount, isCard, method, today]);
+  }, [kind, installmentCount, isCard, method, date]);
 
   const canSave = amount > 0 && category != null && !saving;
 
@@ -112,13 +115,13 @@ export default function Agregar() {
       return 'Se va a repetir todos los meses.';
     }
     if (isCard && method != null) {
-      const schedule = resolveCardPayment(method, today);
+      const schedule = resolveCardPayment(method, date);
       return `Se paga en ${formatMonth(schedule.month, monthOf(today))}.`;
     }
     return null;
-  }, [kind, amount, plan, repeats, isCard, method, today]);
+  }, [kind, amount, plan, repeats, isCard, method, date, today]);
 
-  const dirty = amount > 0 || category != null || description.trim() !== '';
+  const dirty = amount > 0 || category != null || description.trim() !== '' || date !== today;
 
   function close() {
     // §17 · "Salir con datos: ¿Descartar este gasto?"
@@ -143,8 +146,8 @@ export default function Agregar() {
           kind: 'expense',
           amount,
           category,
-          dayOfMonth: Number(today.slice(8, 10)),
-          startMonth: monthOf(today),
+          dayOfMonth: dayOf(date),
+          startMonth: monthOf(date),
           endMonth: null,
           paymentMethodId,
         });
@@ -152,7 +155,7 @@ export default function Agregar() {
         await createMovement.mutateAsync({
           kind,
           amount,
-          date: today,
+          date,
           category,
           description: description.trim() === '' ? null : description.trim(),
           paymentMethod: method,
@@ -273,6 +276,11 @@ export default function Agregar() {
             />
           </Row>
         )}
+
+        {/* §17 campo 10 · con un fijo, el día elegido es el día de cada mes. */}
+        <Field label={repeats ? 'Desde' : 'Fecha'}>
+          <PastDateField value={date} onChange={setDate} today={today} />
+        </Field>
 
         {/* §17 campo 11 */}
         <Field label="Descripción (opcional)">

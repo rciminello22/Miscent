@@ -8,6 +8,7 @@ import type { Slot } from '@domain/types';
 import { formatPesos } from '@/lib/format';
 import { AmountInput } from '@/features/add/AmountInput';
 import { Field, Segmented } from '@/features/add/fields';
+import { PastDateField } from '@/features/add/DateField';
 import { balanceSentence } from '@/features/spaces/balanceCopy';
 import { useCreateMemberPayment, useSpace } from '@/features/spaces/useSpaces';
 import {
@@ -53,6 +54,8 @@ export default function Pago() {
 
   const [amount, setAmount] = useState(0);
   const [direction, setDirection] = useState<'theyPay' | 'iPay'>('theyPay');
+  // §25 · "→ fecha → Guardar". Hoy por defecto; nunca una fecha futura.
+  const [date, setDate] = useState(today);
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
@@ -84,7 +87,7 @@ export default function Pago() {
             fromSlot,
             toSlot,
             amount,
-            date: today,
+            date,
             recordedBySlot: mySlot,
           },
         ],
@@ -94,7 +97,7 @@ export default function Pago() {
     );
 
     return { fromSlot, toSlot, after };
-  }, [derived, amount, direction, spaceId, today]);
+  }, [derived, amount, direction, date, spaceId, today]);
 
   if (derived == null) {
     return (
@@ -122,7 +125,7 @@ export default function Pago() {
         fromSlot: result.fromSlot,
         toSlot: result.toSlot,
         amount,
-        date: today,
+        date,
         mySlot,
       });
       router.back();
@@ -181,6 +184,10 @@ export default function Pago() {
             </Text>
           </Pressable>
         )}
+
+        <Field label="¿Cuándo?">
+          <PastDateField value={date} onChange={setDate} today={today} />
+        </Field>
 
         {/* El efecto, con el saldo que va a quedar. */}
         {result != null && (

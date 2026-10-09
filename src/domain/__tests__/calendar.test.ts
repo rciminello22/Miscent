@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  addDays,
   addMonths,
   clampDay,
   dateInMonth,
@@ -71,5 +72,22 @@ describe('calendario', () => {
     expect(hasPassed('2026-10-05', '2026-10-07')).toBe(true);
     expect(hasPassed('2026-10-07', '2026-10-07')).toBe(true);
     expect(hasPassed('2026-10-08', '2026-10-07')).toBe(false);
+  });
+});
+
+describe('addDays · "Ayer" en el formulario (§17 campo 10)', () => {
+  it('resta un día dentro del mes', () => {
+    expect(addDays('2026-10-09', -1)).toBe('2026-10-08');
+  });
+
+  it('cruza el mes y el año', () => {
+    expect(addDays('2026-10-01', -1)).toBe('2026-09-30');
+    expect(addDays('2026-01-01', -1)).toBe('2025-12-31');
+    expect(addDays('2026-12-31', 1)).toBe('2027-01-01');
+  });
+
+  it('respeta febrero, bisiesto o no', () => {
+    expect(addDays('2026-03-01', -1)).toBe('2026-02-28');
+    expect(addDays('2028-03-01', -1)).toBe('2028-02-29');
   });
 });

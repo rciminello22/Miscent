@@ -3,12 +3,12 @@ import { Alert, Switch, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { X } from 'lucide-react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import { addMonths, monthOf } from '@domain/calendar';
+import { addMonths, dayOf, monthOf } from '@domain/calendar';
 import { resolveCardPayment } from '@domain/cards';
 import { planInstallments } from '@domain/installments';
 import { resolveShares } from '@domain/split';
 import type { Category, Split } from '@domain/types';
-import { formatMonth } from '@/lib/format';
+import { formatDayMonth, formatMonth } from '@/lib/format';
 import { AmountInput } from '@/features/add/AmountInput';
 import { CategoryGrid } from '@/features/add/CategoryGrid';
 import { EXPENSE_CATEGORIES, orderByUsage } from '@/features/add/categories';
@@ -20,6 +20,7 @@ import {
   Segmented,
 } from '@/features/add/fields';
 import { InstallmentPreview } from '@/features/add/InstallmentPreview';
+import { PastDateField } from '@/features/add/DateField';
 import { SplitPicker } from '@/features/spaces/SplitPicker';
 import {
   useCreateSharedExpense,
@@ -76,6 +77,8 @@ export default function AgregarCompartido() {
   const [paymentMethodId, setPaymentMethodId] = useState<string | null>(null);
   const [installmentCount, setInstallmentCount] = useState<number | null>(null);
   const [repeats, setRepeats] = useState(false);
+  // §17 campo 10 · hoy por defecto; nunca una fecha futura.
+  const [date, setDate] = useState(today);
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -98,12 +101,46 @@ export default function AgregarCompartido() {
   const plan = useMemo(() => {
     if (installmentCount == null || installmentCount < 2 || amount === 0) return null;
     return planInstallments({
-      purchaseDate: today,
+      purchaseDate: date,
       count: installmentCount,
       // C-05 · si pagó el otro, no hay tarjeta conocida → Q-03.
       card: payerIsMe && isCard ? method : null,
     });
-  }, [installmentCount, amount, payerIsMe, isCard, method, today]);
+  }, [installmentCount, amount, payerIsMe, isCard, method, date]);
+
+  /**
+   * §17 · el efecto, que es lo que vuelve útil el registro.
+   *
+   * Va ANTES del return de "Cargando…": un hook después de un return
+   * condicional cambia la cantidad de hooks entre renders y React se cae.
+   */
+  const effect = useMemo(() => {
+    if (amount === 0) return null;
+
+    const parts: string[] = [];
+
+    if (plan != null) {
+      const last = addMonths(plan.firstMonth, plan.count - 1);
+      parts.push(
+        `${plan.count} cuotas, de ${formatMonth(plan.firstMonth, monthOf(today))} a ${formatMonth(last, monthOf(today))}`,
+      );
+      // P2 · la deuda se genera cuota por cuota, nunca entera hoy.
+      parts.push('el saldo cambia con cada cuota, no hoy');
+    } else if (repeats) {
+      parts.push('se repite todos los meses');
+    } else if (payerIsMe && isCard && method != null) {
+      const schedule = resolveCardPayment(method, date);
+      // P19 · aunque se pague con tarjeta, el saldo cambia en la fecha de compra.
+      parts.push(`lo pagás en ${formatMonth(schedule.month, monthOf(today))}`);
+      parts.push(
+        date === today
+          ? 'el saldo entre ustedes cambia hoy'
+          : `el saldo entre ustedes cambia desde el ${formatDayMonth(date)}`,
+      );
+    }
+
+    return parts.length > 0 ? parts.join(' · ') : null;
+  }, [amount, plan, repeats, payerIsMe, isCard, method, date, today]);
 
   if (derived == null) {
     return (
@@ -121,32 +158,8 @@ export default function AgregarCompartido() {
   const otherShare = mySlot === 1 ? shares.slot2 : shares.slot1;
 
   const canSave = amount > 0 && category != null && !saving;
-  const dirty = amount > 0 || category != null || description.trim() !== '';
-
-  /** §17 · el efecto, que es lo que vuelve útil el registro. */
-  const effect = useMemo(() => {
-    if (amount === 0) return null;
-
-    const parts: string[] = [];
-
-    if (plan != null) {
-      const last = addMonths(plan.firstMonth, plan.count - 1);
-      parts.push(
-        `${plan.count} cuotas, de ${formatMonth(plan.firstMonth, monthOf(today))} a ${formatMonth(last, monthOf(today))}`,
-      );
-      // P2 · la deuda se genera cuota por cuota, nunca entera hoy.
-      parts.push('el saldo cambia con cada cuota, no hoy');
-    } else if (repeats) {
-      parts.push('se repite todos los meses');
-    } else if (payerIsMe && isCard && method != null) {
-      const schedule = resolveCardPayment(method, today);
-      // P19 · aunque se pague con tarjeta, el saldo cambia hoy.
-      parts.push(`lo pagás en ${formatMonth(schedule.month, monthOf(today))}`);
-      parts.push('el saldo entre ustedes cambia hoy');
-    }
-
-    return parts.length > 0 ? parts.join(' · ') : null;
-  }, [amount, plan, repeats, payerIsMe, isCard, method, today]);
+  const dirty =
+    amount > 0 || category != null || description.trim() !== '' || date !== today;
 
   function close() {
     if (!dirty) {
@@ -169,8 +182,8 @@ export default function AgregarCompartido() {
           spaceId,
           amount,
           category,
-          dayOfMonth: Number(today.slice(8, 10)),
-          startMonth: monthOf(today),
+          dayOfMonth: dayOf(date),
+          startMonth: monthOf(date),
           payerSlot,
           split,
           myPaymentMethodId: payerIsMe ? paymentMethodId : null,
@@ -180,7 +193,7 @@ export default function AgregarCompartido() {
         await createExpense.mutateAsync({
           spaceId,
           amount,
-          date: today,
+          date,
           category,
           description: description.trim() === '' ? null : description.trim(),
           payerSlot,
@@ -306,6 +319,11 @@ export default function AgregarCompartido() {
             />
           </Row>
         )}
+
+        {/* §17 campo 10 · con un fijo, el día elegido es el día de cada mes. */}
+        <Field label={repeats ? 'Desde' : 'Fecha'}>
+          <PastDateField value={date} onChange={setDate} today={today} />
+        </Field>
 
         <Field label="Descripción (opcional)">
           <View

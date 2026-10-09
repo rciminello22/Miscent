@@ -81,6 +81,17 @@ export function addMonths(month: Month, count: number): Month {
   return monthFromIndex(monthIndex(month) + count);
 }
 
+/**
+ * Suma `count` días (negativo para restar). Usa `Date.UTC` solo como
+ * calculadora de calendario: en UTC no hay husos ni horario de verano, así
+ * que el resultado depende únicamente de los componentes de la fecha.
+ */
+export function addDays(iso: IsoDate, count: number): IsoDate {
+  const { year, month, day } = parseDate(iso);
+  const shifted = new Date(Date.UTC(year, month - 1, day + count));
+  return toIso(shifted.getUTCFullYear(), shifted.getUTCMonth() + 1, shifted.getUTCDate());
+}
+
 /** Lista de `count` meses consecutivos empezando en `from`. */
 export function monthRange(from: Month, count: number): Month[] {
   const start = monthIndex(from);
