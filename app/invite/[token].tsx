@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useOpenSpace } from '@/features/spaces/useOpenSpace';
 import { Users } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import {
@@ -35,6 +36,7 @@ import { useTheme } from '@/ui/theme';
 export default function Invite() {
   const theme = useTheme();
   const router = useRouter();
+  const openSpace = useOpenSpace();
   const { token } = useLocalSearchParams<{ token: string }>();
   const { session, refreshProfile } = useSession();
 
@@ -73,7 +75,7 @@ export default function Invite() {
     // I-07 · no se activa ninguna cuenta personal. El RouteGuard la lleva al
     // Estado B, que es donde corresponde.
     await refreshProfile();
-    router.replace(`/space/${result.spaceId}`);
+    openSpace(result.spaceId, 'replace', true);
   }
 
   if (failure != null) {

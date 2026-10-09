@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Alert, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useOpenSpace } from '@/features/spaces/useOpenSpace';
 import { X } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { AmountInput } from '@/features/add/AmountInput';
@@ -36,6 +37,7 @@ import { useTheme } from '@/ui/theme';
 export default function NuevoEspacio() {
   const theme = useTheme();
   const router = useRouter();
+  const openSpace = useOpenSpace();
   const { profile } = useSession();
   const createSpace = useCreateSpace();
 
@@ -62,7 +64,7 @@ export default function NuevoEspacio() {
         initialBalance: hasInitialBalance ? initialAmount : 0,
         initialBalanceFavors: favors,
       });
-      router.replace(`/space/${spaceId}`);
+      openSpace(spaceId, 'replace', true);
     } catch (error) {
       Alert.alert(
         'No pudimos crearlo',

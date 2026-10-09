@@ -8,6 +8,35 @@
  * TS puro: se testea en node.
  */
 
+/**
+ * A dónde lleva abrir un espacio.
+ *
+ * Con cuenta personal, adentro de la pestaña Compartidos: la barra queda
+ * visible (decisión del 9/10). Con uno solo, la pestaña ya lo muestra, y
+ * abrir la ruta del espacio apilaría el mismo espacio dos veces. El invitado
+ * va a su pantalla sin pestañas (CA-06).
+ */
+export function spaceHref(args: {
+  accountState: 'personal' | 'guest';
+  spaceId: string;
+  spaceCount: number | null;
+}): string {
+  if (args.accountState === 'guest') return `/space/${args.spaceId}`;
+  if (args.spaceCount === 1) return '/(personal)/compartidos';
+  return `/(personal)/compartidos/${args.spaceId}`;
+}
+
+/**
+ * Si la pestaña Compartidos está mostrando un espacio. Ahí se oculta el
+ * "Agregar" flotante (abre con "Solo yo", CA-10) y queda solo el del espacio:
+ * dos botones parecidos con destinos distintos es el riesgo que §32 marca
+ * como "rompe privacidad". Decisión del 9/10.
+ */
+export function isInsideSpace(pathname: string, spaceCount: number | null): boolean {
+  if (pathname.startsWith('/compartidos/')) return true;
+  return pathname === '/compartidos' && spaceCount === 1;
+}
+
 export type SpaceBackTarget = '/(personal)/inicio' | '/(personal)/compartidos' | '/(guest)/espacios';
 
 export function spaceBackTarget(args: {

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useOpenSpace } from '@/features/spaces/useOpenSpace';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/data/queryClient';
 import {
@@ -22,7 +22,7 @@ import { takeInvitationToken } from './invitationToken';
  */
 export function PendingInvitation() {
   const { session, profile, refreshProfile } = useSession();
-  const router = useRouter();
+  const openSpace = useOpenSpace();
   const queryClient = useQueryClient();
   /**
    * Para QUÉ usuario ya se miró el token pendiente. No alcanza con un "ya lo
@@ -57,9 +57,9 @@ export function PendingInvitation() {
       // el RouteGuard vea el estado correcto.
       await refreshProfile();
       await queryClient.invalidateQueries({ queryKey: queryKeys.spaces });
-      router.replace(`/space/${result.spaceId}`);
+      openSpace(result.spaceId, 'replace', true);
     })();
-  }, [session, profile, refreshProfile, queryClient, router]);
+  }, [session, profile, refreshProfile, queryClient, openSpace]);
 
   return null;
 }

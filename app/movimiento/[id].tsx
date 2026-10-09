@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Alert, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useOpenSpace } from '@/features/spaces/useOpenSpace';
 import { Trash2, X } from 'lucide-react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -60,6 +61,7 @@ import { useTheme } from '@/ui/theme';
 export default function MovimientoDetalle() {
   const theme = useTheme();
   const router = useRouter();
+  const openSpace = useOpenSpace();
   const queryClient = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useSession();
@@ -406,7 +408,7 @@ export default function MovimientoDetalle() {
         visible={moving}
         onClose={() => setMoving(false)}
         movement={movement}
-        onMoved={(spaceId) => router.replace(`/space/${spaceId}`)}
+        onMoved={(spaceId) => openSpace(spaceId, 'replace')}
       />
     </Screen>
   );

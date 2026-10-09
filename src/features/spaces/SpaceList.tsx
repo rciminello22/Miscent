@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useOpenSpace } from './useOpenSpace';
 import { ChevronRight } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { View } from 'react-native';
@@ -37,7 +37,7 @@ export function SpaceList({ spaces }: { spaces: readonly SpaceSummary[] }) {
 
 function SpaceRow({ space }: { space: SpaceSummary }) {
   const theme = useTheme();
-  const router = useRouter();
+  const openSpace = useOpenSpace();
 
   // El saldo de cada espacio se calcula con el dominio, igual que adentro: no
   // hay dos fuentes para la misma cifra.
@@ -45,7 +45,7 @@ function SpaceRow({ space }: { space: SpaceSummary }) {
 
   return (
     <Pressable
-      onPress={() => router.push(`/space/${space.id}`)}
+      onPress={() => openSpace(space.id)}
       scaleOnPress={false}
       accessibilityRole="button"
       accessibilityLabel={space.name}

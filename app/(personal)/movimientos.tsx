@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useOpenSpace } from '@/features/spaces/useOpenSpace';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -48,6 +49,7 @@ import { useTheme } from '@/ui/theme';
 export default function Movimientos() {
   const theme = useTheme();
   const router = useRouter();
+  const openSpace = useOpenSpace();
   const insets = useSafeAreaInsets();
   const { facts, today, isLoading, refetch } = usePersonalFacts();
   const deleteMovement = useDeleteMovement();
@@ -179,7 +181,7 @@ export default function Movimientos() {
                   onPress={() => {
                     // §16 · tocar abre el detalle, con Editar y Eliminar.
                     if (row.spaceId != null) {
-                      router.push(`/space/${row.spaceId}`);
+                      openSpace(row.spaceId);
                       return;
                     }
                     router.push(`/movimiento/${row.id.replace('movement:', '')}`);

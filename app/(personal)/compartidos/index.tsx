@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { RefreshControl, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Plus } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSpaces } from '@/features/spaces/useSpaces';
 import { SpaceList } from '@/features/spaces/SpaceList';
+import { SpaceScreen } from '@/features/spaces/SpaceScreen';
 import {
   Button,
   EmptyState,
@@ -33,12 +34,29 @@ export default function Compartidos() {
   const { data: spaces, isLoading, isError, refetch } = useSpaces();
   const [refreshing, setRefreshing] = useState(false);
 
-  // §14 · con un solo espacio, entra directo.
-  useEffect(() => {
-    if (spaces?.length === 1 && spaces[0] != null) {
-      router.replace(`/space/${spaces[0].id}`);
-    }
-  }, [spaces, router]);
+  // §14 · con un solo espacio, entra directo. Se MUESTRA acá, en la misma
+  // pestaña, en vez de redirigir: el redirect sacaba de las pestañas y,
+  // al volver, entraba otra vez (un loop).
+  const only = spaces?.length === 1 ? spaces[0] : undefined;
+  if (only != null) {
+    return (
+      <SpaceScreen
+        spaceId={only.id}
+        leading={{ kind: 'back', onPress: () => router.navigate('/(personal)/inicio') }}
+        footer={
+          // K1 · se pueden tener varios espacios. Con el redirect de antes,
+          // con uno solo este botón no aparecía nunca.
+          <Button
+            label="Crear otro espacio"
+            variant="ghost"
+            fullWidth
+            icon={<Plus size={16} color={theme.colors.textSecondary} />}
+            onPress={() => router.push('/space/nuevo')}
+          />
+        }
+      />
+    );
+  }
 
   async function onRefresh() {
     setRefreshing(true);
