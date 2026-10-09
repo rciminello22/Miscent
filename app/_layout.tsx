@@ -1,5 +1,5 @@
 import 'react-native-gesture-handler';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useFonts } from 'expo-font';
 import { Slot, SplashScreen, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { createQueryClient, wireAppStateToQueries } from '@/data/queryClient';
 import { completeMagicLink } from '@/data/auth';
 import { SessionProvider, useSession } from '@/features/auth/SessionProvider';
+import { setMagicLinkStatus } from '@/features/auth/magicLinkStatus';
 import { PendingInvitation } from '@/features/auth/PendingInvitation';
 import { ThemeProvider } from '@/ui/theme';
 import { fontsToLoad } from '@/ui/tokens';
@@ -50,24 +51,27 @@ export default function RootLayout() {
  * llegar con la app cerrada o en cualquier pantalla.
  */
 function MagicLinkListener() {
-  const [, setHandled] = useState(false);
-
   useEffect(() => {
-    let active = true;
+    // El mismo enlace puede llegar dos veces: como URL inicial y como evento.
+    let lastHandled: string | null = null;
 
     async function handle(url: string | null) {
-      if (url == null || !url.includes('auth')) return;
-      await completeMagicLink(url);
-      if (active) setHandled(true);
+      if (url == null || !url.includes('auth/callback') || url === lastHandled) return;
+      lastHandled = url;
+
+      setMagicLinkStatus({ kind: 'pending' });
+      const result = await completeMagicLink(url);
+      setMagicLinkStatus(
+        result.ok
+          ? { kind: 'done' }
+          : { kind: 'failed', message: result.message ?? 'Este enlace ya no sirve. Pedí uno nuevo.' },
+      );
     }
 
     void Linking.getInitialURL().then(handle);
     const subscription = Linking.addEventListener('url', (event) => void handle(event.url));
 
-    return () => {
-      active = false;
-      subscription.remove();
-    };
+    return () => subscription.remove();
   }, []);
 
   return null;
@@ -118,6 +122,10 @@ function RouteGuard() {
     // O2 · una invitacion se abre ANTES de tener sesion: el enlace llega
     // por fuera de la app y la persona todavia no es usuaria.
     if (group === 'invite') return;
+
+    // P1 · la vuelta del enlace mágico: llega SIN sesión, porque la sesión se
+    // arma recién ahí. La propia pantalla redirige cuando está lista.
+    if (group === 'auth') return;
 
     // La ruta raíz la resuelve app/index.tsx con un <Redirect> declarativo.
     // Si el guard también la redirigiera, habría dos fuentes de verdad para
