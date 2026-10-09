@@ -176,9 +176,14 @@ export default function Movimientos() {
               >
                 <MovementItem
                   row={row}
-                  onPress={() =>
-                    row.spaceId != null ? router.push(`/space/${row.spaceId}`) : undefined
-                  }
+                  onPress={() => {
+                    // §16 · tocar abre el detalle, con Editar y Eliminar.
+                    if (row.spaceId != null) {
+                      router.push(`/space/${row.spaceId}`);
+                      return;
+                    }
+                    router.push(`/movimiento/${row.id.replace('movement:', '')}`);
+                  }}
                   onLongPress={() => confirmDelete(row)}
                 />
                 {index < visible.length - 1 && <Divider />}

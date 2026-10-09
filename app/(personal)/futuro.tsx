@@ -7,6 +7,7 @@ import { activeInstallmentPlans, calculateFuture } from '@domain/future';
 import { calculateUpcomingPayments, upcomingFrom } from '@domain/upcoming';
 import { formatInstallment, formatMonth, formatPaymentWhen } from '@/lib/format';
 import { prettyLabel } from '@/features/add/categories';
+import { useRouter } from 'expo-router';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import {
   AudienceBadge,
@@ -43,6 +44,7 @@ import { useTheme } from '@/ui/theme';
 export default function Futuro() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { facts, expansion, today, isLoading, refetch } = usePersonalFacts();
 
   const from = addMonths(monthOf(today), 1);
@@ -314,6 +316,13 @@ export default function Futuro() {
                 <Stack gap="0">
                   {fixed.map((recurrence, index) => (
                     <View key={recurrence.id}>
+                      <Pressable
+                        onPress={() => router.push(`/fijo/${recurrence.id}`)}
+                        haptic="none"
+                        scaleOnPress={false}
+                        accessibilityRole="button"
+                        accessibilityHint="Cambiar o dejar de pagar este fijo"
+                      >
                       <Row
                         justify="space-between"
                         align="baseline"
@@ -330,6 +339,7 @@ export default function Futuro() {
                         </View>
                         <Money amount={recurrence.amount} variant="smallMedium" />
                       </Row>
+                      </Pressable>
                       {index < fixed.length - 1 && <Divider />}
                     </View>
                   ))}

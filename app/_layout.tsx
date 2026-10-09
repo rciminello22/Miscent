@@ -106,7 +106,14 @@ function RouteGuard() {
      *   space      · §24 · la pantalla del espacio es IGUAL en los dos
      *                estados, y el invitado vive ahí
      */
-    const SHARED_ROUTES = new Set(['onboarding', 'agregar', 'space']);
+    const SHARED_ROUTES = new Set([
+      'onboarding',
+      'agregar',
+      'space',
+      // Hojas de detalle: viven fuera de las pestanas (secciones 16 y 21).
+      'movimiento',
+      'fijo',
+    ]);
 
     // O2 · una invitacion se abre ANTES de tener sesion: el enlace llega
     // por fuera de la app y la persona todavia no es usuaria.
