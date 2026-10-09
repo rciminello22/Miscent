@@ -119,6 +119,11 @@ function RouteGuard() {
     // por fuera de la app y la persona todavia no es usuaria.
     if (group === 'invite') return;
 
+    // La ruta raíz la resuelve app/index.tsx con un <Redirect> declarativo.
+    // Si el guard también la redirigiera, habría dos fuentes de verdad para
+    // el mismo destino y el orden entre ellas no está garantizado.
+    if (group == null) return;
+
     if (accountState === 'signed-out' && !inAuth) {
       router.replace('/(auth)/bienvenida');
       return;

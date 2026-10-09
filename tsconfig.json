@@ -7,10 +7,22 @@
     "noFallthroughCasesInSwitch": true,
     "exactOptionalPropertyTypes": false,
     "paths": {
-      "@/*": ["./src/*"],
-      "@domain/*": ["./src/domain/*"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@domain/*": [
+        "./src/domain/*"
+      ]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
-  "exclude": ["node_modules", "tools", "**/*.spec.tsx", "src/test"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "tools",
+    "**/*.spec.tsx",
+    "src/test"
+  ]
 }
