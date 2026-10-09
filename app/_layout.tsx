@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { createQueryClient, wireAppStateToQueries } from '@/data/queryClient';
 import { completeMagicLink } from '@/data/auth';
 import { SessionProvider, useSession } from '@/features/auth/SessionProvider';
+import { PendingInvitation } from '@/features/auth/PendingInvitation';
 import { ThemeProvider } from '@/ui/theme';
 import { fontsToLoad } from '@/ui/tokens';
 
@@ -33,6 +34,7 @@ export default function RootLayout() {
           <SafeAreaProvider>
             <StatusBar style="auto" />
             <MagicLinkListener />
+            <PendingInvitation />
             <RouteGuard />
           </SafeAreaProvider>
         </ThemeProvider>
@@ -101,8 +103,14 @@ function RouteGuard() {
      *   onboarding · activar la cuenta personal, que se abre desde el Estado B
      *   agregar    · §14 · el formulario único existe en los DOS estados
      *                (en el B, con los espacios como únicos destinos)
+     *   space      · §24 · la pantalla del espacio es IGUAL en los dos
+     *                estados, y el invitado vive ahí
      */
-    const SHARED_ROUTES = new Set(['onboarding', 'agregar']);
+    const SHARED_ROUTES = new Set(['onboarding', 'agregar', 'space']);
+
+    // O2 · una invitacion se abre ANTES de tener sesion: el enlace llega
+    // por fuera de la app y la persona todavia no es usuaria.
+    if (group === 'invite') return;
 
     if (accountState === 'signed-out' && !inAuth) {
       router.replace('/(auth)/bienvenida');

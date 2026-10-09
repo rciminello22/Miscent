@@ -49,11 +49,26 @@ describe('CA-00 · lint de lenguaje prohibido', () => {
   });
 
   it('permite "saldo" solo en el espacio compartido (§7.2)', () => {
-    const v = lintSource(
-      `const t = "Martina te debe $20.000"; const l = "Saldo compartido";`,
+    const source = `const t = "Martina te debe $20.000"; const l = "Saldo compartido";`;
+
+    // Las cuatro rutas donde la cifra existe de verdad.
+    for (const file of [
       'src/features/spaces/SpaceHeader.tsx',
-    );
-    expect(v).toHaveLength(0);
+      'src/domain/shared-balance.ts',
+      'src/data/repositories/spaces.ts',
+      'app/space/[id]/index.tsx',
+    ]) {
+      expect(lintSource(source, file), file).toHaveLength(0);
+    }
+
+    // Y en ninguna otra, aunque sea una pantalla de la app.
+    for (const file of [
+      'app/(personal)/inicio.tsx',
+      'app/(personal)/futuro.tsx',
+      'src/features/add/fields.tsx',
+    ]) {
+      expect(lintSource(source, file).length, file).toBeGreaterThan(0);
+    }
   });
 
   it('ignora comentarios y nombres de identificadores', () => {

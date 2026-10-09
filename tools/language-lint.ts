@@ -84,7 +84,23 @@ const FORBIDDEN: ForbiddenTerm[] = [
     term: 'saldo',
     pattern: /\bsaldos?\b/i,
     rule: '§7.2 · G-05 ("saldo" solo existe para el saldo compartido)',
-    allowedIn: ['features/spaces', 'domain/shared-balance', 'data/spaces'],
+    /**
+     * §7.2 · "Saldo compartido" es el ÚNICO uso permitido de la palabra.
+     * Estas son exactamente las rutas donde vive esa cifra:
+     *   domain/shared-balance        · el cálculo (S-01 a S-06)
+     *   features/spaces              · el lenguaje y los componentes
+     *   data/repositories/spaces     · la lectura y escritura del espacio
+     *   app/space                    · la pantalla del espacio (§24)
+     *
+     * La lista es deliberadamente angosta: fuera de acá, "saldo" es un bug de
+     * lenguaje, porque en lo personal esa cifra no existe.
+     */
+    allowedIn: [
+      'domain/shared-balance',
+      'features/spaces',
+      'data/repositories/spaces',
+      'app/space',
+    ],
   },
 ];
 
