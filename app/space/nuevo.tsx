@@ -3,67 +3,60 @@ import { Alert, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { goBack } from '@/features/shared/navigation';
 import { useOpenSpace } from '@/features/spaces/useOpenSpace';
-import { X } from 'lucide-react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { AmountInput } from '@/features/add/AmountInput';
-import { Field, Segmented } from '@/features/add/fields';
+import { Segmented } from '@/features/add/fields';
+import { StepShell } from '@/features/onboarding/StepShell';
 import { useCreateSpace } from '@/features/spaces/useSpaces';
 import { useSession } from '@/features/auth/SessionProvider';
-import {
-  Button,
-  Card,
-  Pressable,
-  Row,
-  Screen,
-  Stack,
-  Text,
-} from '@/ui/primitives';
-import { duration } from '@/ui/motion';
+import { Button, Pressable, Screen, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 
 /**
- * §9 + §26 · crear un espacio (Caso 2).
+ * §9 + §26 · crear un espacio (Caso 2), paso a paso (10/10).
+ *
+ * Una pregunta por pantalla (principio 9), en el orden del Caso 2: "Nuevo
+ * espacio → Martina → Están a mano → renombra". Es un flujo poco frecuente y
+ * con consecuencias: el formato del onboarding le queda mejor que un
+ * formulario que va apareciendo a medida que se escribe.
  *
  * E-02 · el segundo miembro arranca **sin acceso**: el creador carga por los
- * dos desde el primer día (Modo 1). Eso es central para que el espacio sirva
- * aunque la otra persona nunca instale la app (§1), que §39 declara como el
- * riesgo principal del pilar compartido.
+ * dos desde el primer día (Modo 1). El espacio sirve aunque la otra persona
+ * nunca instale la app (§1, §39).
  *
- * E-07 · el saldo inicial es opcional, y responde a una pregunta muy concreta:
- * "¿alguien viene poniendo más hasta hoy?". Sin eso, la pareja que ya venía
- * usando la pizarra tendría que empezar de cero y perder lo acumulado.
+ * E-07 · el saldo inicial responde "¿alguien viene poniendo más hasta hoy?":
+ * la pareja que ya venía con la pizarra no arranca de cero.
  *
  * A-06 / P5 · crear un espacio requiere cuenta personal, y lo valida la RPC.
  */
+type Step = 'who' | 'balance' | 'name';
+type Favors = 'even' | 'me' | 'other';
+
 export default function NuevoEspacio() {
-  const theme = useTheme();
   const router = useRouter();
   const openSpace = useOpenSpace();
   const { profile, accountState } = useSession();
   const createSpace = useCreateSpace();
 
+  const [step, setStep] = useState<Step>('who');
   const [otherName, setOtherName] = useState('');
   const [name, setName] = useState('');
-  const [hasInitialBalance, setHasInitialBalance] = useState(false);
+  const [favors, setFavors] = useState<Favors>('even');
   const [initialAmount, setInitialAmount] = useState(0);
-  const [favors, setFavors] = useState<'me' | 'other'>('me');
 
   const trimmedOther = otherName.trim();
   // §9 · "Con [nombre]" por defecto; cualquiera lo puede cambiar.
-  const defaultName = trimmedOther === '' ? '' : `Con ${trimmedOther}`;
+  const defaultName = `Con ${trimmedOther}`;
   const finalName = name.trim() === '' ? defaultName : name.trim();
 
-  const canSave = trimmedOther.length > 0 && !createSpace.isPending;
-
   async function save() {
-    if (!canSave) return;
+    if (trimmedOther === '' || createSpace.isPending) return;
 
     try {
       const spaceId = await createSpace.mutateAsync({
         name: finalName,
         otherMemberName: trimmedOther,
-        initialBalance: hasInitialBalance ? initialAmount : 0,
-        initialBalanceFavors: favors,
+        initialBalance: favors === 'even' ? 0 : initialAmount,
+        initialBalanceFavors: favors === 'other' ? 'other' : 'me',
       });
       openSpace(spaceId, 'replace', true);
     } catch (error) {
@@ -75,8 +68,7 @@ export default function NuevoEspacio() {
   }
 
   // Caso 19 / P5 · sin cuenta personal no se crea un espacio. Se explica ANTES
-  // de que complete el formulario, no con un error al final; y siempre con
-  // salida (el 10/10 una invitada llegó acá y la cruz no la sacaba).
+  // de que complete nada, y siempre con salida.
   if (accountState !== 'personal') {
     return (
       <Screen
@@ -107,121 +99,70 @@ export default function NuevoEspacio() {
     );
   }
 
-  return (
-    <Screen
-      footer={
-        <Button
-          label="Crear espacio"
-          variant="shared"
-          size="lg"
-          fullWidth
-          haptic="success"
-          disabled={!canSave}
-          loading={createSpace.isPending}
-          onPress={() => void save()}
-        />
-      }
-    >
-      <Stack gap="7">
-        <Row justify="space-between" align="center">
-          <Text variant="heading">Nuevo espacio</Text>
-          <Pressable
-            onPress={() => goBack(router)}
-            accessibilityRole="button"
-            accessibilityLabel="Cerrar"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: theme.radius.pill,
-              backgroundColor: theme.colors.surfaceSunken,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <X size={18} color={theme.colors.textSecondary} />
-          </Pressable>
-        </Row>
+  if (step === 'who') {
+    return (
+      <StepShell
+        step={1}
+        total={3}
+        title="¿Con quién lo compartís?"
+        description="Un espacio es para dos personas: anotan lo que pagan y la app hace las cuentas."
+        help="Solo su nombre. Podés invitarla después, o nunca: el espacio funciona igual y vos cargás por los dos. ¿Ya usa la app? Pedile que te invite, así no crean dos espacios."
+        continueDisabled={trimmedOther === ''}
+        onContinue={() => setStep('balance')}
+        onSkip={() => goBack(router)}
+        skipLabel="Ahora no"
+      >
+        <TextField value={otherName} onChange={setOtherName} placeholder="Martina" autoFocus />
+      </StepShell>
+    );
+  }
 
-        <Text variant="body" tone="secondary">
-          Un espacio es para dos personas. Anotan lo que pagan y la app hace las cuentas.
-        </Text>
-
-        <Field
-          label="¿Con quién lo compartís?"
-          hint="Solo su nombre. Podés invitarla después, o nunca: el espacio funciona igual y vos cargás por los dos."
-        >
-          <TextField
-            value={otherName}
-            onChange={setOtherName}
-            placeholder="Martina"
-            autoFocus
+  if (step === 'balance') {
+    return (
+      <StepShell
+        step={2}
+        total={3}
+        title="¿Alguien viene poniendo más hasta hoy?"
+        description="Si ya venían anotando en otro lado, arrancá desde ahí."
+        help={`${trimmedOther} también lo va a ver si entra al espacio, y lo puede corregir.`}
+        continueDisabled={favors !== 'even' && initialAmount <= 0}
+        onContinue={() => setStep('name')}
+        onSkip={() => setStep('who')}
+        skipLabel="Atrás"
+      >
+        <Stack gap="5">
+          {/* S-06 · "Están a mano" es la respuesta por defecto. */}
+          <Segmented
+            options={[
+              { value: 'even', label: 'Están a mano' },
+              { value: 'me', label: `${profile?.displayName ?? 'Yo'} puso más` },
+              { value: 'other', label: `${trimmedOther} puso más` },
+            ]}
+            value={favors}
+            onChange={setFavors}
           />
-        </Field>
+          {favors !== 'even' && (
+            <AmountInput value={initialAmount} onChange={setInitialAmount} autoFocus={false} />
+          )}
+        </Stack>
+      </StepShell>
+    );
+  }
 
-        {trimmedOther !== '' && (
-          <Animated.View entering={FadeInDown.duration(duration.base)}>
-            <Field label="¿Cómo se llama el espacio?">
-              <TextField value={name} onChange={setName} placeholder={defaultName} />
-            </Field>
-          </Animated.View>
-        )}
-
-        {/* E-07 · el saldo inicial. */}
-        {trimmedOther !== '' && (
-          <Animated.View entering={FadeInDown.delay(60).duration(duration.base)}>
-            <Card tone="sunken">
-              <Stack gap="4">
-                <Pressable
-                  onPress={() => setHasInitialBalance(!hasInitialBalance)}
-                  haptic="none"
-                  scaleOnPress={false}
-                >
-                  <Row justify="space-between" align="center">
-                    <View style={{ flex: 1, gap: 2 }}>
-                      <Text variant="smallMedium">
-                        ¿Alguien viene poniendo más hasta hoy?
-                      </Text>
-                      <Text variant="caption" tone="muted">
-                        Si ya venían anotando en otro lado, arrancá desde ahí.
-                      </Text>
-                    </View>
-                    <Text variant="small" tone="brand">
-                      {hasInitialBalance ? 'Quitar' : 'Agregar'}
-                    </Text>
-                  </Row>
-                </Pressable>
-
-                {hasInitialBalance && (
-                  <Animated.View entering={FadeInDown.duration(duration.base)}>
-                    <Stack gap="4">
-                      <AmountInput
-                        value={initialAmount}
-                        onChange={setInitialAmount}
-                        autoFocus={false}
-                      />
-
-                      <Segmented
-                        options={[
-                          { value: 'me', label: `${profile?.displayName ?? 'Yo'} puso más` },
-                          { value: 'other', label: `${trimmedOther} puso más` },
-                        ]}
-                        value={favors}
-                        onChange={setFavors}
-                      />
-                    </Stack>
-                  </Animated.View>
-                )}
-              </Stack>
-            </Card>
-          </Animated.View>
-        )}
-
-        {/* §13 O1 paso 5b · la pregunta previa que evita espacios duplicados. */}
-        <Text variant="caption" tone="muted" align="center">
-          ¿La otra persona ya usa la app? Pedile que te invite, así no crean dos espacios.
-        </Text>
-      </Stack>
-    </Screen>
+  return (
+    <StepShell
+      step={3}
+      total={3}
+      title="¿Cómo se llama el espacio?"
+      description="Lo pueden cambiar los dos cuando quieran."
+      continueLabel="Crear espacio"
+      saving={createSpace.isPending}
+      onContinue={() => void save()}
+      onSkip={() => setStep('balance')}
+      skipLabel="Atrás"
+    >
+      <TextField value={name} onChange={setName} placeholder={defaultName} autoFocus />
+    </StepShell>
   );
 }
 
