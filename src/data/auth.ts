@@ -138,7 +138,13 @@ export async function confirmSavingAccess(
     token: code,
     type: 'email_change',
   });
-  return error == null ? { ok: true } : { ok: false, message: describeAuthError(error.message) };
+  if (error != null) return { ok: false, message: describeAuthError(error.message) };
+
+  // El claim is_anonymous del JWT sigue en true hasta renovar la sesión, y el
+  // servidor lo usa (migración 0006): sin esto, "Crear mi cuenta personal"
+  // justo después de guardar el email era rechazado.
+  await supabase.auth.refreshSession();
+  return { ok: true };
 }
 
 export async function signOut(): Promise<void> {

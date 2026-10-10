@@ -636,6 +636,7 @@ export type Database = {
       }
       app_delete_account: { Args: never; Returns: undefined }
       app_has_personal_account: { Args: never; Returns: boolean }
+      app_is_anonymous: { Args: never; Returns: boolean }
       app_leave_space: { Args: { target_space_id: string }; Returns: undefined }
       app_my_slot: { Args: { target_space_id: string }; Returns: number }
       app_my_space_ids: { Args: never; Returns: string[] }

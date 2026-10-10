@@ -8,9 +8,10 @@
 -- `authenticated`, igual que un cliente de la app. No hay atajos: si una
 -- política está mal, el test lo ve.
 --
--- 32 asserts. Cubre: PR-01, PR-02, CA-05, CA-11, CA-12, CA-13, CA-22, CA-40,
+-- 37 asserts. Cubre: PR-01, PR-02, CA-05, CA-11, CA-12, CA-13, CA-22, CA-40,
 -- CA-47, CA-48, C-02, C-05, E-01, E-02, I-02, I-04, I-07, K1, K3, K4, P5,
--- SA-02, SA-06, SY-02, X-02 y la asimetría de shared_payment_details.
+-- SA-02, SA-06, SY-02, X-02, la asimetría de shared_payment_details y el
+-- usuario anónimo de O2 sin email.
 --
 -- Se corre de dos formas, y las dos funcionan sobre este mismo archivo:
 --   npm run test:rls      (pgTAP vía Docker, con salida TAP)
@@ -25,7 +26,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
 
-select plan(32);
+select plan(37);
 
 -- ───────────────────────────────────────────────────────────────────────────
 -- Montaje: Renzo (con cuenta personal), Martina (invitada, Estado B) y Juan.
@@ -40,6 +41,20 @@ begin
   perform set_config(
     'request.jwt.claims',
     json_build_object('sub', target_user_id::text, 'role', 'authenticated')::text,
+    true
+  );
+end;
+$$;
+
+-- Un usuario anónimo (O2 sin email, 10/10): mismo rol `authenticated`, pero
+-- el JWT lleva is_anonymous = true, igual que lo emite Supabase.
+create or replace function tests.authenticate_as_anonymous(target_user_id uuid)
+returns void language plpgsql as $$
+begin
+  perform set_config('role', 'authenticated', true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', target_user_id::text, 'role', 'authenticated', 'is_anonymous', true)::text,
     true
   );
 end;
@@ -130,7 +145,13 @@ insert into tests.results(line) select lives_ok(
 
 select tests.as_service();
 
-select tests.put('casa_id', (select id::text from spaces where name = 'Casa'));
+-- Por el usuario del test, NO solo por el nombre: el test corre contra la base
+-- real, y el 10/10 un espacio real también se llamaba "Casa".
+select tests.put('casa_id', (
+  select s.id::text from spaces s
+  join space_members m on m.space_id = s.id
+  where s.name = 'Casa' and m.user_id = '11111111-1111-1111-1111-111111111111'
+));
 
 insert into tests.results(line) select is(
   (select count(*)::int from space_members where space_id = tests.get('casa_id')::uuid),
@@ -389,6 +410,58 @@ insert into tests.results(line) select is(
   (select count(*)::int from deleted_shared_records),
   0,
   'PR-02 · Juan no ve lo que se elimina en Casa'
+);
+
+
+-- ───────────────────────────────────────────────────────────────────────────
+-- O2 sin email (10/10) · la invitada entra como usuario anónimo
+--
+-- Un anónimo es un `authenticated` más: tiene que poder hacer lo de una
+-- invitada (aceptar, ver su espacio) y NADA que requiera email. Sin email no
+-- hay cuenta personal, y sin cuenta personal no se crean espacios (P5).
+-- ───────────────────────────────────────────────────────────────────────────
+
+select tests.as_service();
+insert into auth.users (id, instance_id, aud, role, is_anonymous)
+values ('44444444-4444-4444-4444-444444444444', '00000000-0000-0000-0000-000000000000',
+        'authenticated', 'authenticated', true);
+
+select tests.authenticate_as('11111111-1111-1111-1111-111111111111');
+select tests.put('prueba_id', app_create_space('Prueba', 'Ana')::text);
+select tests.put('token3', app_create_invitation(tests.get('prueba_id')::uuid));
+
+select tests.authenticate_as_anonymous('44444444-4444-4444-4444-444444444444');
+
+insert into tests.results(line) select lives_ok(
+  $$ insert into profiles (id, display_name, has_personal_account)
+     values ('44444444-4444-4444-4444-444444444444', 'Ana', false) $$,
+  'O2 · el usuario anónimo crea su perfil, sin cuenta personal'
+);
+
+insert into tests.results(line) select lives_ok(
+  $$ select app_accept_invitation(tests.get('token3'), 'Ana') $$,
+  'O2 · el usuario anónimo acepta su invitación'
+);
+
+insert into tests.results(line) select is(
+  (select count(*)::int from spaces),
+  1,
+  'O2 / PR-02 · el anónimo ve SOLO el espacio al que lo invitaron'
+);
+
+insert into tests.results(line) select throws_ok(
+  $$ select app_activate_personal_account() $$,
+  '42501',
+  null,
+  'Sin email no hay cuenta personal: el anónimo no la puede activar'
+);
+
+insert into tests.results(line) select throws_ok(
+  $$ update profiles set has_personal_account = true
+     where id = '44444444-4444-4444-4444-444444444444' $$,
+  '42501',
+  null,
+  'Sin email no hay cuenta personal: tampoco tocando su perfil directo'
 );
 
 
