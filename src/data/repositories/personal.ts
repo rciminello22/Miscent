@@ -19,6 +19,7 @@ import {
   toSharedPaymentDetail,
   toSpaceFacts,
 } from '../mappers';
+import { ownActiveMemberships } from '../memberships';
 
 export async function fetchPersonalFacts(userId: string): Promise<PersonalFacts> {
   const [methods, movements, recurrences, statements, memberships] = await Promise.all([
@@ -26,7 +27,7 @@ export async function fetchPersonalFacts(userId: string): Promise<PersonalFacts>
     supabase.from('personal_movements').select('*').order('date', { ascending: false }),
     supabase.from('recurrences').select('*'),
     supabase.from('declared_statements').select('*'),
-    supabase.from('space_members').select('space_id, slot').eq('status', 'active'),
+    supabase.from('space_members').select('space_id, slot, user_id, status'),
   ]);
 
   throwIfError(methods.error, 'medios de pago');
@@ -39,9 +40,10 @@ export async function fetchPersonalFacts(userId: string): Promise<PersonalFacts>
   const overrides = await fetchOverrides(recurrenceRows.map((row) => row.id));
 
   // K9 · la parte de cada espacio llega al radar calculada, nunca copiada.
+  // Solo con las filas PROPIAS: con las del otro, el radar sumaba su parte.
   const spaces = await Promise.all(
-    (memberships.data ?? []).map((membership) =>
-      fetchMembership(membership.space_id, membership.slot as Slot),
+    ownActiveMemberships(memberships.data ?? [], userId).map((membership) =>
+      fetchMembership(membership.spaceId, membership.slot),
     ),
   );
 

@@ -21,6 +21,7 @@ import type {
 } from '@domain/types';
 import { supabase } from '../supabase';
 import { installmentColumns, splitColumns, toSpaceFacts } from '../mappers';
+import { ownActiveMemberships } from '../memberships';
 
 export type SpaceSummary = {
   id: string;
@@ -35,25 +36,33 @@ export type SpaceSummary = {
 
 /** §14 · la lista de Compartidos. Con uno solo, la app entra directo. */
 export async function fetchMySpaces(): Promise<SpaceSummary[]> {
+  const { data: auth } = await supabase.auth.getSession();
+  const userId = auth.session?.user.id;
+  if (userId == null) return [];
+
   const { data, error } = await supabase
     .from('space_members')
-    .select('space_id, slot, spaces(id, name)')
-    .eq('status', 'active');
+    .select('space_id, slot, user_id, status, spaces(id, name)');
 
   if (error != null) throw new Error('No pudimos leer tus espacios.');
 
+  // Solo las filas PROPIAS: la RLS devuelve también la del otro miembro, y
+  // cuando el otro entraba cada espacio aparecía dos veces.
+  const rows = data ?? [];
+  const names = new Map(rows.map((row) => [row.space_id, row.spaces?.name ?? 'Espacio']));
+
   const summaries = await Promise.all(
-    (data ?? []).map(async (membership) => {
+    ownActiveMemberships(rows, userId).map(async (membership) => {
       const { data: members } = await supabase
         .from('space_members')
         .select('slot, display_name, status')
-        .eq('space_id', membership.space_id);
+        .eq('space_id', membership.spaceId);
 
       const other = (members ?? []).find((member) => member.slot !== membership.slot);
 
       return {
-        id: membership.space_id,
-        name: membership.spaces?.name ?? 'Espacio',
+        id: membership.spaceId,
+        name: names.get(membership.spaceId) ?? 'Espacio',
         mySlot: membership.slot as Slot,
         otherMemberName: other?.display_name ?? '',
         otherHasAccess: other?.status === 'active',
