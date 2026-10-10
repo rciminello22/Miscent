@@ -43,8 +43,15 @@ de cuentas") están en el escritorio pero **están superadas**. No usarlas.
 
 - Prefiere respuestas **concisas**. No describir lo que se va a hacer antes de
   hacerlo.
-- Ante una ambigüedad de producto: **preguntar**, no decidir (§40.1).
-- Commits: conventional, en español, **sin atribución de IA**.
+- Ante una ambigüedad de producto: **preguntar**, no decidir (§40.1). Presentar
+  opciones con su contra y una recomendación.
+- Commits: conventional, en español, **sin atribución de IA**, uno por tema.
+- Prueba en un **iPhone con Expo Go** (`npm run start:tunnel`). Encuentra los
+  bugs usando la app: tomarlos en serio y buscar la causa de fondo, no el
+  síntoma.
+- **Nada se aplica en la base remota sin su OK explícito** (`db push`). El
+  token de la CLI vence en minutos: pedirle `npx supabase login` justo antes.
+- Le gusta debatir UX: sus "detalles para debatir" suelen esconder bugs reales.
 
 ---
 
@@ -143,19 +150,21 @@ radar/
 | Área | Estado |
 |---|---|
 | Dominio (§29 completo) | ✅ Los 7 casos de §29.1 pasan exactos |
-| Supabase + RLS | ✅ 13 tablas, 32 políticas, 7 RPC, 1 trigger · **37/37 asserts** |
-| UI base | ✅ Tokens claro/oscuro, motion, 14 primitivas propias |
+| Supabase + RLS | ✅ 13 tablas, 32 políticas, 8 migraciones, 2 triggers · **46/46 asserts** |
+| UI base | ✅ Tokens claro/oscuro, motion, 14 primitivas propias, teclado y footer fijo (§11) |
 | O1 · O2 · O3 | ✅ Completos, con T-07/Q-06 derivados del último cierre |
 | Acceso | ✅ Código de 8 dígitos + enlace · "Ya tengo cuenta" sin alta · invitada **sin email** (ver §10) |
-| Agregar (§17) | ✅ Destino "Solo yo" + un chip por espacio (M3), cuotas, fecha editable |
+| Agregar (§17) | ✅ Destino "Solo yo" + chip por espacio (M3), último medio usado, cuotas/fijo/fecha/descripción en **"Más opciones"** |
 | SY-02 | ✅ Registro de borrados por trigger: nombra a quien eliminó, sin suponer |
 | Inicio (§15) | ✅ Radar, tarjeta este mes, próximos pagos, próximos meses, **Tus espacios** |
 | Compartidos | ✅ Stack dentro de la pestaña: la barra queda visible dentro del espacio |
+| Ciclo del miembro | ✅ Borrado por cualquier camino = ex miembro · P7 reinvitar · el creador quita el acceso (§26) |
+| Crear espacio | ✅ Paso a paso (StepShell), en el orden del Caso 2 |
 | Futuro (§23) | ✅ 23.1 + 23.2 + 23.3 |
 | Movimientos (§16) | ✅ Con gastos compartidos y filtros |
 | M18 "¿de dónde sale?" | ✅ CA-04 y CA-52 testeados palabra por palabra |
-| Espacios (§24) | ✅ Saldo, mes, próximos meses, movimientos |
-| Pagos (§25) · Invitaciones (§26) | ✅ |
+| Espacios (§24) | ✅ Saldo, mes **hasta hoy** + "Se vienen este mes", próximos meses, movimientos con pagos |
+| Pagos (§25) · Invitaciones (§26) | ✅ Pagos visibles en el mes y en movimientos, se eliminan con el saldo nuevo |
 | Salida (§27) | ✅ Con SA-03/SA-04 explicados en palabras |
 | Edición X-01..X-07 · F-03 · Q-07 | ✅ |
 | Perfil · §28 eliminar cuenta | ✅ |
@@ -169,8 +178,8 @@ npm run verify:full  # + los de RLS
 
 | Nivel | Qué | Cuántos |
 |---|---|---|
-| 1 · Dominio y reglas puras (vitest) | Casos A–G, CA-*, casos de uso, identidad, navegación | 197 |
-| 2 · Autorización (pgTAP) | PR-01, PR-02, CA-11..13, CA-47, CA-48, SY-02, SA-06, anónimos | 37 |
+| 1 · Dominio y reglas puras (vitest) | Casos A–G, CA-*, casos de uso, identidad, navegación, Agregar | 212 |
+| 2 · Autorización (pgTAP) | PR-01, PR-02, CA-11..13, CA-47, CA-48, SY-02, SA-06, D-01, P7, §26, anónimos, permisos de funciones | 46 |
 | 3 · Componentes (jest-expo) | El lenguaje **obligatorio** | 28 |
 | 4 · Lint de lenguaje | **Automatiza CA-00** | en CI |
 
@@ -190,9 +199,11 @@ Nada. T-07, SY-02, la fecha editable, M3 (destino en Agregar) y el bloque
   habitual en las stores es Apple + Google + email; ojo con la guideline 4.8
   (login social obliga a ofrecer Sign in with Apple) y con la cuenta demo que
   pide el review.
-- **Invitada sin email** (usuario anónimo). Reabre P1/A-01. Riesgos: si pierde
-  el teléfono antes de guardar su email, pierde el acceso y su lugar queda
-  ocupado (P7). Falta CAPTCHA contra la creación masiva de anónimos.
+- **Invitada sin email** (usuario anónimo). Reabre P1/A-01. Si pierde el
+  teléfono antes de guardar su email, pierde el acceso; el creador puede
+  quitarle el acceso y volver a invitarla (§26 + P7), pero ella pierde el
+  vínculo con lo que cargó. Falta CAPTCHA contra la creación masiva de
+  anónimos.
 - **SMTP**: hoy es Gmail con contraseña de aplicación. Para producción, un
   proveedor transaccional (Resend o Postmark) con dominio propio.
 - **Links de invitación tocables**: exp:// y radar:// no se vuelven links en
@@ -204,10 +215,15 @@ Nada. T-07, SY-02, la fecha editable, M3 (destino en Agregar) y el bloque
 - SA-04 · preguntarle a quien queda si adopta el fijo detenido
 - Editar un recurrente **compartido** (los personales ya se editan)
 - P6 · qué ve un ex miembro (decidido: resumen fijo del saldo al salir)
+- §33 U1 · el invitado con un solo espacio entra directo y no ve la tarjeta
+  "Tu plata personal" (solo está en su Perfil)
 - §28 exportar datos (CSV)
 - Accesibilidad: auditar contraste y tamaños de toque (los labels ya están)
-- Should de §5: aviso de duplicado, compartir resumen como texto, quitar
-  acceso por enlace reenviado, actividad reciente, totales por categoría
+- Should de §5: completar con qué se pagó un gasto que cargó el otro, aviso de
+  duplicado, compartir resumen como texto, actividad reciente, totales por
+  categoría
+- Más flujos paso a paso donde convenga (criterio en §11): salir de un espacio,
+  invitar
 
 ### Bloqueantes de producto (no de código)
 **P9, P10 y P11 siguen pendientes** y bloquean publicar cualquier texto de
@@ -233,6 +249,17 @@ datos, y cifrado/ubicación/uso para entrenar IA del proveedor. La base está en
   con `search_path = public` no encuentran `gen_random_bytes` ni `digest`:
   calificarlas como `extensions.gen_random_bytes`. NO ampliar el search_path,
   que en SECURITY DEFINER es un vector de escalada.
+- **`revoke ... from public` NO cierra una función.** Supabase da EXECUTE
+  explícito a `anon` y `authenticated`. La 0007 dejó `app_member_departs`
+  (security definer, interna) ejecutable por cualquiera; la 0008 lo cerró y
+  cambió los default privileges: **una función nueva nace cerrada** y cada
+  migración da su `grant ... to authenticated` explícito. Verificar con
+  `has_function_privilege`. `db:types` lista las funciones expuestas: si
+  aparece una interna, hay un agujero.
+- **Los tests pgTAP corren contra la base REAL** (en una transacción con
+  rollback). Nunca buscar datos del test por nombre: un dato real puede
+  llamarse igual (pasó con "Casa"). Primero RED contra la base actual, después
+  `db push`, después GREEN.
 
 ### Expo
 - **`npx expo install`, NUNCA `npm install`, para paquetes con módulo nativo.**
@@ -256,7 +283,11 @@ datos, y cifrado/ubicación/uso para entrenar IA del proveedor. La base está en
 
 ### Testing
 - **`render` es ASYNC desde RNTL 14.** Sin `await` da "render function has not
-  been called", que no dice nada sobre la causa.
+  been called", que no dice nada sobre la causa. **`fireEvent` también**: sin
+  `await` aparece "overlapping act() calls".
+- La lógica testeable se saca a funciones puras con su `.test.ts` (vitest,
+  node): identidad (`authFlow`), navegación (`spaceNavigation`), membresías
+  (`memberships`), copy (`balanceCopy`), defaults de Agregar (`addDefaults`).
 - **No usar `screen`** (estado global de RNTL): usar el resultado de `render`.
 - Reanimated 4 necesita el resolver de `react-native-worklets` en jest.
 - `lucide-react-native` es ESM: está mockeado con un Proxy.
@@ -379,3 +410,19 @@ El mail trae un **código de 8 dígitos** y el enlace. Cualquiera de los dos sir
 - **Los tests de RLS corren contra la base REAL**, dentro de una transacción con
   rollback. Nunca buscar datos del test por nombre: un dato real puede
   llamarse igual (pasó con "Casa").
+
+---
+
+## 11. Patrones de UI y de lenguaje acordados (9 y 10/10)
+
+| Patrón | Regla | Dónde vive |
+|---|---|---|
+| **Botón principal fijo** | En formularios, la acción principal va en `<Screen footer={...}>`: queda fija y sube con el teclado. En pantallas de contenido, NO | `src/ui/primitives/layout.tsx` |
+| **Teclado** | `Screen` ya maneja el teclado (KeyboardAvoidingView + insets). Nada de `react-native-keyboard-controller`: no viene en Expo Go | idem |
+| **Salir siempre** | Nunca `router.back()` a secas: `goBack(router)` (sin historial, va a la raíz). Cambio de árbol: `resetTo` | `src/features/shared/navigation.ts` |
+| **Abrir un espacio** | `useOpenSpace()`, nunca la ruta armada a mano: personal → dentro de la pestaña; invitado → `/space/[id]` | `src/features/spaces/` |
+| **"Con uno solo, entra directo"** | Se renderiza inline, nunca `useEffect` + `replace` (hacía loop) | `compartidos/index.tsx` |
+| **Paso a paso vs formulario** | Paso a paso (`StepShell`, una pregunta por pantalla) en flujos poco frecuentes y con consecuencias. Formulario único con "Más opciones" en los frecuentes (Agregar: principio 4) | `StepShell`, `MoreOptions` |
+| **"Tu parte"** | Nunca "te corresponde" en la UI: se leía como plata que te deben. "Parte" es el sinónimo del glosario §7.2 | todo `features/spaces` |
+| **El mes del espacio** | Cuenta hasta hoy, igual que el saldo. Lo que falta: "Se vienen este mes" | `calculateSpaceMonth` |
+| **Todo pago se ve** | Un pago entre miembros no cambia "puso" (P-04), pero aparece en el mes y en movimientos | `SpaceScreen` |
