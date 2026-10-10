@@ -8,10 +8,10 @@
 -- `authenticated`, igual que un cliente de la app. No hay atajos: si una
 -- política está mal, el test lo ve.
 --
--- 37 asserts. Cubre: PR-01, PR-02, CA-05, CA-11, CA-12, CA-13, CA-22, CA-40,
--- CA-47, CA-48, C-02, C-05, E-01, E-02, I-02, I-04, I-07, K1, K3, K4, P5,
--- SA-02, SA-06, SY-02, X-02, la asimetría de shared_payment_details y el
--- usuario anónimo de O2 sin email.
+-- 46 asserts. Cubre: PR-01, PR-02, CA-05, CA-11, CA-12, CA-13, CA-22, CA-40,
+-- CA-47, CA-48, C-02, C-05, D-01, E-01, E-02, I-02, I-04, I-07, K1, K3, K4,
+-- P5, P7, SA-02, SA-06, SY-02, X-02, §26 quitar acceso, la asimetría de
+-- shared_payment_details y el usuario anónimo de O2 sin email.
 --
 -- Se corre de dos formas, y las dos funcionan sobre este mismo archivo:
 --   npm run test:rls      (pgTAP vía Docker, con salida TAP)
@@ -26,7 +26,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
 
-select plan(37);
+select plan(46);
 
 -- ───────────────────────────────────────────────────────────────────────────
 -- Montaje: Renzo (con cuenta personal), Martina (invitada, Estado B) y Juan.
@@ -518,6 +518,106 @@ insert into tests.results(line) select is(
    where space_id = tests.get('viaje_id')::uuid),
   0,
   'SA-06 · eliminar el espacio entero no deja registros de borrado'
+);
+
+
+-- ───────────────────────────────────────────────────────────────────────────
+-- D-01 por fuera de la app · el 10/10 se borró una usuaria desde el dashboard
+-- y su lugar quedó 'active' sin nadie: no se la veía como ex miembro y no se
+-- podía volver a invitar. Borre quien borre, valen las reglas de salida.
+-- ───────────────────────────────────────────────────────────────────────────
+
+select tests.as_service();
+delete from auth.users where id = '44444444-4444-4444-4444-444444444444';
+
+insert into tests.results(line) select is(
+  (select status::text from space_members
+   where space_id = tests.get('prueba_id')::uuid and slot = 2),
+  'former',
+  'D-01 · un usuario borrado por fuera de la app queda como ex miembro, no como un lugar activo vacío'
+);
+
+
+-- ───────────────────────────────────────────────────────────────────────────
+-- P7 · se puede volver a invitar al lugar de un ex miembro (decisión 10/10)
+-- §26 · el creador puede quitar el acceso de quien entró por error
+-- ───────────────────────────────────────────────────────────────────────────
+
+-- En Casa, Martina salió (SA-02): su lugar es de ex miembro.
+select tests.authenticate_as('11111111-1111-1111-1111-111111111111');
+
+insert into tests.results(line) select lives_ok(
+  $$ select tests.put('token4', app_create_invitation(tests.get('casa_id')::uuid)) $$,
+  'P7 · se puede volver a invitar al lugar de un ex miembro'
+);
+
+select tests.as_service();
+insert into auth.users (id, email, instance_id, aud, role)
+values ('55555555-5555-5555-5555-555555555555', 'sofia@example.com',
+        '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated');
+insert into profiles (id, display_name, has_personal_account)
+values ('55555555-5555-5555-5555-555555555555', 'Sofía', false);
+
+select tests.authenticate_as('55555555-5555-5555-5555-555555555555');
+
+insert into tests.results(line) select lives_ok(
+  $$ select app_accept_invitation(tests.get('token4'), 'Sofía') $$,
+  'P7 · quien acepta ocupa el lugar del ex miembro'
+);
+
+insert into tests.results(line) select throws_ok(
+  $$ select app_remove_member_access(tests.get('casa_id')::uuid) $$,
+  '42501',
+  null,
+  '§26 · solo el creador puede quitar el acceso del otro (sin roles, §6)'
+);
+
+select tests.authenticate_as('11111111-1111-1111-1111-111111111111');
+
+insert into tests.results(line) select lives_ok(
+  $$ select app_remove_member_access(tests.get('casa_id')::uuid) $$,
+  '§26 · el creador quita el acceso de quien entró por error'
+);
+
+insert into tests.results(line) select is(
+  (select status::text from space_members
+   where space_id = tests.get('casa_id')::uuid and slot = 2),
+  'no_access',
+  '§26 · el lugar vuelve a estar sin acceso: se puede invitar de nuevo'
+);
+
+select tests.authenticate_as('55555555-5555-5555-5555-555555555555');
+
+insert into tests.results(line) select is(
+  (select count(*)::int from spaces),
+  0,
+  '§26 · quien perdió el acceso deja de ver el espacio'
+);
+
+
+-- ───────────────────────────────────────────────────────────────────────────
+-- Funciones internas · el 10/10, app_member_departs quedó ejecutable por anon y
+-- authenticated: en Supabase, `revoke ... from public` NO saca los grants por
+-- defecto, que van explícitos a esos roles. Siendo security definer, cualquiera
+-- con el id de un espacio podía sacar a un miembro o borrar el espacio.
+-- ───────────────────────────────────────────────────────────────────────────
+
+select tests.as_service();
+
+insert into tests.results(line) select is(
+  (select bool_or(has_function_privilege(r.role, 'public.app_member_departs(uuid, smallint)', 'execute'))
+   from (values ('anon'), ('authenticated')) as r(role)),
+  false,
+  'Interna · nadie desde la app puede ejecutar app_member_departs'
+);
+
+insert into tests.results(line) select is(
+  (select count(*)::int from pg_proc p
+   join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public' and p.proname like 'app\_%'
+     and has_function_privilege('anon', p.oid, 'execute')),
+  0,
+  'Sin sesión no se ejecuta ninguna función de la app'
 );
 
 
