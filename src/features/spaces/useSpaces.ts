@@ -18,6 +18,7 @@ import {
   deleteSharedExpense,
   fetchMySpaces,
   fetchSpaceFacts,
+  removeMemberAccess,
   renameSpace,
   type NewSharedExpense,
 } from '@/data/repositories/spaces';
@@ -146,6 +147,15 @@ export function useCreateMemberPayment(spaceId: string) {
 
   return useMutation({
     mutationFn: (input: Parameters<typeof createMemberPayment>[0]) => createMemberPayment(input),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+export function useRemoveMemberAccess(spaceId: string) {
+  const invalidate = useInvalidateSpace(spaceId);
+
+  return useMutation({
+    mutationFn: () => removeMemberAccess(spaceId),
     onSuccess: () => void invalidate(),
   });
 }

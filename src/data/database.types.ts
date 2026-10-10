@@ -638,8 +638,16 @@ export type Database = {
       app_has_personal_account: { Args: never; Returns: boolean }
       app_is_anonymous: { Args: never; Returns: boolean }
       app_leave_space: { Args: { target_space_id: string }; Returns: undefined }
+      app_member_departs: {
+        Args: { departing_slot: number; target_space_id: string }
+        Returns: undefined
+      }
       app_my_slot: { Args: { target_space_id: string }; Returns: number }
       app_my_space_ids: { Args: never; Returns: string[] }
+      app_remove_member_access: {
+        Args: { target_space_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       category:

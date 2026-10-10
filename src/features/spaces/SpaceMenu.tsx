@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { Alert, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LogOut, Pencil, UserPlus } from 'lucide-react-native';
+import { LogOut, Pencil, UserPlus, UserX } from 'lucide-react-native';
 import { Button, Divider, Pressable, Row, Sheet, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
-import { useRenameSpace } from './useSpaces';
+import { useRemoveMemberAccess, useRenameSpace } from './useSpaces';
 
 /**
  * §24 · el menú del espacio: "Renombrar · Invitar o ver invitación · Salir
@@ -21,6 +21,7 @@ export function SpaceMenu({
   spaceName,
   otherMemberName,
   otherHasAccess,
+  canRemoveOther,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -28,10 +29,45 @@ export function SpaceMenu({
   spaceName: string;
   otherMemberName: string;
   otherHasAccess: boolean;
+  /** §26 · solo quien creó el espacio, y solo si el otro tiene acceso. */
+  canRemoveOther: boolean;
 }) {
   const theme = useTheme();
   const router = useRouter();
   const rename = useRenameSpace(spaceId);
+  const removeAccess = useRemoveMemberAccess(spaceId);
+
+  /**
+   * §26 (Should) · "Enlace reenviado por error: el creador ve quién entró y
+   * puede quitar ese acceso." Confirmación en dos pasos, con lo que pasa
+   * dicho antes: no es una forma de cobrarle a nadie (principio 13).
+   */
+  function confirmRemove() {
+    onClose();
+    Alert.alert(
+      `¿Quitarle el acceso a ${otherMemberName}?`,
+      `Es para cuando entró alguien que no era. ${otherMemberName} deja de ver ${spaceName}; lo que cargó queda, con su nombre, y el saldo no cambia. Después podés invitar a quien corresponde.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Continuar',
+          style: 'destructive',
+          onPress: () =>
+            Alert.alert('¿Seguro?', `${otherMemberName} va a perder el acceso a ${spaceName}.`, [
+              { text: 'No', style: 'cancel' },
+              {
+                text: 'Quitar el acceso',
+                style: 'destructive',
+                onPress: () =>
+                  void removeAccess.mutateAsync().catch(() =>
+                    Alert.alert('No pudimos quitar el acceso', 'Probá de nuevo en un momento.'),
+                  ),
+              },
+            ]),
+        },
+      ],
+    );
+  }
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(spaceName);
@@ -106,13 +142,25 @@ export function SpaceMenu({
           />
           <Divider />
 
-          {/* §26 · invitar solo existe si hay un lugar sin acceso (I-01). */}
+          {/* §26 · invitar solo existe si el lugar está libre: sin acceso o de
+              un ex miembro (I-01 + P7). */}
           {!otherHasAccess && (
             <>
               <MenuRow
                 icon={<UserPlus size={17} color={theme.colors.textSecondary} />}
                 label={`Invitar a ${otherMemberName}`}
                 onPress={() => go(`/space/${spaceId}/invitar`)}
+              />
+              <Divider />
+            </>
+          )}
+
+          {canRemoveOther && (
+            <>
+              <MenuRow
+                icon={<UserX size={17} color={theme.colors.textSecondary} />}
+                label={`Quitarle el acceso a ${otherMemberName}`}
+                onPress={confirmRemove}
               />
               <Divider />
             </>

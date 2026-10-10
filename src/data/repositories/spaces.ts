@@ -297,6 +297,18 @@ export async function createMemberPayment(input: {
   if (error != null) throw new Error('No pudimos registrar el pago.');
 }
 
+/**
+ * §26 (Should) · el creador quita el acceso de quien entró por un enlace
+ * reenviado. El lugar vuelve a "sin acceso" y se puede invitar de nuevo. Lo
+ * controla el servidor: solo funciona para quien creó el espacio.
+ */
+export async function removeMemberAccess(spaceId: string): Promise<void> {
+  const { error } = await supabase.rpc('app_remove_member_access', {
+    target_space_id: spaceId,
+  });
+  if (error != null) throw new Error('No pudimos quitar el acceso.');
+}
+
 export async function deleteMemberPayment(id: string): Promise<void> {
   const { error } = await supabase.from('member_payments').delete().eq('id', id);
   if (error != null) throw new Error('No pudimos eliminar el pago.');

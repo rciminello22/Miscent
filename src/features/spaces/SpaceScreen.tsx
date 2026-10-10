@@ -222,10 +222,21 @@ export function SpaceScreen({
                 </Pressable>
               </Row>
             )}
+            {/* P7 · el lugar de un ex miembro se puede volver a invitar. */}
             {other.status === 'former' && (
-              <Text variant="small" tone="muted">
-                {other.displayName} · ex miembro
-              </Text>
+              <Row gap="2" align="center">
+                <Text variant="small" tone="muted">
+                  {other.displayName} · ex miembro
+                </Text>
+                <Pressable
+                  onPress={() => router.push(`/space/${spaceId}/invitar`)}
+                  haptic="none"
+                >
+                  <Text variant="smallMedium" tone="brand">
+                    Invitar de nuevo
+                  </Text>
+                </Pressable>
+              </Row>
             )}
 
             {/* §25 · el aviso de adelanto, para que el número no se lea mal. */}
@@ -391,7 +402,10 @@ export function SpaceScreen({
         spaceId={spaceId}
         spaceName={derived.facts.space.name}
         otherMemberName={other.displayName}
-        otherHasAccess={other.status !== 'no_access'}
+        // P7 · el lugar de un ex miembro también se puede invitar.
+        otherHasAccess={other.status === 'active'}
+        // §26 · solo quien creó el espacio, y solo si el otro está adentro.
+        canRemoveOther={me.isCreator && other.status === 'active'}
       />
     </ScrollView>
   );
