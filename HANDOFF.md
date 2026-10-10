@@ -1,7 +1,7 @@
 # Handoff · Radar del sueldo comprometido
 
 Contexto para retomar el proyecto en una sesión nueva.
-Última actualización: 9 de octubre de 2026 · working tree limpio.
+Última actualización: 10 de octubre de 2026 · working tree limpio.
 
 ---
 
@@ -98,9 +98,9 @@ radar/
 │   └── test/render.tsx       renderWithTheme
 │
 ├── supabase/
-│   ├── migrations/           5 migraciones: schema, rls, operations, fix_pgcrypto,
-│   │                         deleted_shared_records (SY-02)
-│   └── tests/privacidad.test.sql   32 asserts pgTAP
+│   ├── migrations/           6 migraciones: schema, rls, operations, fix_pgcrypto,
+│   │                         deleted_shared_records (SY-02), anonymous_guests
+│   └── tests/privacidad.test.sql   37 asserts pgTAP
 │
 └── tools/language-lint.*     automatiza CA-00
 ```
@@ -137,18 +137,20 @@ radar/
 
 ## 4. Estado: qué está hecho
 
-**Fases 0 a 10.** `git log --oneline` para verlos. **El Must está completo.**
+**Fases 0 a 10, más la prueba real con dos cuentas del 9 y 10/10.** `git log
+--oneline` para verlos. **El Must está completo.**
 
 | Área | Estado |
 |---|---|
 | Dominio (§29 completo) | ✅ Los 7 casos de §29.1 pasan exactos |
-| Supabase + RLS | ✅ 13 tablas, 30 políticas, 6 RPC, 1 trigger · **32/32 asserts** |
+| Supabase + RLS | ✅ 13 tablas, 32 políticas, 7 RPC, 1 trigger · **37/37 asserts** |
 | UI base | ✅ Tokens claro/oscuro, motion, 14 primitivas propias |
 | O1 · O2 · O3 | ✅ Completos, con T-07/Q-06 derivados del último cierre |
-| Enlace mágico en Expo Go | ✅ Por tunnel, con pantalla `/auth/callback` (ver §6) |
-| Agregar (§17) | ✅ Con vista previa de cuotas y fecha editable (Hoy · Ayer · Otra) |
+| Acceso | ✅ Código de 8 dígitos + enlace · "Ya tengo cuenta" sin alta · invitada **sin email** (ver §10) |
+| Agregar (§17) | ✅ Destino "Solo yo" + un chip por espacio (M3), cuotas, fecha editable |
 | SY-02 | ✅ Registro de borrados por trigger: nombra a quien eliminó, sin suponer |
-| Inicio (§15) | ✅ Radar, con tarjeta este mes, próximos pagos, próximos meses |
+| Inicio (§15) | ✅ Radar, tarjeta este mes, próximos pagos, próximos meses, **Tus espacios** |
+| Compartidos | ✅ Stack dentro de la pestaña: la barra queda visible dentro del espacio |
 | Futuro (§23) | ✅ 23.1 + 23.2 + 23.3 |
 | Movimientos (§16) | ✅ Con gastos compartidos y filtros |
 | M18 "¿de dónde sale?" | ✅ CA-04 y CA-52 testeados palabra por palabra |
@@ -167,8 +169,8 @@ npm run verify:full  # + los de RLS
 
 | Nivel | Qué | Cuántos |
 |---|---|---|
-| 1 · Dominio (vitest) | Casos A–G, CA-*, casos de uso | 148 |
-| 2 · Autorización (pgTAP) | PR-01, PR-02, CA-11..13, CA-47, CA-48, SY-02, SA-06 | 32 |
+| 1 · Dominio y reglas puras (vitest) | Casos A–G, CA-*, casos de uso, identidad, navegación | 197 |
+| 2 · Autorización (pgTAP) | PR-01, PR-02, CA-11..13, CA-47, CA-48, SY-02, SA-06, anónimos | 37 |
 | 3 · Componentes (jest-expo) | El lenguaje **obligatorio** | 28 |
 | 4 · Lint de lenguaje | **Automatiza CA-00** | en CI |
 
@@ -180,7 +182,23 @@ cuotas"). El nivel 3 encontró **2 bugs reales**.
 ## 5. Qué falta
 
 ### Del Must
-Nada. T-07, SY-02 y la fecha editable se cerraron el 9/10.
+Nada. T-07, SY-02, la fecha editable, M3 (destino en Agregar) y el bloque
+"Tus espacios" de Inicio se cerraron el 9 y 10/10.
+
+### Antes de producción (decisiones tomadas para la etapa de testeo)
+- **Método de acceso.** Hoy: código de 8 dígitos + enlace, sin contraseña. Lo
+  habitual en las stores es Apple + Google + email; ojo con la guideline 4.8
+  (login social obliga a ofrecer Sign in with Apple) y con la cuenta demo que
+  pide el review.
+- **Invitada sin email** (usuario anónimo). Reabre P1/A-01. Riesgos: si pierde
+  el teléfono antes de guardar su email, pierde el acceso y su lugar queda
+  ocupado (P7). Falta CAPTCHA contra la creación masiva de anónimos.
+- **SMTP**: hoy es Gmail con contraseña de aplicación. Para producción, un
+  proveedor transaccional (Resend o Postmark) con dominio propio.
+- **Links de invitación tocables**: exp:// y radar:// no se vuelven links en
+  WhatsApp. Hace falta un https (página puente y/o Universal Links).
+- `npm audit`: 67 vulnerabilidades, mayormente de herramientas de desarrollo.
+  Revisar.
 
 ### Recomendaciones y Should
 - SA-04 · preguntarle a quien queda si adopta el fijo detenido
@@ -263,7 +281,7 @@ npm run verify:full        # + RLS
 npm run test:dominio       # solo el dominio (~600ms)
 npm run test:componentes   # jest-expo
 npm run lint:lenguaje      # CA-00
-npm run test:rls           # 32 asserts (necesita supabase login)
+npm run test:rls           # 37 asserts (necesita supabase login)
 npm run test:rls:smoke     # RLS con la anon key (no necesita login)
 npm run db:push            # migraciones
 npm run db:types           # regenerar tipos desde el esquema
@@ -317,3 +335,47 @@ cierre de la tarjeta:
 
 Ahora los dos salen de `lastClosedStatement(card, today)`, en el dominio, y el
 vencimiento se muestra y se puede corregir (§13 O3 paso 4: "monto y vencimiento").
+
+---
+
+## 10. Identidad y acceso (rearmado el 9 y 10/10, con la prueba real)
+
+### Los tres caminos de entrada
+
+| Camino | Qué crea | Cómo |
+|---|---|---|
+| **Empezar** | Usuario CON cuenta personal (O1 5a) | La elección se guarda **atada al email** (`authFlow.intentFor`) y se consume siempre |
+| **Ya tengo cuenta** | Nada | `shouldCreateUser: false`. Email inexistente → "No encontramos una cuenta" |
+| **Invitación** | Usuario anónimo, SIN cuenta personal | Link → nombre → adentro. "Guardá tu acceso" en el Perfil vincula el email después |
+
+El mail trae un **código de 8 dígitos** y el enlace. Cualquiera de los dos sirve.
+
+### Configuración del dashboard (no está en el repo)
+- **SMTP**: Gmail con contraseña de aplicación (Authentication → Emails → SMTP).
+  Sin SMTP propio, el servicio integrado manda 2 mails por hora y no deja
+  editar las plantillas.
+- **Plantillas con `{{ .Token }}`**: Magic Link, Confirm signup y Change email
+  address.
+- **Anonymous sign-ins**: activado. La regla "sin email no hay cuenta personal"
+  la hace cumplir el servidor (migración 0006).
+- **Redirect URLs**: la exacta del tunnel. Las de IP de LAN no sirven nunca (§6).
+
+### Gotchas que costaron caro
+- **La RLS define lo VISIBLE, no lo PROPIO.** `space_members` deja ver las dos
+  filas de cada espacio. Una consulta de "mis espacios" sin filtrar por usuario
+  duplicaba el espacio y el radar sumaba la parte del otro (K9). Toda consulta
+  de "mis X" filtra explícitamente: `ownActiveMemberships`.
+- **Estado "una vez" en el layout raíz.** No se desmonta al cerrar sesión: hay
+  que atarlo al user id (PendingInvitation) y vaciar la caché de queries al
+  cambiar de usuario (SessionProvider.publishSession).
+- **Carreras al loguear.** `space_members.user_id` tiene FK a profiles: aceptar
+  una invitación espera al perfil. El perfil se pide UNA vez por usuario.
+- **Historial de navegación.** Cambiar de árbol (login, logout) usa `resetTo`,
+  y "Volver" desde un espacio va a un destino fijo (`spaceBackTarget`). Los
+  redirects tipo "con uno solo, entra directo" se renderizan inline: con
+  `useEffect` + `replace` hacían loop.
+- **El claim `is_anonymous` del JWT** sigue en true hasta renovar la sesión:
+  después de guardar el email se llama a `refreshSession`.
+- **Los tests de RLS corren contra la base REAL**, dentro de una transacción con
+  rollback. Nunca buscar datos del test por nombre: un dato real puede
+  llamarse igual (pasó con "Casa").
