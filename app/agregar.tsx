@@ -240,7 +240,20 @@ export default function Agregar() {
   }
 
   return (
-    <Screen>
+    <Screen
+      footer={
+        // Fijo abajo y sobre el teclado: se ve mientras se escribe (10/10).
+        <Button
+          label="Guardar"
+          size="lg"
+          fullWidth
+          haptic="success"
+          disabled={!canSave}
+          loading={saving}
+          onPress={() => void save()}
+        />
+      }
+    >
       <Stack gap="7">
         <Row justify="space-between" align="center">
           <Text variant="heading">Agregar</Text>
@@ -443,18 +456,6 @@ export default function Agregar() {
             </Card>
           </Animated.View>
         )}
-
-        <Animated.View entering={FadeInDown.duration(duration.base)}>
-          <Button
-            label="Guardar"
-            size="lg"
-            fullWidth
-            haptic="success"
-            disabled={!canSave}
-            loading={saving}
-            onPress={() => void save()}
-          />
-        </Animated.View>
       </Stack>
     </Screen>
   );

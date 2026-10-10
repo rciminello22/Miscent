@@ -163,7 +163,29 @@ export default function FijoDetalle() {
   }
 
   return (
-    <Screen>
+    <Screen
+      footer={
+        // Solo cambiando algo (F-03): fijo abajo y sobre el teclado (10/10).
+        mode !== 'view' ? (
+          <Stack gap="2">
+            <Button
+              label="Guardar"
+              size="lg"
+              fullWidth
+              haptic="success"
+              disabled={(mode === 'this-month' || mode === 'from-now') && amount <= 0}
+              loading={apply.isPending}
+              onPress={() => void apply.mutateAsync()}
+            />
+            <Pressable onPress={() => setMode('view')} haptic="none">
+              <Text variant="small" tone="muted" align="center">
+                Cancelar
+              </Text>
+            </Pressable>
+          </Stack>
+        ) : undefined
+      }
+    >
       <Stack gap="7">
         <Row justify="space-between" align="center">
           <Text variant="heading" numberOfLines={1} style={{ flex: 1 }}>
@@ -364,24 +386,6 @@ export default function FijoDetalle() {
                 </Stack>
               )}
 
-              <Stack gap="2">
-                <Button
-                  label="Guardar"
-                  size="lg"
-                  fullWidth
-                  haptic="success"
-                  disabled={
-                    (mode === 'this-month' || mode === 'from-now') && amount <= 0
-                  }
-                  loading={apply.isPending}
-                  onPress={() => void apply.mutateAsync()}
-                />
-                <Pressable onPress={() => setMode('view')} haptic="none">
-                  <Text variant="small" tone="muted" align="center">
-                    Cancelar
-                  </Text>
-                </Pressable>
-              </Stack>
             </Stack>
           </Animated.View>
         )}

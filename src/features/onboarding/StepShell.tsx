@@ -48,7 +48,29 @@ export function StepShell({
   const router = useRouter();
 
   return (
-    <Screen>
+    <Screen
+      footer={
+        // Fijo abajo: el paso se completa sin buscar el botón (10/10).
+        <Stack gap="3">
+          <Button
+            label={continueLabel}
+            size="lg"
+            fullWidth
+            disabled={continueDisabled}
+            loading={saving}
+            onPress={onContinue}
+          />
+
+          {onSkip != null && (
+            <Pressable onPress={onSkip} haptic="none">
+              <Text variant="small" tone="muted" align="center">
+                Saltear este paso
+              </Text>
+            </Pressable>
+          )}
+        </Stack>
+      }
+    >
       <Stack gap="7">
         <Row gap="2" align="center">
           {Array.from({ length: total }, (_, index) => (
@@ -83,25 +105,6 @@ export function StepShell({
             {help}
           </Text>
         )}
-
-        <Stack gap="3">
-          <Button
-            label={continueLabel}
-            size="lg"
-            fullWidth
-            disabled={continueDisabled}
-            loading={saving}
-            onPress={onContinue}
-          />
-
-          {onSkip != null && (
-            <Pressable onPress={onSkip} haptic="none">
-              <Text variant="small" tone="muted" align="center">
-                Saltear este paso
-              </Text>
-            </Pressable>
-          )}
-        </Stack>
       </Stack>
     </Screen>
   );

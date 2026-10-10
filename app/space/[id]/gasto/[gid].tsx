@@ -276,7 +276,31 @@ export default function GastoCompartido() {
   }
 
   return (
-    <Screen>
+    <Screen
+      footer={
+        // Solo editando, y nunca con el gasto eliminado: ahí no hay nada que
+        // guardar y la salida es el aviso de SY-02.
+        editing && !deletedWhileEditing ? (
+          <Stack gap="2">
+            <Button
+              label="Guardar cambios"
+              variant="shared"
+              size="lg"
+              fullWidth
+              haptic="success"
+              disabled={amount <= 0 || category == null}
+              loading={save.isPending}
+              onPress={() => void save.mutateAsync()}
+            />
+            <Pressable onPress={() => setEditing(false)} haptic="none">
+              <Text variant="small" tone="muted" align="center">
+                Cancelar
+              </Text>
+            </Pressable>
+          </Stack>
+        ) : undefined
+      }
+    >
       <Stack gap="7">
         <Row justify="space-between" align="center">
           <Text variant="heading" numberOfLines={1} style={{ flex: 1 }}>
@@ -527,26 +551,6 @@ export default function GastoCompartido() {
                 </Card>
               )}
 
-              {/* Con el gasto eliminado no hay nada que guardar: la salida es el aviso de arriba. */}
-              {!deletedWhileEditing && (
-                <Stack gap="2">
-                  <Button
-                    label="Guardar cambios"
-                    variant="shared"
-                    size="lg"
-                    fullWidth
-                    haptic="success"
-                    disabled={amount <= 0 || category == null}
-                    loading={save.isPending}
-                    onPress={() => void save.mutateAsync()}
-                  />
-                  <Pressable onPress={() => setEditing(false)} haptic="none">
-                    <Text variant="small" tone="muted" align="center">
-                      Cancelar
-                    </Text>
-                  </Pressable>
-                </Stack>
-              )}
             </Stack>
           </Animated.View>
         )}

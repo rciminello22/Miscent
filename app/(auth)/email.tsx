@@ -80,7 +80,19 @@ export default function Email() {
   }
 
   return (
-    <Screen>
+    <Screen
+      footer={
+        // Sobre el teclado: el email se escribe y se envía sin cerrarlo.
+        <Button
+          label="Enviarme el código"
+          size="lg"
+          fullWidth
+          disabled={!valid}
+          loading={sending}
+          onPress={() => void submit()}
+        />
+      }
+    >
       <Stack gap="8">
         <Animated.View entering={FadeInDown.duration(duration.deliberate)}>
           <Stack gap="3">
@@ -135,15 +147,6 @@ export default function Email() {
             </Animated.View>
           )}
         </Stack>
-
-        <Button
-          label="Enviarme el código"
-          size="lg"
-          fullWidth
-          disabled={!valid}
-          loading={sending}
-          onPress={() => void submit()}
-        />
       </Stack>
     </Screen>
   );

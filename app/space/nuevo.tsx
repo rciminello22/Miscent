@@ -74,7 +74,20 @@ export default function NuevoEspacio() {
   }
 
   return (
-    <Screen>
+    <Screen
+      footer={
+        <Button
+          label="Crear espacio"
+          variant="shared"
+          size="lg"
+          fullWidth
+          haptic="success"
+          disabled={!canSave}
+          loading={createSpace.isPending}
+          onPress={() => void save()}
+        />
+      }
+    >
       <Stack gap="7">
         <Row justify="space-between" align="center">
           <Text variant="heading">Nuevo espacio</Text>
@@ -168,17 +181,6 @@ export default function NuevoEspacio() {
             </Card>
           </Animated.View>
         )}
-
-        <Button
-          label="Crear espacio"
-          variant="shared"
-          size="lg"
-          fullWidth
-          haptic="success"
-          disabled={!canSave}
-          loading={createSpace.isPending}
-          onPress={() => void save()}
-        />
 
         {/* §13 O1 paso 5b · la pregunta previa que evita espacios duplicados. */}
         <Text variant="caption" tone="muted" align="center">

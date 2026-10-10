@@ -1,48 +1,95 @@
 import type { ReactNode } from 'react';
-import { ScrollView, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme';
+import { useKeyboardVisible } from '../useKeyboardVisible';
 import { Text } from './Text';
 
 /* ────────────────────────────────────────────────────────────────────────── */
 
+/**
+ * La pantalla base de los formularios y las hojas.
+ *
+ * El teclado nunca tapa lo que se escribe (10/10, probando en el iPhone):
+ *   · KeyboardAvoidingView achica la pantalla en iOS cuando abre el teclado
+ *   · automaticallyAdjustKeyboardInsets lleva el campo activo a la vista
+ * Con lo que trae React Native: react-native-keyboard-controller no viene en
+ * Expo Go.
+ *
+ * `footer` · el botón principal de un formulario, FIJO abajo: queda a la
+ * vista sin scrollear y sube con el teclado. Solo para formularios; las
+ * pantallas de contenido no lo usan (decisión del 10/10).
+ */
 export function Screen({
   children,
   scroll = true,
   style,
   contentStyle,
+  footer,
 }: {
   children: ReactNode;
   scroll?: boolean;
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
+  footer?: ReactNode;
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardVisible();
 
   const padding = {
     paddingTop: insets.top + theme.space['3'],
-    paddingBottom: insets.bottom + theme.space['9'],
+    // Con footer, el margen de abajo lo pone el footer.
+    paddingBottom: footer != null ? theme.space['6'] : insets.bottom + theme.space['9'],
     paddingHorizontal: theme.space['5'],
   };
 
-  if (!scroll) {
-    return (
-      <View style={[{ flex: 1, backgroundColor: theme.colors.background }, padding, style]}>
-        {children}
-      </View>
-    );
-  }
-
-  return (
+  const body = scroll ? (
     <ScrollView
-      style={[{ flex: 1, backgroundColor: theme.colors.background }, style]}
+      style={[{ flex: 1 }, style]}
       contentContainerStyle={[padding, contentStyle]}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+      automaticallyAdjustKeyboardInsets
       showsVerticalScrollIndicator={false}
     >
       {children}
     </ScrollView>
+  ) : (
+    <View style={[{ flex: 1 }, padding, style]}>{children}</View>
+  );
+
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      {body}
+
+      {footer != null && (
+        <View
+          style={{
+            paddingHorizontal: theme.space['5'],
+            paddingTop: theme.space['3'],
+            // Con el teclado abierto no hace falta el margen del indicador
+            // de inicio: el teclado ya ocupa esa zona.
+            paddingBottom: keyboardVisible ? theme.space['3'] : insets.bottom + theme.space['3'],
+            borderTopWidth: 1,
+            borderTopColor: theme.colors.border,
+            backgroundColor: theme.colors.background,
+          }}
+        >
+          {footer}
+        </View>
+      )}
+    </KeyboardAvoidingView>
   );
 }
 

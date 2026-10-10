@@ -48,7 +48,17 @@ export default function TengoUnaInvitacion() {
   }
 
   return (
-    <Screen>
+    <Screen
+      footer={
+        <Button
+          label="Continuar"
+          size="lg"
+          fullWidth
+          disabled={text.trim() === ''}
+          onPress={() => open(text)}
+        />
+      }
+    >
       <Stack gap="8">
         <Animated.View entering={FadeInDown.duration(duration.deliberate)}>
           <Stack gap="3">
@@ -107,14 +117,6 @@ export default function TengoUnaInvitacion() {
             </Animated.View>
           )}
         </Stack>
-
-        <Button
-          label="Continuar"
-          size="lg"
-          fullWidth
-          disabled={text.trim() === ''}
-          onPress={() => open(text)}
-        />
       </Stack>
     </Screen>
   );

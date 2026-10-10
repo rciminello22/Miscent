@@ -183,7 +183,39 @@ export default function MovimientoDetalle() {
   }
 
   return (
-    <Screen>
+    <Screen
+      footer={
+        // Solo editando: fijo abajo y sobre el teclado (10/10).
+        editing ? (
+          <Stack gap="2">
+            <Button
+              label="Guardar cambios"
+              size="lg"
+              fullWidth
+              haptic="success"
+              disabled={amount <= 0 || category == null}
+              loading={save.isPending}
+              onPress={() => void save.mutateAsync()}
+            />
+            <Pressable
+              onPress={() => {
+                setAmount(movement.amount);
+                setCategory(movement.category);
+                setPaymentMethodId(movement.paymentMethodId);
+                setInstallmentCount(movement.installments?.count ?? null);
+                setDescription(movement.description ?? '');
+                setEditing(false);
+              }}
+              haptic="none"
+            >
+              <Text variant="small" tone="muted" align="center">
+                Cancelar
+              </Text>
+            </Pressable>
+          </Stack>
+        ) : undefined
+      }
+    >
       <Stack gap="7">
         <Row justify="space-between" align="center">
           <Text variant="heading" numberOfLines={1} style={{ flex: 1 }}>
@@ -373,32 +405,6 @@ export default function MovimientoDetalle() {
                 </Card>
               )}
 
-              <Stack gap="2">
-                <Button
-                  label="Guardar cambios"
-                  size="lg"
-                  fullWidth
-                  haptic="success"
-                  disabled={amount <= 0 || category == null}
-                  loading={save.isPending}
-                  onPress={() => void save.mutateAsync()}
-                />
-                <Pressable
-                  onPress={() => {
-                    setAmount(movement.amount);
-                    setCategory(movement.category);
-                    setPaymentMethodId(movement.paymentMethodId);
-                    setInstallmentCount(movement.installments?.count ?? null);
-                    setDescription(movement.description ?? '');
-                    setEditing(false);
-                  }}
-                  haptic="none"
-                >
-                  <Text variant="small" tone="muted" align="center">
-                    Cancelar
-                  </Text>
-                </Pressable>
-              </Stack>
             </Stack>
           </Animated.View>
         )}

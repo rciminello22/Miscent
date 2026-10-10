@@ -121,7 +121,21 @@ export default function Invite() {
   }
 
   return (
-    <Screen>
+    <Screen
+      footer={
+        // Fijo abajo: con el teclado abierto para el nombre, se ve igual.
+        <Button
+          label={session == null ? 'Entrar al espacio' : 'Aceptar la invitación'}
+          variant="shared"
+          size="lg"
+          fullWidth
+          haptic="success"
+          loading={accepting}
+          disabled={session == null && name.trim() === ''}
+          onPress={() => void accept()}
+        />
+      }
+    >
       <Stack gap="8">
         <Animated.View entering={FadeInDown.duration(duration.deliberate)}>
           <Stack gap="5">
@@ -205,17 +219,6 @@ export default function Invite() {
               {entryError}
             </Text>
           )}
-
-          <Button
-            label={session == null ? 'Entrar al espacio' : 'Aceptar la invitación'}
-            variant="shared"
-            size="lg"
-            fullWidth
-            haptic="success"
-            loading={accepting}
-            disabled={session == null && name.trim() === ''}
-            onPress={() => void accept()}
-          />
 
           <Pressable
             onPress={() => router.replace(session == null ? '/(auth)/bienvenida' : '/')}

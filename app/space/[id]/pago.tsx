@@ -136,7 +136,21 @@ export default function Pago() {
   }
 
   return (
-    <Screen>
+    <Screen
+      footer={
+        // Fijo abajo y sobre el teclado: se ve mientras se escribe (10/10).
+        <Button
+          label="Guardar"
+          variant="shared"
+          size="lg"
+          fullWidth
+          haptic="success"
+          disabled={amount <= 0 || saving}
+          loading={saving}
+          onPress={() => void save()}
+        />
+      }
+    >
       <Stack gap="7">
         <Row justify="space-between" align="center">
           <Text variant="heading">Registrar pago</Text>
@@ -228,19 +242,6 @@ export default function Pago() {
             </Card>
           </Animated.View>
         )}
-
-        <Animated.View entering={FadeInDown.duration(duration.base)}>
-          <Button
-            label="Guardar"
-            variant="shared"
-            size="lg"
-            fullWidth
-            haptic="success"
-            disabled={amount <= 0 || saving}
-            loading={saving}
-            onPress={() => void save()}
-          />
-        </Animated.View>
 
         {/*
           P-04 · la nota que evita el malentendido más común: el pago no

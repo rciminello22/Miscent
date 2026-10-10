@@ -65,7 +65,19 @@ export default function RevisaTuEmail() {
   }
 
   return (
-    <Screen>
+    <Screen
+      footer={
+        // Sobre el teclado numérico: el código se ve mientras se escribe.
+        <Button
+          label="Entrar"
+          size="lg"
+          fullWidth
+          loading={verifying}
+          disabled={code.length !== OTP_LENGTH}
+          onPress={() => void verify(code)}
+        />
+      }
+    >
       <Stack gap="8">
         <Animated.View entering={FadeInDown.duration(duration.deliberate)}>
           <Stack gap="5">
@@ -134,15 +146,6 @@ export default function RevisaTuEmail() {
         </Stack>
 
         <Stack gap="4">
-          <Button
-            label="Entrar"
-            size="lg"
-            fullWidth
-            loading={verifying}
-            disabled={code.length !== OTP_LENGTH}
-            onPress={() => void verify(code)}
-          />
-
           <Button
             label={resent ? 'Código reenviado' : 'Enviar otro código'}
             variant="secondary"
