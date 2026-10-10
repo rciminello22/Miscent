@@ -7,6 +7,15 @@
 export function describeAuthError(raw: string): string {
   const message = raw.toLowerCase();
 
+  // O2 sin email (10/10): requiere "Anonymous sign-ins" en el dashboard.
+  if (message.includes('anonymous sign-ins are disabled')) {
+    return 'Todavía no se puede entrar sin email. Avisale a quien te invitó.';
+  }
+  // "Guardá tu acceso" con un email que ya es de otra cuenta.
+  if (message.includes('already been registered') || message.includes('already registered')) {
+    return 'Ese email ya tiene una cuenta. Usá otro, o entrá con ese desde la bienvenida.';
+  }
+
   // "Ya tengo cuenta" pide el enlace SIN crear usuario (shouldCreateUser:
   // false). Si el email no existe, el proveedor lo rechaza así.
   if (message.includes('signups not allowed') || message.includes('user not found')) {

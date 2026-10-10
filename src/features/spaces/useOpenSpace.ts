@@ -3,6 +3,7 @@ import { useRouter, type Href } from 'expo-router';
 import { useSession } from '@/features/auth/SessionProvider';
 import { useSpaces } from './useSpaces';
 import { spaceHref } from './spaceNavigation';
+import { resetTo } from '@/features/shared/navigation';
 
 /**
  * Abre un espacio donde corresponde según quién lo abre (spaceHref): con
@@ -18,7 +19,8 @@ export function useOpenSpace() {
   return useCallback(
     (
       spaceId: string,
-      mode: 'push' | 'replace' = 'push',
+      /** 'reset' limpia el historial: al entrar, el login no queda debajo. */
+      mode: 'push' | 'replace' | 'reset' = 'push',
       /**
        * true justo después de crear o sumarse a un espacio: la lista en caché
        * todavía tiene la cantidad vieja. Se va al espacio concreto, y su ruta
@@ -32,7 +34,8 @@ export function useOpenSpace() {
         spaceCount: justChanged ? null : spaceCount,
       }) as Href;
 
-      if (mode === 'replace') router.replace(href);
+      if (mode === 'reset') resetTo(router, href);
+      else if (mode === 'replace') router.replace(href);
       else router.push(href);
     },
     [router, accountState, spaceCount],

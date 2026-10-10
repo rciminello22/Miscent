@@ -22,9 +22,40 @@ import { duration } from '@/ui/motion';
  */
 export default function CuentaPersonal() {
   const router = useRouter();
-  const { refreshProfile } = useSession();
+  const { refreshProfile, isAnonymous } = useSession();
   const [activating, setActivating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Entró por una invitación sin email (10/10): una cuenta personal sin
+  // email se perdería con el teléfono. Primero tiene que guardar su acceso.
+  if (isAnonymous) {
+    return (
+      <Screen>
+        <Stack gap="8">
+          <Stack gap="4">
+            <Text variant="title">Primero, guardá tu acceso</Text>
+            <Text variant="body" tone="secondary">
+              Tu cuenta personal va a tener tus ingresos y tus gastos propios. Para no
+              perderla si cambiás de teléfono, antes agregá tu email.
+            </Text>
+          </Stack>
+          <Stack gap="4">
+            <Button
+              label="Agregar mi email"
+              size="lg"
+              fullWidth
+              onPress={() => router.replace('/(guest)/perfil')}
+            />
+            <Pressable onPress={() => router.back()} haptic="none">
+              <Text variant="small" tone="muted" align="center">
+                Ahora no
+              </Text>
+            </Pressable>
+          </Stack>
+        </Stack>
+      </Screen>
+    );
+  }
 
   async function activate() {
     setActivating(true);

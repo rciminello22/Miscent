@@ -200,7 +200,7 @@ const DELETE_COPY = {
 
 export function AccountActions({ kind }: { kind: 'personal' | 'guest' }) {
   const theme = useTheme();
-  const { session } = useSession();
+  const { session, isAnonymous } = useSession();
   const copy = DELETE_COPY[kind];
 
   function confirmSignOut() {
@@ -236,13 +236,21 @@ export function AccountActions({ kind }: { kind: 'personal' | 'guest' }) {
 
   return (
     <Stack gap="3">
-      <Button
-        label="Cerrar sesión"
-        variant="secondary"
-        fullWidth
-        icon={<LogOut size={16} color={theme.colors.text} />}
-        onPress={confirmSignOut}
-      />
+      {/* Sin email, cerrar sesión es perder el acceso para siempre. */}
+      {isAnonymous ? (
+        <Text variant="caption" tone="muted" align="center">
+          Para cerrar sesión, primero guardá tu acceso con tu email: sin él no podrías
+          volver a entrar.
+        </Text>
+      ) : (
+        <Button
+          label="Cerrar sesión"
+          variant="secondary"
+          fullWidth
+          icon={<LogOut size={16} color={theme.colors.text} />}
+          onPress={confirmSignOut}
+        />
+      )}
 
       <Pressable onPress={confirmDelete} haptic="none" scaleOnPress={false}>
         <Row gap="2" justify="center" align="center" style={{ paddingVertical: 12 }}>

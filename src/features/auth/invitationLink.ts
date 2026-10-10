@@ -22,6 +22,33 @@ export function parseInvitationToken(input: string): string | null {
 }
 
 /**
+ * La invitación que espera a que exista el usuario, con el nombre que eligió
+ * la invitada. Desde el 10/10 la invitada entra sin email (usuario anónimo):
+ * el perfil no tiene de dónde sacar un nombre y la aceptación usaría "Vos".
+ */
+export function encodePendingInvitation(token: string, name: string): string {
+  const trimmed = name.trim();
+  return JSON.stringify({ token, name: trimmed === '' ? null : trimmed });
+}
+
+export function decodePendingInvitation(
+  stored: string | null,
+): { token: string; name: string | null } | null {
+  if (stored == null || stored === '') return null;
+
+  // Formato viejo: el token suelto, sin nombre.
+  if (!stored.startsWith('{')) return { token: stored, name: null };
+
+  try {
+    const parsed = JSON.parse(stored) as { token?: unknown; name?: unknown };
+    if (typeof parsed.token !== 'string' || parsed.token === '') return null;
+    return { token: parsed.token, name: typeof parsed.name === 'string' ? parsed.name : null };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Decodifica hasta que el texto deja de cambiar. Los enlaces generados antes
  * de corregir invitationLink venían codificados DOS veces ("=" → %3D →
  * %253D), y algunos ya se compartieron: tienen que seguir sirviendo.

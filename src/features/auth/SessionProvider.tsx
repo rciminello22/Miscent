@@ -43,6 +43,12 @@ type SessionContextValue = {
   /** §14 · qué árbol de navegación corresponde. */
   accountState: AccountState;
   refreshProfile: () => Promise<void>;
+  /**
+   * Entró por una invitación sin email (10/10). Hasta que guarde su email no
+   * tiene cómo volver a entrar: no puede cerrar sesión ni activar la cuenta
+   * personal.
+   */
+  isAnonymous: boolean;
 };
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -187,6 +193,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (session == null) return;
         setProfile(await loadProfile(session.user.id));
       },
+      isAnonymous: session?.user.is_anonymous === true,
     };
   }, [session, profile, loading, profileLoading]);
 

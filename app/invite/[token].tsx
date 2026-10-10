@@ -10,6 +10,8 @@ import {
   type AcceptFailure,
 } from '@/data/repositories/invitations';
 import { rememberInvitationToken } from '@/features/auth/invitationToken';
+import { forgetOnboardingIntent } from '@/features/auth/onboardingIntent';
+import { signInAsGuest } from '@/data/auth';
 import { useSession } from '@/features/auth/SessionProvider';
 import { parseInvitationToken } from '@/features/auth/invitationLink';
 import { Button, Card, Pressable, Screen, Stack, Text } from '@/ui/primitives';
@@ -42,6 +44,7 @@ export default function Invite() {
 
   const [name, setName] = useState('');
   const [accepting, setAccepting] = useState(false);
+  const [entryError, setEntryError] = useState<string | null>(null);
   const [failure, setFailure] = useState<{ reason: AcceptFailure; spaceName?: string } | null>(
     null,
   );
@@ -53,11 +56,26 @@ export default function Invite() {
   async function accept() {
     if (rawToken === '') return;
 
-    // Sin sesión todavía: el token espera y se usa al volver del enlace.
+    /**
+     * Sin sesión: entra SIN email (decisión del 10/10, revisar antes de
+     * producción). Se crea un usuario anónimo; la invitación, con el nombre
+     * elegido, espera a que exista su perfil y la acepta PendingInvitation.
+     * El email lo puede guardar después, desde su Perfil.
+     *
+     * A-03 · por una invitación se crea un usuario SIN cuenta personal: no
+     * puede sobrevivir ninguna elección de "Empezar".
+     */
     if (session == null) {
-      await rememberInvitationToken(rawToken);
-      // A-03 · por una invitación se crea un usuario SIN cuenta personal.
-      router.push({ pathname: '/(auth)/email', params: { mode: 'invite' } });
+      setAccepting(true);
+      setEntryError(null);
+      await forgetOnboardingIntent();
+      await rememberInvitationToken(rawToken, name);
+
+      const result = await signInAsGuest();
+      if (!result.ok) {
+        setAccepting(false);
+        setEntryError(result.message);
+      }
       return;
     }
 
@@ -148,41 +166,46 @@ export default function Invite() {
           ))}
         </Stack>
 
-        {/* §26 · el nombre visible se puede confirmar o cambiar al aceptar. */}
-        {session != null && (
-          <Stack gap="2">
-            <Text variant="smallMedium" tone="secondary">
-              ¿Cómo querés que te vean?
-            </Text>
-            <View
-              style={{
-                borderRadius: theme.radius.md,
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-                backgroundColor: theme.colors.surface,
-                paddingHorizontal: theme.space['4'],
-                height: 50,
-                justifyContent: 'center',
-              }}
-            >
-              <TextInput
-                value={name}
-                onChangeText={setName}
-                placeholder="Tu nombre"
-                placeholderTextColor={theme.colors.textMuted}
-                maxLength={60}
-                accessibilityLabel="Tu nombre visible"
-                style={[theme.typography.body, { color: theme.colors.text }]}
-              />
-            </View>
-            {/* K7 · nunca se muestra el email. */}
-            <Text variant="caption" tone="muted">
-              Es lo único que va a ver. Tu email no se muestra nunca.
-            </Text>
-          </Stack>
-        )}
+        {/* §26 · el nombre visible se puede confirmar o cambiar al aceptar.
+            Sin email es obligatorio: si no, el perfil no tiene de dónde sacarlo. */}
+        <Stack gap="2">
+          <Text variant="smallMedium" tone="secondary">
+            ¿Cómo querés que te vean?
+          </Text>
+          <View
+            style={{
+              borderRadius: theme.radius.md,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+              backgroundColor: theme.colors.surface,
+              paddingHorizontal: theme.space['4'],
+              height: 50,
+              justifyContent: 'center',
+            }}
+          >
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              placeholder="Tu nombre"
+              placeholderTextColor={theme.colors.textMuted}
+              maxLength={60}
+              accessibilityLabel="Tu nombre visible"
+              style={[theme.typography.body, { color: theme.colors.text }]}
+            />
+          </View>
+          {/* K7 · es lo único que ve el otro miembro. */}
+          <Text variant="caption" tone="muted">
+            Es lo único que va a ver la otra persona.
+          </Text>
+        </Stack>
 
         <Stack gap="3">
+          {entryError != null && (
+            <Text variant="small" tone="excess">
+              {entryError}
+            </Text>
+          )}
+
           <Button
             label={session == null ? 'Entrar al espacio' : 'Aceptar la invitación'}
             variant="shared"
@@ -190,6 +213,7 @@ export default function Invite() {
             fullWidth
             haptic="success"
             loading={accepting}
+            disabled={session == null && name.trim() === ''}
             onPress={() => void accept()}
           />
 

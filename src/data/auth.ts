@@ -108,6 +108,39 @@ export async function completeMagicLink(url: string): Promise<{ ok: boolean; mes
   };
 }
 
+/**
+ * O2 sin email (decisión del 10/10, revisar antes de producción): la invitada
+ * entra como usuario anónimo. Es un usuario real, con su lugar, su autoría y
+ * su RLS; lo que no tiene es cómo volver a entrar hasta que guarde su email.
+ */
+export async function signInAsGuest(): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { error } = await supabase.auth.signInAnonymously();
+  return error == null ? { ok: true } : { ok: false, message: describeAuthError(error.message) };
+}
+
+/**
+ * "Guardá tu acceso": vincula un email a un usuario anónimo, sin perder nada.
+ * Supabase manda un código al email nuevo (plantilla "Change email address").
+ */
+export async function startSavingAccess(
+  email: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { error } = await supabase.auth.updateUser({ email: email.trim().toLowerCase() });
+  return error == null ? { ok: true } : { ok: false, message: describeAuthError(error.message) };
+}
+
+export async function confirmSavingAccess(
+  email: string,
+  code: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { error } = await supabase.auth.verifyOtp({
+    email: email.trim().toLowerCase(),
+    token: code,
+    type: 'email_change',
+  });
+  return error == null ? { ok: true } : { ok: false, message: describeAuthError(error.message) };
+}
+
 export async function signOut(): Promise<void> {
   await supabase.auth.signOut();
 }

@@ -36,6 +36,18 @@ describe('describeAuthError', () => {
     );
   });
 
+  it('entrar sin email, si no está habilitado en el proyecto', () => {
+    expect(describeAuthError('Anonymous sign-ins are disabled')).toBe(
+      'Todavía no se puede entrar sin email. Avisale a quien te invitó.',
+    );
+  });
+
+  it('"Guardá tu acceso" con un email que ya tiene cuenta', () => {
+    expect(describeAuthError('A user with this email address has already been registered')).toBe(
+      'Ese email ya tiene una cuenta. Usá otro, o entrá con ese desde la bienvenida.',
+    );
+  });
+
   it('lo demás, sin texto crudo', () => {
     expect(describeAuthError('Database error saving new user')).toBe(
       'No pudimos entrar. Probá de nuevo en un momento.',

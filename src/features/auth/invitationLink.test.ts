@@ -1,5 +1,39 @@
 import { describe, it, expect } from 'vitest';
-import { parseInvitationToken } from './invitationLink';
+import {
+  decodePendingInvitation,
+  encodePendingInvitation,
+  parseInvitationToken,
+} from './invitationLink';
+
+/**
+ * La invitación que espera a que exista el usuario (anónimo desde el 10/10),
+ * con el nombre que eligió la invitada: sin email, el perfil no tiene de
+ * dónde sacarlo, y la aceptación usaría "Vos".
+ */
+describe('invitación pendiente', () => {
+  it('viaja con el nombre elegido', () => {
+    expect(decodePendingInvitation(encodePendingInvitation('tok=', ' Martina '))).toEqual({
+      token: 'tok=',
+      name: 'Martina',
+    });
+  });
+
+  it('sin nombre, no se inventa uno', () => {
+    expect(decodePendingInvitation(encodePendingInvitation('tok=', '  '))).toEqual({
+      token: 'tok=',
+      name: null,
+    });
+  });
+
+  it('el formato viejo (el token suelto) sigue sirviendo', () => {
+    expect(decodePendingInvitation('tok=')).toEqual({ token: 'tok=', name: null });
+  });
+
+  it('nada guardado o basura', () => {
+    expect(decodePendingInvitation(null)).toBeNull();
+    expect(decodePendingInvitation('{"name":"x"}')).toBeNull();
+  });
+});
 
 /**
  * O1 paso 1 · "Tengo una invitación" lleva a O2, y O2 necesita el token.

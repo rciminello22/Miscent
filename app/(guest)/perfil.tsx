@@ -6,6 +6,8 @@ import {
   DisplayNameCard,
   PrivacySection,
 } from '@/features/profile/ProfileSections';
+import { SaveAccessCard } from '@/features/profile/SaveAccessCard';
+import { useSession } from '@/features/auth/SessionProvider';
 import { Button, Card, Pressable, Screen, Stack, Text } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
@@ -23,6 +25,7 @@ import { useTheme } from '@/ui/theme';
 export default function PerfilInvitado() {
   const theme = useTheme();
   const router = useRouter();
+  const { isAnonymous } = useSession();
 
   return (
     <Screen>
@@ -40,6 +43,9 @@ export default function PerfilInvitado() {
           Perfil
         </Text>
 
+        {/* Entró sin email (10/10): es lo primero que le conviene hacer. */}
+        {isAnonymous && <SaveAccessCard />}
+
         <Animated.View entering={FadeInDown.duration(duration.deliberate)}>
           <DisplayNameCard />
         </Animated.View>
@@ -54,12 +60,19 @@ export default function PerfilInvitado() {
                 queda igual y la otra persona no ve nada nuevo.
               </Text>
             </Stack>
-            <Button
-              label="Crear mi cuenta personal"
-              variant="secondary"
-              fullWidth
-              onPress={() => router.push('/onboarding/cuenta-personal')}
-            />
+            {/* Sin email, una cuenta personal se perdería con el teléfono. */}
+            {isAnonymous ? (
+              <Text variant="caption" tone="muted">
+                Para crearla, primero guardá tu acceso con tu email.
+              </Text>
+            ) : (
+              <Button
+                label="Crear mi cuenta personal"
+                variant="secondary"
+                fullWidth
+                onPress={() => router.push('/onboarding/cuenta-personal')}
+              />
+            )}
           </Stack>
         </Card>
 
