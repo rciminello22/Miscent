@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Switch, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { goBack } from '@/features/shared/navigation';
@@ -32,6 +32,8 @@ import {
 } from '@/features/add/fields';
 import { InstallmentPreview } from '@/features/add/InstallmentPreview';
 import { PastDateField } from '@/features/add/DateField';
+import { MoreOptions } from '@/features/add/MoreOptions';
+import { lastUsedPaymentMethodId, moreOptionsSummary } from '@/features/add/addDefaults';
 import { SplitPicker } from '@/features/spaces/SplitPicker';
 import {
   useCreateSharedExpense,
@@ -82,7 +84,24 @@ export default function Agregar() {
   const [kind, setKind] = useState<'expense' | 'income'>('expense');
   const [amount, setAmount] = useState(0);
   const [category, setCategory] = useState<Category | null>(null);
-  const [paymentMethodId, setPaymentMethodId] = useState<string | null>(null);
+  // §17 campo 7 · "Medio de pago: Último usado". Los datos pueden llegar
+  // después de abrir el formulario: se propone cuando cargan, salvo que el
+  // usuario ya haya elegido otro.
+  const lastUsedMethodId = useMemo(
+    () => lastUsedPaymentMethodId(facts.movements, facts.paymentMethods),
+    [facts.movements, facts.paymentMethods],
+  );
+  const [paymentMethodId, setPaymentMethodIdState] = useState<string | null>(lastUsedMethodId);
+  const methodChosen = useRef(false);
+  const setPaymentMethodId = (next: string | null) => {
+    methodChosen.current = true;
+    setPaymentMethodIdState(next);
+  };
+  useEffect(() => {
+    if (!methodChosen.current && lastUsedMethodId != null) {
+      setPaymentMethodIdState(lastUsedMethodId);
+    }
+  }, [lastUsedMethodId]);
   const [installmentCount, setInstallmentCount] = useState<number | null>(null);
   const [repeats, setRepeats] = useState(false);
   // §17 campo 10 · hoy por defecto; nunca una fecha futura.
@@ -101,6 +120,7 @@ export default function Agregar() {
   const isShared = destination != null && space != null;
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   // C-05 · el medio de pago es un detalle privado de quien pagó: si pagó el
   // otro miembro, no hay medio propio que valga.
@@ -391,49 +411,63 @@ export default function Agregar() {
           </Field>
         )}
 
-        {/* §17 campo 8 */}
-        {kind === 'expense' && !repeats && (
-          <Field
-            label="En cuotas"
-            hint={
-              installmentCount === 1
-                ? 'Para una sola cuota, desactivá En cuotas.'
-                : undefined
-            }
-          >
-            <InstallmentCountPicker value={installmentCount} onChange={setInstallmentCount} />
+        {/* §17 campos 8 a 11 · lo que un gasto cotidiano casi nunca necesita.
+            Plegado, pero la fila dice lo que tiene elegido (10/10). */}
+        <MoreOptions
+          open={moreOpen}
+          onToggle={() => setMoreOpen(!moreOpen)}
+          summary={moreOptionsSummary({
+            date,
+            today,
+            installmentCount: kind === 'expense' ? installmentCount : null,
+            repeats: kind === 'expense' && repeats,
+            description,
+          })}
+        >
+          {/* §17 campo 8 */}
+          {kind === 'expense' && !repeats && (
+            <Field
+              label="En cuotas"
+              hint={
+                installmentCount === 1
+                  ? 'Para una sola cuota, desactivá En cuotas.'
+                  : undefined
+              }
+            >
+              <InstallmentCountPicker value={installmentCount} onChange={setInstallmentCount} />
+            </Field>
+          )}
+
+          {/* §17 campo 9 */}
+          {kind === 'expense' && installmentCount == null && (
+            <Row justify="space-between" align="center">
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text variant="smallMedium" tone="secondary">
+                  Se repite cada mes
+                </Text>
+                <Text variant="caption" tone="muted">
+                  Un fijo: alquiler, servicios, suscripciones.
+                </Text>
+              </View>
+              <Switch
+                value={repeats}
+                onValueChange={setRepeats}
+                trackColor={{ false: theme.colors.surfaceSunken, true: theme.colors.brand }}
+                accessibilityLabel="Se repite cada mes"
+              />
+            </Row>
+          )}
+
+          {/* §17 campo 10 · con un fijo, el día elegido es el día de cada mes. */}
+          <Field label={repeats ? 'Desde' : 'Fecha'}>
+            <PastDateField value={date} onChange={setDate} today={today} />
           </Field>
-        )}
 
-        {/* §17 campo 9 */}
-        {kind === 'expense' && installmentCount == null && (
-          <Row justify="space-between" align="center">
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="smallMedium" tone="secondary">
-                Se repite cada mes
-              </Text>
-              <Text variant="caption" tone="muted">
-                Un fijo: alquiler, servicios, suscripciones.
-              </Text>
-            </View>
-            <Switch
-              value={repeats}
-              onValueChange={setRepeats}
-              trackColor={{ false: theme.colors.surfaceSunken, true: theme.colors.brand }}
-              accessibilityLabel="Se repite cada mes"
-            />
-          </Row>
-        )}
-
-        {/* §17 campo 10 · con un fijo, el día elegido es el día de cada mes. */}
-        <Field label={repeats ? 'Desde' : 'Fecha'}>
-          <PastDateField value={date} onChange={setDate} today={today} />
-        </Field>
-
-        {/* §17 campo 11 */}
-        <Field label="Descripción (opcional)">
-          <DescriptionInput value={description} onChange={setDescription} />
-        </Field>
+          {/* §17 campo 11 */}
+          <Field label="Descripción (opcional)">
+            <DescriptionInput value={description} onChange={setDescription} />
+          </Field>
+        </MoreOptions>
 
         {/* §17 campo 12 · la vista previa. Nunca dice si alcanza. */}
         {plan != null && amount > 0 && (

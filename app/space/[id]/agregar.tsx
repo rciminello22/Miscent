@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Switch, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { goBack } from '@/features/shared/navigation';
@@ -22,6 +22,8 @@ import {
 } from '@/features/add/fields';
 import { InstallmentPreview } from '@/features/add/InstallmentPreview';
 import { PastDateField } from '@/features/add/DateField';
+import { MoreOptions } from '@/features/add/MoreOptions';
+import { lastUsedPaymentMethodId, moreOptionsSummary } from '@/features/add/addDefaults';
 import { SplitPicker } from '@/features/spaces/SplitPicker';
 import {
   useCreateSharedExpense,
@@ -75,7 +77,23 @@ export default function AgregarCompartido() {
   const [category, setCategory] = useState<Category | null>(null);
   const [payerIsMe, setPayerIsMe] = useState(true);
   const [split, setSplit] = useState<Split>({ mode: 'even' });
-  const [paymentMethodId, setPaymentMethodId] = useState<string | null>(null);
+  // §17 campo 7 · "Medio de pago: Último usado" (ver app/agregar.tsx).
+  const lastUsedMethodId = useMemo(
+    () => lastUsedPaymentMethodId(personalFacts.movements, personalFacts.paymentMethods),
+    [personalFacts.movements, personalFacts.paymentMethods],
+  );
+  const [paymentMethodId, setPaymentMethodIdState] = useState<string | null>(lastUsedMethodId);
+  const methodChosen = useRef(false);
+  const setPaymentMethodId = (next: string | null) => {
+    methodChosen.current = true;
+    setPaymentMethodIdState(next);
+  };
+  useEffect(() => {
+    if (!methodChosen.current && lastUsedMethodId != null) {
+      setPaymentMethodIdState(lastUsedMethodId);
+    }
+  }, [lastUsedMethodId]);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [installmentCount, setInstallmentCount] = useState<number | null>(null);
   const [repeats, setRepeats] = useState(false);
   // §17 campo 10 · hoy por defecto; nunca una fecha futura.
@@ -308,61 +326,68 @@ export default function AgregarCompartido() {
           </Field>
         )}
 
-        {/* §17 campo 8 */}
-        {!repeats && (
-          <Field label="En cuotas">
-            <InstallmentCountPicker value={installmentCount} onChange={setInstallmentCount} />
+        {/* §17 campos 8 a 11 · plegados, con lo elegido a la vista (10/10). */}
+        <MoreOptions
+          open={moreOpen}
+          onToggle={() => setMoreOpen(!moreOpen)}
+          summary={moreOptionsSummary({ date, today, installmentCount, repeats, description })}
+        >
+          {/* §17 campo 8 */}
+          {!repeats && (
+            <Field label="En cuotas">
+              <InstallmentCountPicker value={installmentCount} onChange={setInstallmentCount} />
+            </Field>
+          )}
+
+          {/* §17 campo 9 */}
+          {installmentCount == null && (
+            <Row justify="space-between" align="center">
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text variant="smallMedium" tone="secondary">
+                  Se repite cada mes
+                </Text>
+                <Text variant="caption" tone="muted">
+                  Un fijo compartido: alquiler, expensas, servicios.
+                </Text>
+              </View>
+              <Switch
+                value={repeats}
+                onValueChange={setRepeats}
+                trackColor={{ false: theme.colors.surfaceSunken, true: theme.colors.shared }}
+                accessibilityLabel="Se repite cada mes"
+              />
+            </Row>
+          )}
+
+          {/* §17 campo 10 · con un fijo, el día elegido es el día de cada mes. */}
+          <Field label={repeats ? 'Desde' : 'Fecha'}>
+            <PastDateField value={date} onChange={setDate} today={today} />
           </Field>
-        )}
 
-        {/* §17 campo 9 */}
-        {installmentCount == null && (
-          <Row justify="space-between" align="center">
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="smallMedium" tone="secondary">
-                Se repite cada mes
-              </Text>
-              <Text variant="caption" tone="muted">
-                Un fijo compartido: alquiler, expensas, servicios.
-              </Text>
+          <Field label="Descripción (opcional)">
+            <View
+              style={{
+                borderRadius: theme.radius.md,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                backgroundColor: theme.colors.surface,
+                paddingHorizontal: theme.space['4'],
+                height: 48,
+                justifyContent: 'center',
+              }}
+            >
+              <TextInput
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Supermercado, internet, heladera…"
+                placeholderTextColor={theme.colors.textMuted}
+                maxLength={140}
+                accessibilityLabel="Descripción"
+                style={[theme.typography.body, { color: theme.colors.text }]}
+              />
             </View>
-            <Switch
-              value={repeats}
-              onValueChange={setRepeats}
-              trackColor={{ false: theme.colors.surfaceSunken, true: theme.colors.shared }}
-              accessibilityLabel="Se repite cada mes"
-            />
-          </Row>
-        )}
-
-        {/* §17 campo 10 · con un fijo, el día elegido es el día de cada mes. */}
-        <Field label={repeats ? 'Desde' : 'Fecha'}>
-          <PastDateField value={date} onChange={setDate} today={today} />
-        </Field>
-
-        <Field label="Descripción (opcional)">
-          <View
-            style={{
-              borderRadius: theme.radius.md,
-              borderWidth: 1,
-              borderColor: theme.colors.border,
-              backgroundColor: theme.colors.surface,
-              paddingHorizontal: theme.space['4'],
-              height: 48,
-              justifyContent: 'center',
-            }}
-          >
-            <TextInput
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Supermercado, internet, heladera…"
-              placeholderTextColor={theme.colors.textMuted}
-              maxLength={140}
-              accessibilityLabel="Descripción"
-              style={[theme.typography.body, { color: theme.colors.text }]}
-            />
-          </View>
-        </Field>
+          </Field>
+        </MoreOptions>
 
         {/* §17 campo 12 · K9 · la vista previa cuenta solo tu parte. */}
         {plan != null && accountState === 'personal' && (
