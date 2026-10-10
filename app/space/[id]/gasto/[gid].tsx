@@ -345,13 +345,13 @@ export default function GastoCompartido() {
               <Stack gap="3">
                 <Row justify="space-between" align="baseline">
                   <Text variant="small" tone="secondary">
-                    Te corresponde
+                    Tu parte
                   </Text>
                   <Money amount={myShare} variant="smallMedium" />
                 </Row>
                 <Row justify="space-between" align="baseline">
                   <Text variant="small" tone="secondary">
-                    Le corresponde a {other.displayName}
+                    Parte de {other.displayName}
                   </Text>
                   <Money amount={otherShare} variant="smallMedium" />
                 </Row>

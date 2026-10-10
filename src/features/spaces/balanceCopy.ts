@@ -29,6 +29,21 @@ export function balanceSentence(balance: SharedBalance): string {
 }
 
 /**
+ * §25 · un pago entre miembros, en segunda persona. G-06: "pagó" es lo
+ * declarado, la app no verifica la transferencia.
+ */
+export function paymentSentence(
+  payment: { fromSlot: 1 | 2; toSlot: 1 | 2; amount: number },
+  viewerSlot: 1 | 2,
+  otherName: string,
+): string {
+  const amount = formatPesos(payment.amount, { sign: 'never' });
+  return payment.fromSlot === viewerSlot
+    ? `Le pagaste ${amount} a ${otherName}`
+    : `${otherName} te pagó ${amount}`;
+}
+
+/**
  * S-05 · "[Miembro] puso $X de más".
  *
  * Nunca se muestra la diferencia entre lo que pusieron como si fuera la deuda:

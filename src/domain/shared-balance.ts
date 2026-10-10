@@ -87,6 +87,11 @@ export type SpaceMonth = {
   viewerPutExtra: Pesos;
   /** §24 · el puente con el mes anterior. `null` si no hay mes anterior. */
   previousBalance: Pesos | null;
+  /**
+   * Lo que falta del mes: ocurrencias con fecha posterior a hoy. No cuentan en
+   * las barras ni en el saldo todavía (S-02, S-04).
+   */
+  upcoming: { label: string; amount: Pesos; date: IsoDate; payerSlot: Slot }[];
   /** Pagos entre miembros declarados en el mes. */
   payments: { amount: Pesos; fromSlot: Slot; toSlot: Slot; date: IsoDate }[];
 };
@@ -98,9 +103,23 @@ export function calculateSpaceMonth(
   month: Month,
   today: IsoDate,
 ): SpaceMonth {
-  const occurrences = expandSpaceOccurrences(facts, spaceHorizon(facts, today)).filter(
+  const ofMonth = expandSpaceOccurrences(facts, spaceHorizon(facts, today)).filter(
     (occurrence) => monthOf(occurrence.balanceDate) === month,
   );
+
+  // S-04 · "ocurrencias que OCURREN en ese mes según S-02": lo que todavía no
+  // llegó a su fecha no ocurrió. Así las barras cierran con el saldo de la
+  // misma pantalla (decisión del 10/10). Lo que falta va aparte.
+  const occurrences = ofMonth.filter((occurrence) => occurrence.balanceDate <= today);
+  const upcoming = ofMonth
+    .filter((occurrence) => occurrence.balanceDate > today)
+    .sort((a, b) => (a.balanceDate < b.balanceDate ? -1 : 1))
+    .map((occurrence) => ({
+      label: occurrence.label,
+      amount: occurrence.amount,
+      date: occurrence.balanceDate,
+      payerSlot: occurrence.payerSlot,
+    }));
   const other = facts.space.members.find((member) => member.slot !== viewerSlot)!;
   const opposite = otherSlot(viewerSlot);
 
@@ -133,6 +152,7 @@ export function calculateSpaceMonth(
     other: { put: otherPut, share: otherShare, name: other.displayName },
     viewerPutExtra: viewerPut - viewerShare,
     previousBalance,
+    upcoming,
     payments: facts.payments
       .filter((payment) => monthOf(payment.date) === month)
       .map((payment) => ({

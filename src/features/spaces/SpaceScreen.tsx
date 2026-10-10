@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { Alert, RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, CircleUser, MoreHorizontal, Plus, UserPlus } from 'lucide-react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
@@ -10,11 +10,14 @@ import { formatDayMonth, formatInstallment, formatMonth } from '@/lib/format';
 import { prettyLabel } from '@/features/add/categories';
 import {
   balanceSentence,
+  paymentSentence,
   prepaidInstallmentsSentence,
   previousMonthSentence,
   putExtraSentence,
 } from '@/features/spaces/balanceCopy';
-import { useSpace } from '@/features/spaces/useSpaces';
+import { useDeleteMemberPayment, useSpace } from '@/features/spaces/useSpaces';
+import { calculateSharedBalance } from '@domain/shared-balance';
+import type { MemberPayment } from '@domain/types';
 import { SpaceMenu } from '@/features/spaces/SpaceMenu';
 import {
   AudienceBadge,
@@ -92,13 +95,51 @@ export function SpaceScreen({
   }, [derived, currentMonth]);
 
   // §24 · los movimientos del espacio, del mes en curso hacia atrás.
-  const movements = useMemo(() => {
+  /**
+   * §24 / §25 · los movimientos del espacio: gastos Y pagos entre miembros,
+   * por fecha. Solo lo que ya pasó, igual que el saldo: lo que viene está en
+   * "Se vienen este mes" y en Próximos meses.
+   */
+  const movements = useMemo((): SpaceMovement[] => {
     if (derived == null) return [];
-    return [...derived.occurrences]
-      .filter((occurrence) => occurrence.month <= currentMonth)
-      .sort((a, b) => (a.balanceDate < b.balanceDate ? 1 : -1))
+    const expenses: SpaceMovement[] = derived.occurrences
+      .filter((occurrence) => occurrence.balanceDate <= today)
+      .map((occurrence) => ({ kind: 'occurrence', date: occurrence.balanceDate, occurrence }));
+    const payments: SpaceMovement[] = derived.facts.payments
+      .filter((payment) => payment.date <= today)
+      .map((payment) => ({ kind: 'payment', date: payment.date, payment }));
+
+    return [...expenses, ...payments]
+      .sort((a, b) => (a.date < b.date ? 1 : -1))
       .slice(0, 30);
-  }, [derived, currentMonth]);
+  }, [derived, today]);
+
+  const deletePayment = useDeleteMemberPayment(spaceId);
+
+  /** §25 · "confirmación al eliminar con el nuevo saldo y 'Martina también lo va a dejar de ver'". */
+  function confirmDeletePayment(payment: MemberPayment) {
+    if (derived == null) return;
+    const after = calculateSharedBalance(
+      {
+        ...derived.facts,
+        payments: derived.facts.payments.filter((item) => item.id !== payment.id),
+      },
+      derived.mySlot,
+      today,
+    );
+    Alert.alert(
+      `¿Eliminar este pago?`,
+      `${paymentSentence(payment, derived.mySlot, derived.other.displayName)}. ${derived.other.displayName} también lo va a dejar de ver. El saldo pasa a: ${balanceSentence(after).toLowerCase()}.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () => void deletePayment.mutateAsync(payment.id),
+        },
+      ],
+    );
+  }
 
   async function onRefresh() {
     setRefreshing(true);
@@ -259,7 +300,7 @@ export function SpaceScreen({
         </Animated.View>
 
         {/* ── §24 · el mes del espacio ─────────────────────────────────── */}
-        {month.total > 0 && (
+        {(month.total > 0 || month.payments.length > 0 || month.upcoming.length > 0) && (
           <Animated.View entering={FadeInDown.delay(stagger(1, 80)).duration(duration.base)}>
             <Stack gap="4">
               <Row justify="space-between" align="baseline">
@@ -304,8 +345,46 @@ export function SpaceScreen({
               )}
 
               <Text variant="caption" tone="muted">
-                La marca en cada barra es lo que le corresponde según el reparto.
+                La marca en cada barra es la parte de cada uno según el reparto. Cuenta lo
+                que ya pasó, igual que lo que se deben.
               </Text>
+
+              {/* §25 · "en el mes: Pagos entre ustedes". No cambian lo que cada
+                  uno puso (P-04): por eso van aparte, y no en las barras. */}
+              {month.payments.length > 0 && (
+                <Stack gap="2">
+                  <Text variant="smallMedium" tone="secondary">
+                    Pagos entre ustedes
+                  </Text>
+                  {month.payments.map((payment, index) => (
+                    <Row key={`${payment.date}-${index}`} justify="space-between" align="baseline">
+                      <Text variant="small">
+                        {paymentSentence(payment, derived.mySlot, other.displayName)}
+                      </Text>
+                      <Text variant="caption" tone="muted">
+                        {formatDayMonth(payment.date)}
+                      </Text>
+                    </Row>
+                  ))}
+                </Stack>
+              )}
+
+              {/* Lo que falta del mes: todavía no cuenta (S-02). */}
+              {month.upcoming.length > 0 && (
+                <Stack gap="2">
+                  <Text variant="smallMedium" tone="secondary">
+                    Se vienen este mes
+                  </Text>
+                  {month.upcoming.map((item, index) => (
+                    <Row key={`${item.date}-${index}`} justify="space-between" align="baseline">
+                      <Text variant="small">
+                        {prettyLabel(item.label)} · {formatDayMonth(item.date)}
+                      </Text>
+                      <Money amount={item.amount} variant="small" />
+                    </Row>
+                  ))}
+                </Stack>
+              )}
             </Stack>
           </Animated.View>
         )}
@@ -347,25 +426,41 @@ export function SpaceScreen({
             />
           ) : (
             <Stack gap="0">
-              {movements.map((occurrence, index) => (
+              {movements.map((movement, index) => (
                 <Animated.View
-                  key={occurrence.id}
+                  key={
+                    movement.kind === 'occurrence'
+                      ? movement.occurrence.id
+                      : `payment-${movement.payment.id}`
+                  }
                   layout={LinearTransition}
                   entering={FadeInDown.delay(stagger(index, 35)).duration(duration.base)}
                 >
-                  <SharedRow
-                    occurrence={occurrence}
-                    mySlot={derived.mySlot}
-                    otherName={other.displayName}
-                    myName={me.displayName}
-                    onPress={
-                      // Un fijo compartido se edita desde su propio fijo; un
-                      // gasto, desde el detalle del gasto.
-                      occurrence.sourceKind === 'expense'
-                        ? () => router.push(`/space/${spaceId}/gasto/${occurrence.sourceId}`)
-                        : undefined
-                    }
-                  />
+                  {movement.kind === 'occurrence' ? (
+                    <SharedRow
+                      occurrence={movement.occurrence}
+                      mySlot={derived.mySlot}
+                      otherName={other.displayName}
+                      myName={me.displayName}
+                      onPress={
+                        // Un fijo compartido se edita desde su propio fijo; un
+                        // gasto, desde el detalle del gasto.
+                        movement.occurrence.sourceKind === 'expense'
+                          ? () =>
+                              router.push(
+                                `/space/${spaceId}/gasto/${movement.occurrence.sourceId}`,
+                              )
+                          : undefined
+                      }
+                    />
+                  ) : (
+                    <PaymentRow
+                      sentence={paymentSentence(movement.payment, derived.mySlot, other.displayName)}
+                      date={movement.payment.date}
+                      amount={movement.payment.amount}
+                      onPress={() => confirmDeletePayment(movement.payment)}
+                    />
+                  )}
                   {index < movements.length - 1 && <Divider />}
                 </Animated.View>
               ))}
@@ -411,7 +506,13 @@ export function SpaceScreen({
   );
 }
 
-/** §24 · la barra de lo que puso cada uno, con la marca de "le corresponde". */
+/**
+ * §24 · la barra de lo que puso cada uno, con la marca de su parte.
+ *
+ * "Parte" y no "le corresponde" (decisión del 10/10): en la pantalla de las
+ * deudas, "te corresponden $350.000" se leía como plata que te deben. "Parte"
+ * es el sinónimo exacto del glosario (§7.2).
+ */
 function MemberContribution({
   name,
   put,
@@ -427,11 +528,13 @@ function MemberContribution({
   tone: 'viewer' | 'other';
   index: number;
 }) {
+  const isViewer = tone === 'viewer';
+
   return (
     <Stack gap="2">
       <Row justify="space-between" align="baseline">
         <Text variant="small" tone="secondary">
-          {name} puso
+          {isViewer ? 'Pusiste' : `${name} puso`}
         </Text>
         <Money amount={put} variant="smallMedium" />
       </Row>
@@ -440,11 +543,56 @@ function MemberContribution({
 
       <Row justify="flex-end">
         <Text variant="caption" tone="muted">
-          le corresponden{' '}
+          {isViewer ? 'tu parte ' : 'su parte '}
         </Text>
         <Money amount={share} variant="caption" tone="muted" />
       </Row>
     </Stack>
+  );
+}
+
+type SpaceMovement =
+  | { kind: 'occurrence'; date: string; occurrence: SpaceOccurrence }
+  | { kind: 'payment'; date: string; payment: MemberPayment };
+
+/**
+ * §25 · un pago entre miembros en los movimientos del espacio. P-04: no cambia
+ * lo que cada uno puso ni el radar; solo lo que se deben.
+ */
+function PaymentRow({
+  sentence,
+  date,
+  amount,
+  onPress,
+}: {
+  sentence: string;
+  date: string;
+  amount: number;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      haptic="none"
+      scaleOnPress={false}
+      accessibilityRole="button"
+      accessibilityLabel={sentence}
+      style={{ paddingVertical: theme.space['3'] }}
+    >
+      <Row gap="3" align="flex-start">
+        <View style={{ flex: 1, gap: 3 }}>
+          <Text variant="bodyMedium" numberOfLines={1}>
+            {sentence}
+          </Text>
+          <Text variant="caption" tone="muted">
+            {formatDayMonth(date)} · pago entre ustedes · no cambia lo que cada uno puso
+          </Text>
+        </View>
+        <Money amount={amount} variant="bodyMedium" tone="muted" />
+      </Row>
+    </Pressable>
   );
 }
 
@@ -506,8 +654,7 @@ function SharedRow({
           </Text>
 
           <Text variant="caption" tone="shared">
-            te corresponde{' '}
-            <Money amount={myShare} variant="caption" tone="shared" />
+            tu parte <Money amount={myShare} variant="caption" tone="shared" />
           </Text>
         </View>
 

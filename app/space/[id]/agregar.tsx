@@ -382,13 +382,13 @@ export default function AgregarCompartido() {
               <Stack gap="2">
                 <Row justify="space-between" align="baseline">
                   <Text variant="small" tone="secondary">
-                    Te corresponde
+                    Tu parte
                   </Text>
                   <Money amount={myShare} variant="smallMedium" animate />
                 </Row>
                 <Row justify="space-between" align="baseline">
                   <Text variant="small" tone="secondary">
-                    Le corresponde a {other.displayName}
+                    Parte de {other.displayName}
                   </Text>
                   <Money amount={otherShare} variant="smallMedium" animate />
                 </Row>

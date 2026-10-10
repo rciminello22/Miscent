@@ -86,7 +86,7 @@ export function SplitPicker({
       {split.mode === 'even' ? (
         <Row justify="space-between" align="baseline">
           <Text variant="small" tone="secondary">
-            A cada uno le corresponden
+            La parte de cada uno
           </Text>
           <Money amount={myShare} variant="bodyMedium" />
         </Row>
@@ -106,12 +106,12 @@ export function SplitPicker({
 
             {myShare === 0 && (
               <Text variant="caption" tone="muted">
-                Le corresponde entero a {otherName}.
+                Todo es parte de {otherName}: vos no ponés nada.
               </Text>
             )}
             {otherShare === 0 && (
               <Text variant="caption" tone="muted">
-                Te corresponde entero a vos.
+                Todo es tu parte: {otherName} no pone nada.
               </Text>
             )}
           </Stack>
