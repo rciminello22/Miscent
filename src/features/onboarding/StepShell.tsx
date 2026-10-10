@@ -30,6 +30,7 @@ export function StepShell({
   continueDisabled = false,
   saving = false,
   onSkip,
+  skipLabel = 'Saltear este paso',
 }: {
   step: number;
   total: number;
@@ -43,6 +44,8 @@ export function StepShell({
   continueDisabled?: boolean;
   saving?: boolean;
   onSkip?: () => void;
+  /** El texto de la salida secundaria ("Ahora no" cuando no es un paso salteable). */
+  skipLabel?: string;
 }) {
   const theme = useTheme();
   const router = useRouter();
@@ -64,7 +67,7 @@ export function StepShell({
           {onSkip != null && (
             <Pressable onPress={onSkip} haptic="none">
               <Text variant="small" tone="muted" align="center">
-                Saltear este paso
+                {skipLabel}
               </Text>
             </Pressable>
           )}

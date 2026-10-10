@@ -61,19 +61,14 @@ export default function PerfilInvitado() {
                 queda igual y la otra persona no ve nada nuevo.
               </Text>
             </Stack>
-            {/* Sin email, una cuenta personal se perdería con el teléfono. */}
-            {isAnonymous ? (
-              <Text variant="caption" tone="muted">
-                Para crearla, primero guardá tu acceso con tu email.
-              </Text>
-            ) : (
-              <Button
-                label="Crear mi cuenta personal"
-                variant="secondary"
-                fullWidth
-                onPress={() => router.push('/onboarding/cuenta-personal')}
-              />
-            )}
+            {/* Sin email, el flujo pide primero guardar el acceso, y sigue
+                solo (onboarding/guardar-acceso). */}
+            <Button
+              label="Crear mi cuenta personal"
+              variant="secondary"
+              fullWidth
+              onPress={() => router.push('/onboarding/cuenta-personal')}
+            />
           </Stack>
         </Card>
 

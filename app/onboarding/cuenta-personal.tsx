@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { goBack } from '@/features/shared/navigation';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { supabase } from '@/data/supabase';
@@ -24,38 +24,15 @@ import { duration } from '@/ui/motion';
 export default function CuentaPersonal() {
   const router = useRouter();
   const { refreshProfile, isAnonymous } = useSession();
+  const { accesoGuardado } = useLocalSearchParams<{ accesoGuardado?: string }>();
   const [activating, setActivating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Entró por una invitación sin email (10/10): una cuenta personal sin
-  // email se perdería con el teléfono. Primero tiene que guardar su acceso.
-  if (isAnonymous) {
-    return (
-      <Screen>
-        <Stack gap="8">
-          <Stack gap="4">
-            <Text variant="title">Primero, guardá tu acceso</Text>
-            <Text variant="body" tone="secondary">
-              Tu cuenta personal va a tener tus ingresos y tus gastos propios. Para no
-              perderla si cambiás de teléfono, antes agregá tu email.
-            </Text>
-          </Stack>
-          <Stack gap="4">
-            <Button
-              label="Agregar mi email"
-              size="lg"
-              fullWidth
-              onPress={() => router.replace('/(guest)/perfil')}
-            />
-            <Pressable onPress={() => goBack(router)} haptic="none">
-              <Text variant="small" tone="muted" align="center">
-                Ahora no
-              </Text>
-            </Pressable>
-          </Stack>
-        </Stack>
-      </Screen>
-    );
+  // Entró por una invitación sin email (10/10): sin email la cuenta personal
+  // se perdería con el teléfono. No se lo manda a buscar nada: el flujo sigue
+  // solo, primero guardando su acceso y después acá.
+  if (isAnonymous && accesoGuardado !== '1') {
+    return <Redirect href="/onboarding/guardar-acceso" />;
   }
 
   async function activate() {
