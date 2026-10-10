@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { goBack } from '@/features/shared/navigation';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { supabase } from '@/data/supabase';
 import { useSession } from '@/features/auth/SessionProvider';
@@ -46,7 +47,7 @@ export default function CuentaPersonal() {
               fullWidth
               onPress={() => router.replace('/(guest)/perfil')}
             />
-            <Pressable onPress={() => router.back()} haptic="none">
+            <Pressable onPress={() => goBack(router)} haptic="none">
               <Text variant="small" tone="muted" align="center">
                 Ahora no
               </Text>
@@ -113,7 +114,7 @@ export default function CuentaPersonal() {
             </Text>
           )}
 
-          <Pressable onPress={() => router.back()} haptic="none">
+          <Pressable onPress={() => goBack(router)} haptic="none">
             <Text variant="small" tone="muted" align="center">
               Ahora no
             </Text>

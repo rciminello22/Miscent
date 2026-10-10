@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { goBack } from '@/features/shared/navigation';
 import { ArrowLeft } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import {
@@ -31,7 +32,7 @@ export default function PerfilInvitado() {
     <Screen>
       <Stack gap="7">
         <Pressable
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+          onPress={() => goBack(router)}
           accessibilityRole="button"
           accessibilityLabel="Volver"
           style={{ padding: theme.space['1'], marginLeft: -theme.space['1'], alignSelf: 'flex-start' }}

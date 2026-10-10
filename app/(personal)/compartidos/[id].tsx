@@ -1,4 +1,5 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import { goBack } from '@/features/shared/navigation';
 import { useSpaces } from '@/features/spaces/useSpaces';
 import { SpaceScreen } from '@/features/spaces/SpaceScreen';
 
@@ -23,7 +24,7 @@ export default function CompartidoRoute() {
       leading={{
         kind: 'back',
         onPress: () =>
-          router.canGoBack() ? router.back() : router.replace('/(personal)/compartidos'),
+          router.canGoBack() ? goBack(router) : router.replace('/(personal)/compartidos'),
       }}
     />
   );

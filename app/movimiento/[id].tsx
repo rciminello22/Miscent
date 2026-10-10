@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Alert, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { goBack } from '@/features/shared/navigation';
 import { useOpenSpace } from '@/features/spaces/useOpenSpace';
 import { Trash2, X } from 'lucide-react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -114,7 +115,7 @@ export default function MovimientoDetalle() {
     mutationFn: () => deletePersonalMovementById(movement!.id),
     onSuccess: async () => {
       await invalidate();
-      router.back();
+      goBack(router);
     },
   });
 
@@ -122,7 +123,7 @@ export default function MovimientoDetalle() {
     mutationFn: () => endInstallmentsNowMovement(movement!, today),
     onSuccess: async () => {
       await invalidate();
-      router.back();
+      goBack(router);
     },
   });
 
@@ -138,7 +139,7 @@ export default function MovimientoDetalle() {
           <Text variant="body" tone="secondary">
             Este movimiento ya no existe.
           </Text>
-          <Button label="Volver" variant="secondary" onPress={() => router.back()} />
+          <Button label="Volver" variant="secondary" onPress={() => goBack(router)} />
         </Stack>
       </Screen>
     );
@@ -222,7 +223,7 @@ export default function MovimientoDetalle() {
             {prettyLabel(movement.description ?? movement.category)}
           </Text>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => goBack(router)}
             accessibilityRole="button"
             accessibilityLabel="Cerrar"
             style={{

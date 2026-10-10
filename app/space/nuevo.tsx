@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Alert, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { goBack } from '@/features/shared/navigation';
 import { useOpenSpace } from '@/features/spaces/useOpenSpace';
 import { X } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -38,7 +39,7 @@ export default function NuevoEspacio() {
   const theme = useTheme();
   const router = useRouter();
   const openSpace = useOpenSpace();
-  const { profile } = useSession();
+  const { profile, accountState } = useSession();
   const createSpace = useCreateSpace();
 
   const [otherName, setOtherName] = useState('');
@@ -73,6 +74,39 @@ export default function NuevoEspacio() {
     }
   }
 
+  // Caso 19 / P5 · sin cuenta personal no se crea un espacio. Se explica ANTES
+  // de que complete el formulario, no con un error al final; y siempre con
+  // salida (el 10/10 una invitada llegó acá y la cruz no la sacaba).
+  if (accountState !== 'personal') {
+    return (
+      <Screen
+        footer={
+          <Stack gap="2">
+            <Button
+              label="Crear mi cuenta personal"
+              size="lg"
+              fullWidth
+              onPress={() => router.replace('/onboarding/cuenta-personal')}
+            />
+            <Pressable onPress={() => goBack(router)} haptic="none">
+              <Text variant="small" tone="muted" align="center">
+                Ahora no
+              </Text>
+            </Pressable>
+          </Stack>
+        }
+      >
+        <Stack gap="4">
+          <Text variant="title">Para crear un espacio necesitás tu cuenta personal</Text>
+          <Text variant="body" tone="secondary">
+            Es privada y la podés completar cuando quieras. Tus espacios de ahora no
+            cambian.
+          </Text>
+        </Stack>
+      </Screen>
+    );
+  }
+
   return (
     <Screen
       footer={
@@ -92,7 +126,7 @@ export default function NuevoEspacio() {
         <Row justify="space-between" align="center">
           <Text variant="heading">Nuevo espacio</Text>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => goBack(router)}
             accessibilityRole="button"
             accessibilityLabel="Cerrar"
             style={{

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { goBack } from '@/features/shared/navigation';
 import { ArrowRight, X } from 'lucide-react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { calculateSharedBalance } from '@domain/shared-balance';
@@ -128,7 +129,7 @@ export default function Pago() {
         date,
         mySlot,
       });
-      router.back();
+      goBack(router);
     } catch {
       setSaving(false);
       Alert.alert('No pudimos registrarlo', 'Probá de nuevo en un momento.');
@@ -155,7 +156,7 @@ export default function Pago() {
         <Row justify="space-between" align="center">
           <Text variant="heading">Registrar pago</Text>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => goBack(router)}
             accessibilityRole="button"
             accessibilityLabel="Cerrar"
             style={{

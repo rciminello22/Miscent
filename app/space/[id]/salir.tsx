@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { goBack } from '@/features/shared/navigation';
 import { X } from 'lucide-react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -107,7 +108,7 @@ export default function Salir() {
         <Row justify="space-between" align="center">
           <Text variant="heading">Salir de {facts.space.name}</Text>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => goBack(router)}
             accessibilityRole="button"
             accessibilityLabel="Cerrar"
             style={{
@@ -269,7 +270,7 @@ export default function Salir() {
           )}
 
           {!confirming && (
-            <Pressable onPress={() => router.back()} haptic="none">
+            <Pressable onPress={() => goBack(router)} haptic="none">
               <Text variant="small" tone="muted" align="center">
                 Mejor no
               </Text>

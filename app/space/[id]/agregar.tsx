@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Alert, Switch, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { goBack } from '@/features/shared/navigation';
 import { X } from 'lucide-react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { addMonths, dayOf, monthOf } from '@domain/calendar';
@@ -163,12 +164,12 @@ export default function AgregarCompartido() {
 
   function close() {
     if (!dirty) {
-      router.back();
+      goBack(router);
       return;
     }
     Alert.alert('¿Descartar este gasto?', 'Lo que cargaste no se va a guardar.', [
       { text: 'Seguir editando', style: 'cancel' },
-      { text: 'Descartar', style: 'destructive', onPress: () => router.back() },
+      { text: 'Descartar', style: 'destructive', onPress: () => goBack(router) },
     ]);
   }
 
@@ -204,7 +205,7 @@ export default function AgregarCompartido() {
           myPaymentMethod: payerIsMe ? method : null,
         });
       }
-      router.back();
+      goBack(router);
     } catch {
       setSaving(false);
       Alert.alert('No pudimos guardarlo', 'Probá de nuevo en un momento.');

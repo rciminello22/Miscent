@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Alert, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { goBack } from '@/features/shared/navigation';
 import { Trash2, X } from 'lucide-react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -173,7 +174,7 @@ export default function GastoCompartido() {
     },
     onSuccess: async () => {
       await invalidate();
-      router.back();
+      goBack(router);
     },
     onError: (error: Error) => Alert.alert('No pudimos crearlo', error.message),
   });
@@ -182,7 +183,7 @@ export default function GastoCompartido() {
     mutationFn: () => deleteSharedExpense(expenseId),
     onSuccess: async () => {
       await invalidate();
-      router.back();
+      goBack(router);
     },
   });
 
@@ -190,7 +191,7 @@ export default function GastoCompartido() {
     mutationFn: () => endSharedInstallmentsNow(expense!, today, derived!.mySlot),
     onSuccess: async () => {
       await invalidate();
-      router.back();
+      goBack(router);
     },
   });
 
@@ -219,7 +220,7 @@ export default function GastoCompartido() {
           <Text variant="body" tone="secondary">
             Este gasto ya no existe. Puede que la otra persona lo haya eliminado.
           </Text>
-          <Button label="Volver" variant="secondary" onPress={() => router.back()} />
+          <Button label="Volver" variant="secondary" onPress={() => goBack(router)} />
         </Stack>
       </Screen>
     );
@@ -307,7 +308,7 @@ export default function GastoCompartido() {
             {prettyLabel(expense.description ?? expense.category)}
           </Text>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => goBack(router)}
             accessibilityRole="button"
             accessibilityLabel="Cerrar"
             style={{
@@ -456,7 +457,7 @@ export default function GastoCompartido() {
                   spaceName={derived.facts.space.name}
                   recreating={recreate.isPending}
                   onRecreate={() => void recreate.mutateAsync()}
-                  onDiscard={() => router.back()}
+                  onDiscard={() => goBack(router)}
                 />
               )}
 

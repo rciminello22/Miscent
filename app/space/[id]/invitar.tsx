@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Alert, Share, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { goBack } from '@/features/shared/navigation';
 import { Copy, RefreshCw, Share2, X } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -109,7 +110,7 @@ export default function Invitar() {
         <Row justify="space-between" align="center">
           <Text variant="heading">Invitar a {other.displayName}</Text>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => goBack(router)}
             accessibilityRole="button"
             accessibilityLabel="Cerrar"
             style={{
