@@ -190,9 +190,29 @@ cuotas"). El nivel 3 encontró **2 bugs reales**.
 
 ## 5. Qué falta
 
+### ▶ Por dónde seguir (orden acordado con Renzo el 11/10)
+
+Los tres primeros tienen algo en común: **la app muestra un número mal sin
+avisar**. En una app cuyo valor es "confiá en estas cifras", es lo más caro.
+
+| # | Qué | Por qué |
+|---|---|---|
+| **1** | **CA-09 / §11 paso 3 · NO ESTÁ HECHO.** En O3, los fijos y cuotas que ya están en un espacio aparecen como "Ya en Casa · tu parte $250.000" | Criterio de aceptación. Sin esto, quien activa su cuenta carga "Alquiler" como fijo personal y se cuenta DOS veces en el radar |
+| **2** | **SA-04** · al salir alguien, preguntarle a quien queda "¿Lo seguís pagando vos?" por cada fijo compartido detenido (Caso 13) | Hoy el fijo se corta sin aviso y el radar de quien queda baja de golpe |
+| **3** | **Completar con qué se pagó** un gasto que cargó el otro a tu nombre (1º Should, §11 paso 4) | Si Martina carga "pagó Renzo", el gasto nunca entra al resumen estimado de la Visa de Renzo |
+| 4 | Editar un fijo **compartido** | Los personales ya se editan |
+| 5 | §33 U1 · tarjeta "Tu plata personal" para la invitada con un solo espacio | Hoy solo la ve en su Perfil |
+| 6 | P6 · qué ve un ex miembro (decidido: resumen fijo del saldo al salir) | Hoy deja de ver todo |
+| 7 | Should de §5, en su orden: aviso de duplicado · compartir resumen como texto · CSV · actividad reciente · totales por categoría · categoría sugerida | — |
+| 8 | §35 · métricas del piloto (acciones, sin montos ni nombres, PR-04) | Sin esto no se mide la hipótesis. Elegir proveedor toca P11 |
+
+**Sin probar todavía en el iPhone:** Agregar con "Más opciones", crear espacio
+paso a paso, flujo invitada → cuenta personal.
+
 ### Del Must
-Nada. T-07, SY-02, la fecha editable, M3 (destino en Agregar) y el bloque
-"Tus espacios" de Inicio se cerraron el 9 y 10/10.
+Todo salvo **CA-09** (punto 1 de arriba). T-07, SY-02, la fecha editable, M3
+(destino en Agregar) y el bloque "Tus espacios" de Inicio se cerraron el 9 y
+10/10.
 
 ### Antes de producción (decisiones tomadas para la etapa de testeo)
 - **Método de acceso.** Hoy: código de 8 dígitos + enlace, sin contraseña. Lo
@@ -211,19 +231,11 @@ Nada. T-07, SY-02, la fecha editable, M3 (destino en Agregar) y el bloque
 - `npm audit`: 67 vulnerabilidades, mayormente de herramientas de desarrollo.
   Revisar.
 
-### Recomendaciones y Should
-- SA-04 · preguntarle a quien queda si adopta el fijo detenido
-- Editar un recurrente **compartido** (los personales ya se editan)
-- P6 · qué ve un ex miembro (decidido: resumen fijo del saldo al salir)
-- §33 U1 · el invitado con un solo espacio entra directo y no ve la tarjeta
-  "Tu plata personal" (solo está en su Perfil)
-- §28 exportar datos (CSV)
+### Pulido
 - Accesibilidad: auditar contraste y tamaños de toque (los labels ya están)
-- Should de §5: completar con qué se pagó un gasto que cargó el otro, aviso de
-  duplicado, compartir resumen como texto, actividad reciente, totales por
-  categoría
 - Más flujos paso a paso donde convenga (criterio en §11): salir de un espacio,
   invitar
+- **Build propio (EAS)**: hoy la app solo corre en Expo Go
 
 ### Bloqueantes de producto (no de código)
 **P9, P10 y P11 siguen pendientes** y bloquean publicar cualquier texto de
