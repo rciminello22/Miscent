@@ -271,9 +271,20 @@ datos, y cifrado/ubicación/uso para entrenar IA del proveedor. La base está en
   el deep link es `exp://192.168.x.x:8081/...`, y GoTrue rechaza cualquier IP
   literal que no sea loopback **antes de mirar la allowlist**: cae al site_url
   `radar://`, que Expo Go no abre ("Se ha producido un error"). Está permitida
-  `exp://znfuh80-rciminello22-8081.exp.direct/--/auth/callback` (subdominio
-  fijo por la cuenta de Expo). Nunca un comodín `*.exp.direct`: el dominio es
-  compartido y el flujo implícito manda los tokens en la URL.
+  `exp://znfuh80-rciminello22-8081.exp.direct/--/auth/callback`. Nunca un
+  comodín `*.exp.direct`: el dominio es compartido y el flujo implícito manda
+  los tokens en la URL.
+- **El subdominio del tunnel NO es fijo.** Sale de `urlRandomness` en
+  `.expo/settings.json` (local, gitignored), y Expo lo puede regenerar: el
+  10/10 pasó a `irCGR0k` y Expo Go daba "no se pudo conectar" (abría la URL
+  vieja desde "Recently opened"), y el enlace del mail ya no volvía. Se fijó en
+  `"urlRandomness": "znfuh80"`. Si vuelve a cambiar: restaurarlo ahí, o sumar
+  la URL nueva a la allowlist. El código de 8 dígitos funciona igual, porque no
+  usa redirect. Diagnóstico: `curl http://127.0.0.1:4040/api/tunnels` muestra
+  la URL viva.
+- **Cambiar de wifi no importa con el tunnel** (todo pasa por ngrok). Sin
+  tunnel sí: la IP cambia, Windows marca la red nueva como **Pública** y el
+  firewall puede bloquear el 8081, y hay redes que aíslan los dispositivos.
 - **Probar un redirect sin gastar mails** (el SMTP integrado tiene rate limit):
   `curl -s -o /dev/null -w "%{redirect_url}" "$URL/auth/v1/verify?token=x&type=magiclink&redirect_to=<URL>"`.
   Si vuelve a `<URL>#error=...`, está permitida; si vuelve a `radar://`, no.
