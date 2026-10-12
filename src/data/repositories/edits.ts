@@ -247,8 +247,10 @@ export async function updateSharedExpense(
   if (data.length === 0) throw new SharedExpenseDeletedError();
 
   // C-05 · el detalle de pago sigue a quien pagó: si ahora pagó el otro, el
-  // medio propio deja de tener sentido y se borra.
-  if (!iPaid) {
+  // medio propio deja de tener sentido y se borra. Lo mismo si pagó él y
+  // destildó el medio: sin medio es al contado, y la tarjeta vieja no puede
+  // seguir llevándose el gasto a su resumen.
+  if (!iPaid || input.myPaymentMethod == null) {
     await supabase
       .from('shared_payment_details')
       .delete()
