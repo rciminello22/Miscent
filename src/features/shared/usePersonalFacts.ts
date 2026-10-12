@@ -6,9 +6,11 @@ import type { PersonalFacts } from '@domain/types';
 import { queryKeys } from '@/data/queryClient';
 import { fetchPersonalFacts } from '@/data/repositories/personal';
 import {
+  createPaymentMethod,
   createPersonalMovement,
   createRecurrence,
   deletePersonalMovement,
+  type NewPaymentMethod,
   type NewPersonalMovement,
   type NewRecurrence,
 } from '@/data/repositories/mutations';
@@ -88,6 +90,24 @@ export function useDeleteMovement() {
   return useMutation({
     mutationFn: (id: string) => deletePersonalMovement(id),
     onSuccess: () => void invalidate(),
+  });
+}
+
+/**
+ * §17 campo 7 · crea un medio al contado la primera vez que se elige. Espera
+ * el refetch antes de devolver el id: así la pantalla ya lo encuentra en
+ * `facts.paymentMethods` cuando lo marca como elegido.
+ */
+export function useCreatePaymentMethod() {
+  const { session } = useSession();
+  const invalidate = useInvalidateFacts();
+
+  return useMutation({
+    mutationFn: async (input: NewPaymentMethod) => {
+      const id = await createPaymentMethod(session!.user.id, input);
+      await invalidate();
+      return id;
+    },
   });
 }
 

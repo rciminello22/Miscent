@@ -27,13 +27,13 @@ import {
   Chip,
   Field,
   InstallmentCountPicker,
-  PaymentMethodPicker,
   Segmented,
 } from '@/features/add/fields';
 import { InstallmentPreview } from '@/features/add/InstallmentPreview';
 import { PastDateField } from '@/features/add/DateField';
 import { MoreOptions } from '@/features/add/MoreOptions';
 import { lastUsedPaymentMethodId, moreOptionsSummary } from '@/features/add/addDefaults';
+import { PaymentMethodField } from '@/features/add/PaymentMethodField';
 import { SplitPicker } from '@/features/spaces/SplitPicker';
 import {
   useCreateSharedExpense,
@@ -397,10 +397,10 @@ export default function Agregar() {
           </Animated.View>
         )}
 
-        {/* §17 campo 7 · solo si pagó el usuario. */}
-        {kind === 'expense' && iPay && facts.paymentMethods.length > 0 && (
+        {/* §17 campo 7 · solo si pagó el usuario, y solo en Estado A (A-05). */}
+        {kind === 'expense' && iPay && accountState === 'personal' && (
           <Field label="¿Con qué lo pagaste?">
-            <PaymentMethodPicker
+            <PaymentMethodField
               methods={facts.paymentMethods}
               value={paymentMethodId}
               // Cambiar el medio NO borra las cuotas: §19 permite "crédito sin

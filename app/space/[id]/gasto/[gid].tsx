@@ -20,6 +20,7 @@ import {
 } from '@/data/repositories/edits';
 import { createSharedExpense, deleteSharedExpense } from '@/data/repositories/spaces';
 import { useSession } from '@/features/auth/SessionProvider';
+import { PaymentMethodField } from '@/features/add/PaymentMethodField';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { useSpace } from '@/features/spaces/useSpaces';
 import { balanceSentence } from '@/features/spaces/balanceCopy';
@@ -32,7 +33,6 @@ import {
   Chip,
   Field,
   InstallmentCountPicker,
-  PaymentMethodPicker,
 } from '@/features/add/fields';
 import {
   AudienceBadge,
@@ -74,7 +74,7 @@ export default function GastoCompartido() {
   const spaceId = id ?? '';
   const expenseId = gid ?? '';
 
-  const { session } = useSession();
+  const { session, accountState } = useSession();
   const { derived, today } = useSpace(spaceId);
   const { facts: personalFacts } = usePersonalFacts();
 
@@ -495,12 +495,13 @@ export default function GastoCompartido() {
                 </Field>
               )}
 
-              {payerIsMe && personalFacts.paymentMethods.length > 0 && (
+              {/* §17 campo 7 · solo en Estado A (A-05): la invitada no tiene medios. */}
+              {payerIsMe && accountState === 'personal' && (
                 <Field
                   label="¿Con qué lo pagaste?"
                   hint={`${other.displayName} no va a ver esto. Solo vos.`}
                 >
-                  <PaymentMethodPicker
+                  <PaymentMethodField
                     methods={personalFacts.paymentMethods}
                     value={paymentMethodId}
                     onChange={setPaymentMethodId}

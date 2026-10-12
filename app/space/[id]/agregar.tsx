@@ -17,13 +17,13 @@ import {
   Chip,
   Field,
   InstallmentCountPicker,
-  PaymentMethodPicker,
   Segmented,
 } from '@/features/add/fields';
 import { InstallmentPreview } from '@/features/add/InstallmentPreview';
 import { PastDateField } from '@/features/add/DateField';
 import { MoreOptions } from '@/features/add/MoreOptions';
 import { lastUsedPaymentMethodId, moreOptionsSummary } from '@/features/add/addDefaults';
+import { PaymentMethodField } from '@/features/add/PaymentMethodField';
 import { SplitPicker } from '@/features/spaces/SplitPicker';
 import {
   useCreateSharedExpense,
@@ -313,12 +313,12 @@ export default function AgregarCompartido() {
         )}
 
         {/* §17 campo 7 · solo si pagó el usuario, y solo en Estado A. */}
-        {payerIsMe && accountState === 'personal' && personalFacts.paymentMethods.length > 0 && (
+        {payerIsMe && accountState === 'personal' && (
           <Field
             label="¿Con qué lo pagaste?"
             hint={`${other.displayName} no va a ver esto. Solo vos.`}
           >
-            <PaymentMethodPicker
+            <PaymentMethodField
               methods={personalFacts.paymentMethods}
               value={paymentMethodId}
               onChange={setPaymentMethodId}

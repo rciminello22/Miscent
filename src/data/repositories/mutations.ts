@@ -100,7 +100,11 @@ export async function createPaymentMethod(
     .select('id')
     .single();
 
-  if (error != null) throw new Error('No pudimos guardar la tarjeta.');
+  if (error != null) {
+    throw new Error(
+      input.kind === 'card' ? 'No pudimos guardar la tarjeta.' : 'No pudimos guardar el medio de pago.',
+    );
+  }
   return data.id;
 }
 

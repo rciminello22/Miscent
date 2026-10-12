@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 import { Banknote, CreditCard, Landmark, MoreHorizontal, Send, Wallet } from 'lucide-react-native';
-import type { PaymentMethod } from '@domain/types';
+import type { PaymentOption } from './paymentOptions';
 import { Pressable, Row, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 
@@ -142,28 +142,32 @@ const METHOD_ICONS = {
  * vencimiento del resumen (T-03). De ahí sale si el gasto va a Gastado o a
  * Comprometido.
  */
+/**
+ * §17 campo 7 · presentacional. Quién crea el medio que todavía no existe es
+ * `PaymentMethodField`, que es lo que usan las pantallas.
+ */
 export function PaymentMethodPicker({
-  methods,
+  options,
   value,
-  onChange,
+  onPress,
 }: {
-  methods: readonly PaymentMethod[];
+  options: readonly PaymentOption[];
   value: string | null;
-  onChange: (next: string | null) => void;
+  onPress: (option: PaymentOption) => void;
 }) {
   const theme = useTheme();
 
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space['2'] }}>
-      {methods.map((method) => {
-        const Icon = METHOD_ICONS[method.kind];
-        const selected = value === method.id;
+      {options.map((option) => {
+        const Icon = METHOD_ICONS[option.kind];
+        const selected = option.methodId != null && option.methodId === value;
         return (
           <Chip
-            key={method.id}
-            label={method.name}
+            key={option.key}
+            label={option.name}
             selected={selected}
-            onPress={() => onChange(method.id)}
+            onPress={() => onPress(option)}
             icon={
               <Icon
                 size={14}

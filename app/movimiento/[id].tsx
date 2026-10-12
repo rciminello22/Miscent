@@ -26,7 +26,8 @@ import {
   INCOME_CATEGORIES,
   prettyLabel,
 } from '@/features/add/categories';
-import { Field, InstallmentCountPicker, PaymentMethodPicker } from '@/features/add/fields';
+import { Field, InstallmentCountPicker } from '@/features/add/fields';
+import { PaymentMethodField } from '@/features/add/PaymentMethodField';
 import { MoveToSpace } from '@/features/movements/MoveToSpace';
 import {
   AudienceBadge,
@@ -351,9 +352,9 @@ export default function MovimientoDetalle() {
                 />
               </Field>
 
-              {movement.kind === 'expense' && facts.paymentMethods.length > 0 && (
+              {movement.kind === 'expense' && (
                 <Field label="¿Con qué lo pagaste?">
-                  <PaymentMethodPicker
+                  <PaymentMethodField
                     methods={facts.paymentMethods}
                     value={paymentMethodId}
                     onChange={setPaymentMethodId}
