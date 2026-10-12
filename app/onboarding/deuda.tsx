@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { addMonths, monthOf, type IsoDate } from '@domain/calendar';
 import { lastClosedStatement } from '@domain/cards';
+import { alreadyInSpaces } from '@domain/duplicates';
 import { planExistingInstallments } from '@domain/installments';
 import { formatMonth, formatPesos } from '@/lib/format';
 import { queryKeys } from '@/data/queryClient';
@@ -17,6 +18,8 @@ import { AmountInput } from '@/features/add/AmountInput';
 import { DateField } from '@/features/add/DateField';
 import { Field, Segmented } from '@/features/add/fields';
 import { StepShell } from '@/features/onboarding/StepShell';
+import { installmentsInSpaceLine } from '@/features/onboarding/alreadyInSpacesCopy';
+import { categoryLabel } from '@/features/add/categories';
 import { NumberField } from '@/features/onboarding/NumberField';
 import { Card, Divider, Stack, Text } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
@@ -63,6 +66,14 @@ export default function Deuda() {
    * resumen cerrado ya es el que vence el mes que viene.
    */
   const lastStatement = card != null ? lastClosedStatement(card, today) : null;
+
+  // §13 O3 paso 4 · "se listan las cuotas compartidas que ya existen en sus
+  // espacios para no repetirlas". Una sola vez, en la primera tarjeta: quien
+  // venía de invitado nunca pudo decir con qué tarjeta pagó un gasto de Casa.
+  const sharedInstallments = useMemo(
+    () => alreadyInSpaces(facts.spaces, today).installments,
+    [facts.spaces, today],
+  );
   const lastStatementMonth = lastStatement?.month ?? monthOf(today);
 
   // §13 O3 paso 4 · "si no: monto y vencimiento". T-05 · sin día de
@@ -206,6 +217,24 @@ export default function Deuda() {
           <Text variant="smallMedium" tone="secondary">
             ¿Tenés cuotas en curso?
           </Text>
+
+          {index === 0 && sharedInstallments.length > 0 && (
+            <Card tone="sunken">
+              <Stack gap="2">
+                <Text variant="small">
+                  Estas ya están en tus espacios y tu parte ya cuenta. No las cargues de nuevo acá:
+                </Text>
+                {sharedInstallments.map((item) => (
+                  <Text key={item.expenseId} variant="caption" tone="shared">
+                    {installmentsInSpaceLine({
+                      ...item,
+                      label: item.description ?? categoryLabel(item.category),
+                    })}
+                  </Text>
+                ))}
+              </Stack>
+            </Card>
+          )}
 
           <Field label="Valor de cada cuota">
             <View>

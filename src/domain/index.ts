@@ -22,3 +22,4 @@ export * from './radar';
 export * from './upcoming';
 export * from './shared-balance';
 export * from './future';
+export * from './duplicates';

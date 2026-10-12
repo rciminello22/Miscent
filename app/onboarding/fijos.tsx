@@ -1,19 +1,21 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Check } from 'lucide-react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { monthOf } from '@domain/calendar';
+import { alreadyInSpaces } from '@domain/duplicates';
 import type { Category } from '@domain/types';
-import { categoryMeta } from '@/features/add/categories';
+import { categoryLabel, categoryMeta } from '@/features/add/categories';
 import { formatPesos } from '@/lib/format';
 import { AmountInput } from '@/features/add/AmountInput';
 import { DayPicker } from '@/features/onboarding/DayPicker';
 import { StepShell } from '@/features/onboarding/StepShell';
+import { alreadyInLine, anotherOneQuestion } from '@/features/onboarding/alreadyInSpacesCopy';
 import { Field } from '@/features/add/fields';
-import { useCreateRecurrence } from '@/features/shared/usePersonalFacts';
+import { useCreateRecurrence, usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { useToday } from '@/features/shared/useToday';
-import { Card, Pressable, Row, Stack, Text } from '@/ui/primitives';
+import { Button, Card, Pressable, Row, Stack, Text } from '@/ui/primitives';
 import { duration, stagger } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
 
@@ -27,18 +29,25 @@ import { useTheme } from '@/ui/theme';
  * alguien que abandonó la planilla. Una pantalla en blanco que dice "agregá
  * tus gastos fijos" lo deja pensando qué cuenta como fijo. Una lista tildable
  * le recuerda los que tiene.
+ *
+ * CA-09 · los que ya están en un espacio aparecen como "Ya en Casa · tu parte
+ * $250.000". Se pueden tildar igual, pero antes se pregunta "¿Es otro
+ * alquiler?" (§11 paso 3): sin esa pregunta, el radar contaría dos veces el
+ * mismo alquiler, una por la parte de Casa (K9) y otra por el fijo personal.
  */
 
-const SUGGESTIONS: { category: Category; label: string }[] = [
-  { category: 'alquiler', label: 'Alquiler' },
-  { category: 'expensas', label: 'Expensas' },
-  { category: 'servicios', label: 'Servicios' },
-  { category: 'internet', label: 'Internet' },
-  { category: 'celular', label: 'Celular' },
-  { category: 'gimnasio', label: 'Gimnasio' },
-  { category: 'suscripciones', label: 'Streaming' },
-  { category: 'salud', label: 'Prepaga' },
+const SUGGESTIONS: { category: Category; label: string; another: string }[] = [
+  { category: 'alquiler', label: 'Alquiler', another: '¿Es otro alquiler?' },
+  { category: 'expensas', label: 'Expensas', another: '¿Son otras expensas?' },
+  { category: 'servicios', label: 'Servicios', another: '¿Son otros servicios?' },
+  { category: 'internet', label: 'Internet', another: '¿Es otro internet?' },
+  { category: 'celular', label: 'Celular', another: '¿Es otro celular?' },
+  { category: 'gimnasio', label: 'Gimnasio', another: '¿Es otro gimnasio?' },
+  { category: 'suscripciones', label: 'Streaming', another: '¿Es otro streaming?' },
+  { category: 'salud', label: 'Prepaga', another: '¿Es otra prepaga?' },
 ];
+
+const SUGGESTED = new Set(SUGGESTIONS.map((suggestion) => suggestion.category));
 
 type Draft = { amount: number; dayOfMonth: number };
 
@@ -46,25 +55,43 @@ export default function Fijos() {
   const theme = useTheme();
   const router = useRouter();
   const today = useToday();
+  const { facts } = usePersonalFacts();
   const createRecurrence = useCreateRecurrence();
 
   const [drafts, setDrafts] = useState<Partial<Record<Category, Draft>>>({});
   const [editing, setEditing] = useState<Category | null>(null);
+  // §11 paso 3 · la sugerencia que está preguntando "¿Es otro alquiler?".
+  const [confirming, setConfirming] = useState<Category | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const inSpaces = useMemo(() => alreadyInSpaces(facts.spaces, today).fixed, [facts.spaces, today]);
+  const matchesFor = (category: Category) => inSpaces.filter((item) => item.category === category);
+  // Los fijos compartidos sin sugerencia propia también se muestran (CA-09).
+  const others = inSpaces.filter((item) => !SUGGESTED.has(item.category));
 
   const chosen = Object.entries(drafts).filter(([, draft]) => (draft?.amount ?? 0) > 0);
 
+  function select(category: Category) {
+    setConfirming(null);
+    setEditing(category);
+    setDrafts((previous) => ({ ...previous, [category]: { amount: 0, dayOfMonth: 1 } }));
+  }
+
   function toggle(category: Category) {
-    setDrafts((previous) => {
-      if (previous[category] != null) {
+    if (drafts[category] != null) {
+      setDrafts((previous) => {
         const next = { ...previous };
         delete next[category];
-        if (editing === category) setEditing(null);
         return next;
-      }
-      setEditing(category);
-      return { ...previous, [category]: { amount: 0, dayOfMonth: 1 } };
-    });
+      });
+      if (editing === category) setEditing(null);
+      return;
+    }
+    if (matchesFor(category).length > 0) {
+      setConfirming(confirming === category ? null : category);
+      return;
+    }
+    select(category);
   }
 
   function update(category: Category, patch: Partial<Draft>) {
@@ -114,6 +141,7 @@ export default function Fijos() {
           const selected = draft != null;
           const Icon = categoryMeta(suggestion.category).icon;
           const isEditing = editing === suggestion.category;
+          const matches = matchesFor(suggestion.category);
 
           return (
             <Animated.View
@@ -127,6 +155,7 @@ export default function Fijos() {
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: selected }}
                 accessibilityLabel={suggestion.label}
+                accessibilityHint={matches.map(alreadyInLine).join('. ') || undefined}
                 style={{
                   borderRadius: theme.radius.lg,
                   borderWidth: 1,
@@ -153,9 +182,14 @@ export default function Fijos() {
 
                   <Icon size={16} color={theme.colors.textSecondary} />
 
-                  <Text variant="bodyMedium" style={{ flex: 1 }}>
-                    {suggestion.label}
-                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="bodyMedium">{suggestion.label}</Text>
+                    {matches.map((match) => (
+                      <Text key={match.recurrenceId} variant="caption" tone="shared">
+                        {alreadyInLine(match)}
+                      </Text>
+                    ))}
+                  </View>
 
                   {selected && draft != null && draft.amount > 0 && !isEditing && (
                     <Pressable
@@ -170,6 +204,35 @@ export default function Fijos() {
                   )}
                 </Row>
               </Pressable>
+
+              {confirming === suggestion.category && (
+                <Animated.View
+                  entering={FadeInDown.duration(duration.base)}
+                  style={{ marginTop: theme.space['2'] }}
+                >
+                  <Card tone="sunken">
+                    <Stack gap="4">
+                      <Text variant="small">
+                        {anotherOneQuestion(suggestion.label, suggestion.another, matches)}
+                      </Text>
+                      <Row gap="2">
+                        <Button
+                          label="No, es el mismo"
+                          variant="ghost"
+                          onPress={() => setConfirming(null)}
+                          style={{ flex: 1 }}
+                        />
+                        <Button
+                          label="Sí, es otro"
+                          variant="secondary"
+                          onPress={() => select(suggestion.category)}
+                          style={{ flex: 1 }}
+                        />
+                      </Row>
+                    </Stack>
+                  </Card>
+                </Animated.View>
+              )}
 
               {selected && isEditing && draft != null && (
                 <Animated.View
@@ -200,6 +263,30 @@ export default function Fijos() {
             </Animated.View>
           );
         })}
+
+        {others.length > 0 && (
+          <Card tone="sunken">
+            <Stack gap="3">
+              <Text variant="smallMedium" tone="secondary">
+                También están en tus espacios. No hace falta cargarlos: tu parte ya cuenta.
+              </Text>
+              {others.map((item) => {
+                const OtherIcon = categoryMeta(item.category).icon;
+                return (
+                  <Row key={item.recurrenceId} gap="3" align="center">
+                    <OtherIcon size={16} color={theme.colors.textSecondary} />
+                    <View style={{ flex: 1 }}>
+                      <Text variant="bodyMedium">{categoryLabel(item.category)}</Text>
+                      <Text variant="caption" tone="shared">
+                        {alreadyInLine(item)}
+                      </Text>
+                    </View>
+                  </Row>
+                );
+              })}
+            </Stack>
+          </Card>
+        )}
       </Stack>
     </StepShell>
   );
