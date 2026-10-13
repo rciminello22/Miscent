@@ -24,6 +24,7 @@ import { PastDateField } from '@/features/add/DateField';
 import { MoreOptions } from '@/features/add/MoreOptions';
 import { lastUsedPaymentMethodId, moreOptionsSummary } from '@/features/add/addDefaults';
 import { PaymentMethodField } from '@/features/add/PaymentMethodField';
+import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
 import { SplitPicker } from '@/features/spaces/SplitPicker';
 import {
   useCreateSharedExpense,
@@ -71,6 +72,7 @@ export default function AgregarCompartido() {
   const { facts: personalFacts, expansion } = usePersonalFacts();
 
   const createExpense = useCreateSharedExpense(spaceId);
+  const feedback = useFeedback();
   const createRecurrence = useCreateSharedRecurrence(spaceId);
 
   const [amount, setAmount] = useState(0);
@@ -196,8 +198,9 @@ export default function AgregarCompartido() {
     setSaving(true);
 
     try {
+      const audience = spaceAudience(derived!.facts.space.name, other);
       if (repeats) {
-        await createRecurrence.mutateAsync({
+        const id = await createRecurrence.mutateAsync({
           spaceId,
           amount,
           category,
@@ -208,8 +211,9 @@ export default function AgregarCompartido() {
           myPaymentMethodId: payerIsMe ? paymentMethodId : null,
           mySlot,
         });
+        feedback.saved({ audience, detail: effect, undo: { kind: 'recurrence', id, spaceId } });
       } else {
-        await createExpense.mutateAsync({
+        const id = await createExpense.mutateAsync({
           spaceId,
           amount,
           date,
@@ -222,11 +226,12 @@ export default function AgregarCompartido() {
           pinnedFirstMonth: null,
           myPaymentMethod: payerIsMe ? method : null,
         });
+        feedback.saved({ audience, detail: effect, undo: { kind: 'shared-expense', id, spaceId } });
       }
       goBack(router);
-    } catch {
+    } catch (cause) {
       setSaving(false);
-      Alert.alert('No pudimos guardarlo', 'Probá de nuevo en un momento.');
+      feedback.error('No pudimos guardarlo', cause);
     }
   }
 

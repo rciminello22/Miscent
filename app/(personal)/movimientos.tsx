@@ -17,6 +17,7 @@ import {
   type MovementRow,
 } from '@/features/movements/buildMovementList';
 import { useDeleteMovement, usePersonalFacts } from '@/features/shared/usePersonalFacts';
+import { useFeedback } from '@/features/shared/useFeedback';
 import {
   AudienceIcon,
   Divider,
@@ -53,6 +54,7 @@ export default function Movimientos() {
   const insets = useSafeAreaInsets();
   const { facts, today, isLoading, refetch } = usePersonalFacts();
   const deleteMovement = useDeleteMovement();
+  const feedback = useFeedback();
 
   const [month, setMonth] = useState(() => monthOf(today));
   const [filter, setFilter] = useState<MovementFilter>('all');
@@ -88,7 +90,12 @@ export default function Movimientos() {
       {
         text: 'Eliminar',
         style: 'destructive',
-        onPress: () => void deleteMovement.mutateAsync(row.id.replace('movement:', '')),
+        onPress: () => {
+          deleteMovement
+            .mutateAsync(row.id.replace('movement:', ''))
+            .then(() => feedback.deleted({ kind: 'private' }))
+            .catch((cause: unknown) => feedback.error('No pudimos eliminarlo', cause));
+        },
       },
     ]);
   }

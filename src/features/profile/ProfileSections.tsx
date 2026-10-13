@@ -6,6 +6,7 @@ import { signOut } from '@/data/auth';
 import { supabase } from '@/data/supabase';
 import { updateDisplayName } from '@/data/repositories/mutations';
 import { useSession } from '@/features/auth/SessionProvider';
+import { useFeedback } from '@/features/shared/useFeedback';
 import {
   Button,
   Card,
@@ -34,6 +35,7 @@ export function DisplayNameCard() {
   const theme = useTheme();
   const { profile, refreshProfile } = useSession();
 
+  const feedback = useFeedback();
   const [name, setName] = useState(profile?.displayName ?? '');
   const [editingName, setEditingName] = useState(false);
 
@@ -42,7 +44,10 @@ export function DisplayNameCard() {
     onSuccess: async () => {
       setEditingName(false);
       await refreshProfile();
+      // K7 · el nombre visible es lo que ve el otro miembro.
+      feedback.updated('Así te ven en tus espacios.');
     },
+    onError: (error: Error) => feedback.error('No pudimos cambiar tu nombre', error),
   });
 
   return (

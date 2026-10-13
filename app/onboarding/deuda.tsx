@@ -12,6 +12,7 @@ import { queryKeys } from '@/data/queryClient';
 import { createDeclaredStatement } from '@/data/repositories/mutations';
 import { supabase } from '@/data/supabase';
 import { useSession } from '@/features/auth/SessionProvider';
+import { useFeedback } from '@/features/shared/useFeedback';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { useToday } from '@/features/shared/useToday';
 import { AmountInput } from '@/features/add/AmountInput';
@@ -44,6 +45,7 @@ export default function Deuda() {
   const today = useToday();
   const { session } = useSession();
   const queryClient = useQueryClient();
+  const feedback = useFeedback();
   const { facts } = usePersonalFacts();
 
   const cards = facts.paymentMethods.filter((method) => method.kind === 'card');
@@ -140,6 +142,7 @@ export default function Deuda() {
       await queryClient.invalidateQueries({ queryKey: queryKeys.personalFacts(userId) });
     },
     onSuccess: () => next(),
+    onError: (error: Error) => feedback.error('No pudimos guardarlo', error),
   });
 
   function next() {

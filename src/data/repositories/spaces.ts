@@ -284,17 +284,22 @@ export async function createMemberPayment(input: {
   amount: Pesos;
   date: IsoDate;
   mySlot: Slot;
-}): Promise<void> {
-  const { error } = await supabase.from('member_payments').insert({
-    space_id: input.spaceId,
-    from_slot: input.fromSlot,
-    to_slot: input.toSlot,
-    amount: input.amount,
-    date: input.date,
-    recorded_by_slot: input.mySlot,
-  });
+}): Promise<string> {
+  const { data, error } = await supabase
+    .from('member_payments')
+    .insert({
+      space_id: input.spaceId,
+      from_slot: input.fromSlot,
+      to_slot: input.toSlot,
+      amount: input.amount,
+      date: input.date,
+      recorded_by_slot: input.mySlot,
+    })
+    .select('id')
+    .single();
 
   if (error != null) throw new Error('No pudimos registrar el pago.');
+  return data.id;
 }
 
 /**

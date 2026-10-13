@@ -16,6 +16,7 @@ import {
   putExtraSentence,
 } from '@/features/spaces/balanceCopy';
 import { useDeleteMemberPayment, useSpace } from '@/features/spaces/useSpaces';
+import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
 import { calculateSharedBalance } from '@domain/shared-balance';
 import type { MemberPayment } from '@domain/types';
 import { SpaceMenu } from '@/features/spaces/SpaceMenu';
@@ -115,6 +116,7 @@ export function SpaceScreen({
   }, [derived, today]);
 
   const deletePayment = useDeleteMemberPayment(spaceId);
+  const feedback = useFeedback();
 
   /** §25 · "confirmación al eliminar con el nuevo saldo y 'Martina también lo va a dejar de ver'". */
   function confirmDeletePayment(payment: MemberPayment) {
@@ -135,7 +137,17 @@ export function SpaceScreen({
         {
           text: 'Eliminar',
           style: 'destructive',
-          onPress: () => void deletePayment.mutateAsync(payment.id),
+          onPress: () => {
+            deletePayment
+              .mutateAsync(payment.id)
+              .then(() =>
+                feedback.deleted(
+                  spaceAudience(derived.facts.space.name, derived.other),
+                  `${balanceSentence(after)}.`,
+                ),
+              )
+              .catch((cause: unknown) => feedback.error('No pudimos eliminar el pago', cause));
+          },
         },
       ],
     );

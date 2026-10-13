@@ -34,6 +34,10 @@ import { PastDateField } from '@/features/add/DateField';
 import { MoreOptions } from '@/features/add/MoreOptions';
 import { lastUsedPaymentMethodId, moreOptionsSummary } from '@/features/add/addDefaults';
 import { PaymentMethodField } from '@/features/add/PaymentMethodField';
+import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
+import type { FeedbackAudience } from '@/features/shared/feedbackCopy';
+
+const PRIVATE: FeedbackAudience = { kind: 'private' };
 import { SplitPicker } from '@/features/spaces/SplitPicker';
 import {
   useCreateSharedExpense,
@@ -78,6 +82,7 @@ export default function Agregar() {
   const { accountState } = useSession();
   const { facts, expansion, today } = usePersonalFacts();
 
+  const feedback = useFeedback();
   const createMovement = useCreateMovement();
   const createRecurrence = useCreateRecurrence();
 
@@ -198,8 +203,11 @@ export default function Agregar() {
       if (isShared && space != null && kind === 'expense') {
         const payerSlot = payerIsMe ? space.mySlot : space.other.slot;
 
+        const audience = spaceAudience(space.facts.space.name, space.other);
+        const spaceId = space.facts.space.id;
+
         if (repeats) {
-          await createSharedRecurrence.mutateAsync({
+          const id = await createSharedRecurrence.mutateAsync({
             spaceId: space.facts.space.id,
             amount,
             category,
@@ -210,8 +218,9 @@ export default function Agregar() {
             myPaymentMethodId: payerIsMe ? paymentMethodId : null,
             mySlot: space.mySlot,
           });
+          feedback.saved({ audience, detail: effect, undo: { kind: 'recurrence', id, spaceId } });
         } else {
-          await createSharedExpense.mutateAsync({
+          const id = await createSharedExpense.mutateAsync({
             spaceId: space.facts.space.id,
             amount,
             date,
@@ -224,6 +233,7 @@ export default function Agregar() {
             pinnedFirstMonth: null,
             myPaymentMethod: payerIsMe ? method : null,
           });
+          feedback.saved({ audience, detail: effect, undo: { kind: 'shared-expense', id, spaceId } });
         }
         goBack(router);
         return;
@@ -231,7 +241,7 @@ export default function Agregar() {
 
       if (repeats && kind === 'expense') {
         // §21 · un fijo mensual, no un gasto puntual.
-        await createRecurrence.mutateAsync({
+        const id = await createRecurrence.mutateAsync({
           kind: 'expense',
           amount,
           category,
@@ -240,8 +250,9 @@ export default function Agregar() {
           endMonth: null,
           paymentMethodId,
         });
+        feedback.saved({ audience: PRIVATE, detail: effect, undo: { kind: 'recurrence', id } });
       } else {
-        await createMovement.mutateAsync({
+        const id = await createMovement.mutateAsync({
           kind,
           amount,
           date,
@@ -251,12 +262,13 @@ export default function Agregar() {
           installmentCount,
           pinnedFirstMonth: null,
         });
+        feedback.saved({ audience: PRIVATE, detail: effect, undo: { kind: 'movement', id } });
       }
 
       goBack(router);
-    } catch {
+    } catch (cause) {
       setSaving(false);
-      Alert.alert('No pudimos guardarlo', 'Probá de nuevo en un momento.');
+      feedback.error('No pudimos guardarlo', cause);
     }
   }
 

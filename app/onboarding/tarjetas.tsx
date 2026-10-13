@@ -9,6 +9,7 @@ import { formatMonth } from '@/lib/format';
 import { queryKeys } from '@/data/queryClient';
 import { createPaymentMethod } from '@/data/repositories/mutations';
 import { useSession } from '@/features/auth/SessionProvider';
+import { useFeedback } from '@/features/shared/useFeedback';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { useToday } from '@/features/shared/useToday';
 import { Field } from '@/features/add/fields';
@@ -38,6 +39,7 @@ export default function Tarjetas() {
   const today = useToday();
   const { session } = useSession();
   const queryClient = useQueryClient();
+  const feedback = useFeedback();
   const { facts } = usePersonalFacts();
 
   const [name, setName] = useState('');
@@ -64,6 +66,7 @@ export default function Tarjetas() {
         queryKey: queryKeys.personalFacts(session?.user.id ?? 'anon'),
       });
     },
+    onError: (error: Error) => feedback.error('No pudimos guardar la tarjeta', error),
   });
 
   /** La explicación concreta de lo que acaban de cargar. */

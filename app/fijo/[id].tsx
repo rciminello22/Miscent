@@ -18,6 +18,7 @@ import {
 } from '@/data/repositories/edits';
 import { useSession } from '@/features/auth/SessionProvider';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
+import { useFeedback } from '@/features/shared/useFeedback';
 import { AmountInput } from '@/features/add/AmountInput';
 import { prettyLabel } from '@/features/add/categories';
 import { Chip, Field } from '@/features/add/fields';
@@ -68,6 +69,7 @@ export default function FijoDetalle() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useSession();
   const { facts, today } = usePersonalFacts();
+  const feedback = useFeedback();
 
   const recurrence = facts.recurrences.find((item) => item.id === id);
   const currentMonth = monthOf(today);
@@ -118,22 +120,36 @@ export default function FijoDetalle() {
     },
     onSuccess: async () => {
       await invalidate();
+      // F-03 · qué cambió, en las palabras de cada opción.
+      const month = formatMonth(targetMonth, currentMonth);
+      const detail: Partial<Record<Mode, string>> = {
+        'this-month': `Solo cambia ${month}. Los otros meses siguen igual.`,
+        'from-now': `Desde este mes, ${formatPesos(amount)}. Los meses pasados no cambian.`,
+        stop: `Deja de contar desde ${month}.`,
+      };
+      feedback.updated(detail[mode] ?? null);
       setMode('view');
     },
-    onError: (error: Error) => Alert.alert('No pudimos guardarlo', error.message),
+    onError: (error: Error) => feedback.error('No pudimos guardarlo', error),
   });
 
   const removeOverride = useMutation({
     mutationFn: (month: Month) => clearMonthOverride(recurrence!.id, month),
-    onSuccess: () => void invalidate(),
+    onSuccess: async () => {
+      await invalidate();
+      feedback.updated('Ese mes vuelve al monto de siempre.');
+    },
+    onError: (error: Error) => feedback.error('No pudimos quitar el ajuste', error),
   });
 
   const remove = useMutation({
     mutationFn: () => deleteRecurrenceById(recurrence!.id),
     onSuccess: async () => {
       await invalidate();
+      feedback.deleted({ kind: 'private' });
       goBack(router);
     },
+    onError: (error: Error) => feedback.error('No pudimos eliminarlo', error),
   });
 
   if (recurrence == null) {
@@ -158,7 +174,7 @@ export default function FijoDetalle() {
       'Desaparece de todos los meses, también de los que ya pasaron. Si lo que querés es dejar de pagarlo desde ahora, usá “Dejar de pagarlo”.',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: () => void remove.mutateAsync() },
+        { text: 'Eliminar', style: 'destructive', onPress: () => remove.mutate() },
       ],
     );
   }
@@ -176,7 +192,7 @@ export default function FijoDetalle() {
               haptic="success"
               disabled={(mode === 'this-month' || mode === 'from-now') && amount <= 0}
               loading={apply.isPending}
-              onPress={() => void apply.mutateAsync()}
+              onPress={() => apply.mutate()}
             />
             <Pressable onPress={() => setMode('view')} haptic="none">
               <Text variant="small" tone="muted" align="center">
@@ -248,7 +264,7 @@ export default function FijoDetalle() {
                         <Row gap="3" align="center">
                           <Money amount={override.amount} variant="smallMedium" />
                           <Pressable
-                            onPress={() => void removeOverride.mutateAsync(override.month)}
+                            onPress={() => removeOverride.mutate(override.month)}
                             haptic="none"
                           >
                             <Text variant="caption" tone="brand">

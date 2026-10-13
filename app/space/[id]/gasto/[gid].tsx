@@ -21,6 +21,7 @@ import {
 import { createSharedExpense, deleteSharedExpense } from '@/data/repositories/spaces';
 import { useSession } from '@/features/auth/SessionProvider';
 import { PaymentMethodField } from '@/features/add/PaymentMethodField';
+import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { useSpace } from '@/features/spaces/useSpaces';
 import { balanceSentence } from '@/features/spaces/balanceCopy';
@@ -75,6 +76,7 @@ export default function GastoCompartido() {
   const expenseId = gid ?? '';
 
   const { session, accountState } = useSession();
+  const feedback = useFeedback();
   const { derived, today } = useSpace(spaceId);
   const { facts: personalFacts } = usePersonalFacts();
 
@@ -144,13 +146,16 @@ export default function GastoCompartido() {
     onSuccess: async () => {
       await invalidate();
       setEditing(false);
+      feedback.updated(
+        derived?.other.status === 'active' ? `${derived.other.displayName} ve el cambio.` : null,
+      );
     },
     onError: (error: Error) => {
       if (error instanceof SharedExpenseDeletedError) {
         setSaveFoundItDeleted(true);
         return;
       }
-      Alert.alert('No pudimos guardarlo', error.message);
+      feedback.error('No pudimos guardarlo', error);
     },
   });
 
@@ -182,25 +187,35 @@ export default function GastoCompartido() {
     },
     onSuccess: async () => {
       await invalidate();
+      if (derived != null) {
+        feedback.saved({ audience: spaceAudience(derived.facts.space.name, derived.other) });
+      }
       goBack(router);
     },
-    onError: (error: Error) => Alert.alert('No pudimos crearlo', error.message),
+    onError: (error: Error) => feedback.error('No pudimos crearlo', error),
   });
 
   const remove = useMutation({
     mutationFn: () => deleteSharedExpense(expenseId),
     onSuccess: async () => {
       await invalidate();
+      if (derived != null) {
+        feedback.deleted(spaceAudience(derived.facts.space.name, derived.other));
+      }
       goBack(router);
     },
+    onError: (error: Error) => feedback.error('No pudimos eliminarlo', error),
   });
 
   const endNow = useMutation({
     mutationFn: () => endSharedInstallmentsNow(expense!, today, derived!.mySlot),
     onSuccess: async () => {
       await invalidate();
+      // Q-07 · conserva las pasadas, elimina las futuras.
+      feedback.updated('Las cuotas que ya pasaron quedan. Las que faltaban, no.');
       goBack(router);
     },
+    onError: (error: Error) => feedback.error('No pudimos terminarla', error),
   });
 
   /** X-03 · el saldo que va a quedar si se elimina. */
@@ -262,11 +277,11 @@ export default function GastoCompartido() {
         `Si fue un error de carga, se borra entera. Si dejaron de pagarla, se conservan las cuotas que ya pasaron. ${other.displayName} también lo va a ver.`,
         [
           { text: 'Cancelar', style: 'cancel' },
-          { text: 'Terminar ahora', onPress: () => void endNow.mutateAsync() },
+          { text: 'Terminar ahora', onPress: () => endNow.mutate() },
           {
             text: 'Fue un error',
             style: 'destructive',
-            onPress: () => void remove.mutateAsync(),
+            onPress: () => remove.mutate(),
           },
         ],
       );
@@ -279,7 +294,7 @@ export default function GastoCompartido() {
       `${other.displayName} también lo va a dejar de ver.${after}`,
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: () => void remove.mutateAsync() },
+        { text: 'Eliminar', style: 'destructive', onPress: () => remove.mutate() },
       ],
     );
   }
@@ -299,7 +314,7 @@ export default function GastoCompartido() {
               haptic="success"
               disabled={amount <= 0 || category == null}
               loading={save.isPending}
-              onPress={() => void save.mutateAsync()}
+              onPress={() => save.mutate()}
             />
             <Pressable onPress={() => setEditing(false)} haptic="none">
               <Text variant="small" tone="muted" align="center">
@@ -467,7 +482,7 @@ export default function GastoCompartido() {
                   otherName={other.displayName}
                   spaceName={derived.facts.space.name}
                   recreating={recreate.isPending}
-                  onRecreate={() => void recreate.mutateAsync()}
+                  onRecreate={() => recreate.mutate()}
                   onDiscard={() => goBack(router)}
                 />
               )}

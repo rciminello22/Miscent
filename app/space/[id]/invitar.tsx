@@ -15,6 +15,7 @@ import {
   revokeInvitation,
 } from '@/data/repositories/invitations';
 import { useSpace } from '@/features/spaces/useSpaces';
+import { useFeedback } from '@/features/shared/useFeedback';
 import {
   Button,
   Card,
@@ -42,6 +43,7 @@ import { useTheme } from '@/ui/theme';
 export default function Invitar() {
   const theme = useTheme();
   const router = useRouter();
+  const feedback = useFeedback();
   const { id } = useLocalSearchParams<{ id: string }>();
   const spaceId = id ?? '';
 
@@ -70,7 +72,10 @@ export default function Invitar() {
     onSuccess: async () => {
       setToken(null);
       await state.refetch();
+      // I-05 · una invitación anulada no da acceso.
+      feedback.updated('La invitación quedó anulada: ese enlace ya no sirve.');
     },
+    onError: (error: Error) => feedback.error('No pudimos anularla', error),
   });
 
   const link = token != null ? invitationLink(token) : null;

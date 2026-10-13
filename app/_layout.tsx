@@ -13,6 +13,7 @@ import { setMagicLinkStatus } from '@/features/auth/magicLinkStatus';
 import { resetTo } from '@/features/shared/navigation';
 import { PendingInvitation } from '@/features/auth/PendingInvitation';
 import { ThemeProvider } from '@/ui/theme';
+import { ToastProvider } from '@/ui/primitives';
 import { fontsToLoad } from '@/ui/tokens';
 
 void SplashScreen.preventAutoHideAsync();
@@ -34,10 +35,13 @@ export default function RootLayout() {
       <SessionProvider>
         <ThemeProvider>
           <SafeAreaProvider>
-            <StatusBar style="auto" />
-            <MagicLinkListener />
-            <PendingInvitation />
-            <RouteGuard />
+            {/* §17 · §12 · el aviso al guardar sobrevive a la pantalla que guardó. */}
+            <ToastProvider>
+              <StatusBar style="auto" />
+              <MagicLinkListener />
+              <PendingInvitation />
+              <RouteGuard />
+            </ToastProvider>
           </SafeAreaProvider>
         </ThemeProvider>
       </SessionProvider>

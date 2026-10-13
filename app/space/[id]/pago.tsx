@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { goBack } from '@/features/shared/navigation';
 import { ArrowRight, X } from 'lucide-react-native';
@@ -12,6 +12,7 @@ import { Field, Segmented } from '@/features/add/fields';
 import { PastDateField } from '@/features/add/DateField';
 import { balanceSentence } from '@/features/spaces/balanceCopy';
 import { useCreateMemberPayment, useSpace } from '@/features/spaces/useSpaces';
+import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
 import {
   Button,
   Card,
@@ -52,6 +53,7 @@ export default function Pago() {
 
   const { derived, today } = useSpace(spaceId);
   const createPayment = useCreateMemberPayment(spaceId);
+  const feedback = useFeedback();
 
   const [amount, setAmount] = useState(0);
   const [direction, setDirection] = useState<'theyPay' | 'iPay'>('theyPay');
@@ -121,7 +123,7 @@ export default function Pago() {
     setSaving(true);
 
     try {
-      await createPayment.mutateAsync({
+      const id = await createPayment.mutateAsync({
         spaceId,
         fromSlot: result.fromSlot,
         toSlot: result.toSlot,
@@ -129,10 +131,16 @@ export default function Pago() {
         date,
         mySlot,
       });
+      feedback.saved({
+        audience: spaceAudience(derived!.facts.space.name, other),
+        // §25 · lo que importa de un pago es cómo queda el saldo.
+        detail: `${balanceSentence(result.after)}.`,
+        undo: { kind: 'payment', id, spaceId },
+      });
       goBack(router);
-    } catch {
+    } catch (cause) {
       setSaving(false);
-      Alert.alert('No pudimos registrarlo', 'Probá de nuevo en un momento.');
+      feedback.error('No pudimos registrarlo', cause);
     }
   }
 

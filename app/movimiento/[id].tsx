@@ -28,6 +28,7 @@ import {
 } from '@/features/add/categories';
 import { Field, InstallmentCountPicker } from '@/features/add/fields';
 import { PaymentMethodField } from '@/features/add/PaymentMethodField';
+import { useFeedback } from '@/features/shared/useFeedback';
 import { MoveToSpace } from '@/features/movements/MoveToSpace';
 import {
   AudienceBadge,
@@ -67,6 +68,7 @@ export default function MovimientoDetalle() {
   const queryClient = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useSession();
+  const feedback = useFeedback();
   const { facts, today } = usePersonalFacts();
 
   const movement = facts.movements.find((item) => item.id === id);
@@ -108,24 +110,30 @@ export default function MovimientoDetalle() {
     onSuccess: async () => {
       await invalidate();
       setEditing(false);
+      feedback.updated('Tu radar y tu Futuro ya lo tienen en cuenta.');
     },
-    onError: (error: Error) => Alert.alert('No pudimos guardarlo', error.message),
+    onError: (error: Error) => feedback.error('No pudimos guardarlo', error),
   });
 
   const remove = useMutation({
     mutationFn: () => deletePersonalMovementById(movement!.id),
     onSuccess: async () => {
       await invalidate();
+      feedback.deleted({ kind: 'private' });
       goBack(router);
     },
+    onError: (error: Error) => feedback.error('No pudimos eliminarlo', error),
   });
 
   const endNow = useMutation({
     mutationFn: () => endInstallmentsNowMovement(movement!, today),
     onSuccess: async () => {
       await invalidate();
+      // Q-07 · conserva las pasadas, elimina las futuras.
+      feedback.updated('Las cuotas que ya pasaron quedan. Las que faltaban, no.');
       goBack(router);
     },
+    onError: (error: Error) => feedback.error('No pudimos terminarla', error),
   });
 
   const schedule = useMemo(() => {
@@ -166,12 +174,12 @@ export default function MovimientoDetalle() {
           { text: 'Cancelar', style: 'cancel' },
           {
             text: 'Terminar ahora',
-            onPress: () => void endNow.mutateAsync(),
+            onPress: () => endNow.mutate(),
           },
           {
             text: 'Fue un error',
             style: 'destructive',
-            onPress: () => void remove.mutateAsync(),
+            onPress: () => remove.mutate(),
           },
         ],
       );
@@ -180,7 +188,7 @@ export default function MovimientoDetalle() {
 
     Alert.alert('¿Eliminar este movimiento?', 'Tu radar y tu Futuro se recalculan sin él.', [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: () => void remove.mutateAsync() },
+      { text: 'Eliminar', style: 'destructive', onPress: () => remove.mutate() },
     ]);
   }
 
@@ -197,7 +205,7 @@ export default function MovimientoDetalle() {
               haptic="success"
               disabled={amount <= 0 || category == null}
               loading={save.isPending}
-              onPress={() => void save.mutateAsync()}
+              onPress={() => save.mutate()}
             />
             <Pressable
               onPress={() => {
