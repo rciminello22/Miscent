@@ -1,12 +1,12 @@
-import { useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import { TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Plus, X } from 'lucide-react-native';
+import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { addMonths, monthOf, type IsoDate } from '@domain/calendar';
 import { lastClosedStatement } from '@domain/cards';
 import { alreadyInSpaces } from '@domain/duplicates';
-import { planExistingInstallments } from '@domain/installments';
 import { formatMonth, formatPesos } from '@/lib/format';
 import { queryKeys } from '@/data/queryClient';
 import { createDeclaredStatement } from '@/data/repositories/mutations';
@@ -22,8 +22,14 @@ import { StepShell } from '@/features/onboarding/StepShell';
 import { installmentsInSpaceLine } from '@/features/onboarding/alreadyInSpacesCopy';
 import { categoryLabel } from '@/features/add/categories';
 import { NumberField } from '@/features/onboarding/NumberField';
-import { Card, Divider, Stack, Text } from '@/ui/primitives';
+import {
+  emptyPurchase,
+  purchasesToSave,
+  type ExistingPurchase,
+} from '@/features/onboarding/existingPurchases';
+import { Button, Card, Divider, Pressable, Row, Stack, Text } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
+import { useTheme } from '@/ui/theme';
 
 /**
  * O3 paso 4 · M5 · "Lo que ya debe al activar la cuenta personal".
@@ -41,6 +47,7 @@ import { duration } from '@/ui/motion';
  *   T-08 · lo consumido desde el último cierre, como un gasto en 1 pago
  */
 export default function Deuda() {
+  const theme = useTheme();
   const router = useRouter();
   const today = useToday();
   const { session } = useSession();
@@ -56,10 +63,23 @@ export default function Deuda() {
   const [pendingAmount, setPendingAmount] = useState(0);
   // null = el usuario no la tocó: vale la que se deduce de la tarjeta.
   const [pendingDueDate, setPendingDueDate] = useState<IsoDate | null>(null);
-  const [installmentAmount, setInstallmentAmount] = useState(0);
-  const [paidCount, setPaidCount] = useState<number | null>(null);
-  const [totalCount, setTotalCount] = useState<number | null>(null);
+  // Q-06 · una o más compras en cuotas del último resumen.
+  const keys = useRef(0);
+  const newKey = () => String(++keys.current);
+  const [purchases, setPurchases] = useState<ExistingPurchase[]>(() => [emptyPurchase('0')]);
   const [recentSpending, setRecentSpending] = useState(0);
+
+  function updatePurchase(key: string, patch: Partial<ExistingPurchase>) {
+    setPurchases((previous) =>
+      previous.map((purchase) => (purchase.key === key ? { ...purchase, ...patch } : purchase)),
+    );
+  }
+  function addPurchase() {
+    setPurchases((previous) => [...previous, emptyPurchase(newKey())]);
+  }
+  function removePurchase(key: string) {
+    setPurchases((previous) => previous.filter((purchase) => purchase.key !== key));
+  }
 
   /**
    * El resumen que el usuario tiene en la mano: el último CERRADO. De él salen
@@ -97,34 +117,32 @@ export default function Deuda() {
         });
       }
 
-      // Q-06 · las cuotas que faltan, desde el mes siguiente al último resumen.
-      if (installmentAmount > 0 && paidCount != null && totalCount != null && totalCount > paidCount) {
-        const existing = planExistingInstallments({
-          installmentAmount,
-          paidCount,
-          totalCount,
-          lastStatementMonth,
-          impactDay: card.dueDay,
-        });
-
-        await supabase.from('personal_movements').insert({
-          user_id: userId,
-          kind: 'expense',
-          amount: existing.remainingTotal,
-          date: today,
-          category: 'otros',
-          description: 'Cuotas en curso',
-          payment_method_id: card.id,
-          installments_count: existing.plan.count,
-          first_installment_month: existing.plan.firstMonth,
-          installment_impact_day: existing.plan.impactDay,
-          installments_approximate: existing.plan.approximate,
-        });
+      // Q-06 · por cada compra, las cuotas que faltan, desde el mes siguiente
+      // al último resumen.
+      const toSave = purchasesToSave(purchases, { lastStatementMonth, impactDay: card.dueDay });
+      if (toSave.length > 0) {
+        const { error } = await supabase.from('personal_movements').insert(
+          toSave.map((purchase) => ({
+            user_id: userId,
+            kind: 'expense' as const,
+            amount: purchase.remainingTotal,
+            date: today,
+            category: 'otros' as const,
+            description: purchase.description,
+            payment_method_id: card.id,
+            installments_count: purchase.plan.count,
+            first_installment_month: purchase.plan.firstMonth,
+            installment_impact_day: purchase.plan.impactDay,
+            installments_approximate: purchase.plan.approximate,
+          })),
+        );
+        // supabase-js no lanza: sin esto, un error dejaba el Futuro vacío en silencio.
+        if (error != null) throw new Error('No pudimos guardar las cuotas.');
       }
 
       // T-08 · consumos desde el último cierre: 1 pago, fecha hoy.
       if (recentSpending > 0) {
-        await supabase.from('personal_movements').insert({
+        const { error } = await supabase.from('personal_movements').insert({
           user_id: userId,
           kind: 'expense',
           amount: recentSpending,
@@ -137,6 +155,7 @@ export default function Deuda() {
           installment_impact_day: null,
           installments_approximate: false,
         });
+        if (error != null) throw new Error('No pudimos guardar los consumos.');
       }
 
       await queryClient.invalidateQueries({ queryKey: queryKeys.personalFacts(userId) });
@@ -151,9 +170,7 @@ export default function Deuda() {
       setLastPaid('yes');
       setPendingAmount(0);
       setPendingDueDate(null);
-      setInstallmentAmount(0);
-      setPaidCount(null);
-      setTotalCount(null);
+      setPurchases([emptyPurchase(newKey())]);
       setRecentSpending(0);
       return;
     }
@@ -239,38 +256,31 @@ export default function Deuda() {
             </Card>
           )}
 
-          <Field label="Valor de cada cuota">
-            <View>
-              <AmountInput
-                value={installmentAmount}
-                onChange={setInstallmentAmount}
-                autoFocus={false}
+          {purchases.map((purchase, position) => (
+            <Animated.View
+              key={purchase.key}
+              entering={FadeInDown.duration(duration.base)}
+              layout={LinearTransition}
+            >
+              <PurchaseForm
+                purchase={purchase}
+                // La primera no se numera: con una sola, "Compra 1" sobra.
+                title={purchases.length > 1 ? `Compra ${position + 1}` : null}
+                firstMonthLabel={formatMonth(addMonths(lastStatementMonth, 1), monthOf(today))}
+                onChange={(patch) => updatePurchase(purchase.key, patch)}
+                onRemove={purchases.length > 1 ? () => removePurchase(purchase.key) : null}
               />
-            </View>
-          </Field>
-
-          {installmentAmount > 0 && (
-            <Animated.View entering={FadeInDown.duration(duration.base)}>
-              <Stack gap="4">
-                <Field label="Vas por la cuota…">
-                  <NumberField value={paidCount} onChange={setPaidCount} max={36} />
-                </Field>
-
-                <Field label="…de un total de">
-                  <NumberField value={totalCount} onChange={setTotalCount} max={36} />
-                </Field>
-
-                {paidCount != null && totalCount != null && totalCount > paidCount && (
-                  <Card tone="brand">
-                    <Text variant="small">
-                      Faltan {totalCount - paidCount} cuotas de{' '}
-                      {formatPesos(installmentAmount)}, desde{' '}
-                      {formatMonth(addMonths(lastStatementMonth, 1), monthOf(today))}.
-                    </Text>
-                  </Card>
-                )}
-              </Stack>
             </Animated.View>
+          ))}
+
+          {/* §13 · "cuotas del último resumen", en plural. */}
+          {purchases.some((purchase) => purchase.installmentAmount > 0) && (
+            <Button
+              label="Otra compra en cuotas"
+              variant="ghost"
+              icon={<Plus size={16} color={theme.colors.brand} />}
+              onPress={addPurchase}
+            />
           )}
         </Stack>
 
@@ -287,5 +297,107 @@ export default function Deuda() {
         </Field>
       </Stack>
     </StepShell>
+  );
+}
+
+/**
+ * Q-06 · una compra en cuotas, como figura en el resumen: "3 de 6, $30.000".
+ * La descripción es opcional, pero con varias es lo que las distingue después
+ * en Movimientos y en Futuro.
+ */
+function PurchaseForm({
+  purchase,
+  title,
+  firstMonthLabel,
+  onChange,
+  onRemove,
+}: {
+  purchase: ExistingPurchase;
+  title: string | null;
+  firstMonthLabel: string;
+  onChange: (patch: Partial<ExistingPurchase>) => void;
+  onRemove: (() => void) | null;
+}) {
+  const theme = useTheme();
+  const { installmentAmount, paidCount, totalCount } = purchase;
+  const complete = paidCount != null && totalCount != null && totalCount > paidCount;
+
+  return (
+    <Card tone={title != null ? 'sunken' : 'surface'}>
+      <Stack gap="4">
+        {(title != null || onRemove != null) && (
+          <Row justify="space-between" align="center">
+            <Text variant="smallMedium">{title}</Text>
+            {onRemove != null && (
+              <Pressable
+                onPress={onRemove}
+                haptic="none"
+                accessibilityRole="button"
+                accessibilityLabel={`Quitar ${title ?? 'esta compra'}`}
+                hitSlop={12}
+              >
+                <X size={18} color={theme.colors.textSecondary} />
+              </Pressable>
+            )}
+          </Row>
+        )}
+
+        <Field label="¿Qué compraste?" hint="Opcional. Te sirve para reconocerla después.">
+          <TextInput
+            value={purchase.description}
+            onChangeText={(description) => onChange({ description })}
+            placeholder="Heladera, celular, zapatillas…"
+            placeholderTextColor={theme.colors.textMuted}
+            maxLength={140}
+            accessibilityLabel="Qué compraste"
+            style={[
+              theme.typography.body,
+              {
+                color: theme.colors.text,
+                borderRadius: theme.radius.md,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                backgroundColor: theme.colors.surface,
+                paddingHorizontal: theme.space['4'],
+                height: 48,
+              },
+            ]}
+          />
+        </Field>
+
+        <Field label="Valor de cada cuota">
+          <View>
+            <AmountInput
+              value={installmentAmount}
+              onChange={(amount) => onChange({ installmentAmount: amount })}
+              autoFocus={false}
+            />
+          </View>
+        </Field>
+
+        {installmentAmount > 0 && (
+          <Animated.View entering={FadeInDown.duration(duration.base)}>
+            <Stack gap="4">
+              <Field label="Vas por la cuota…">
+                <NumberField value={paidCount} onChange={(next) => onChange({ paidCount: next })} max={36} />
+              </Field>
+
+              <Field label="…de un total de">
+                <NumberField value={totalCount} onChange={(next) => onChange({ totalCount: next })} max={36} />
+              </Field>
+
+              {complete && (
+                <Card tone="brand">
+                  <Text variant="small">
+                    Faltan {totalCount - paidCount} cuotas de {formatPesos(installmentAmount)}, desde{' '}
+                    {firstMonthLabel}.
+                  </Text>
+                </Card>
+              )}
+            </Stack>
+          </Animated.View>
+        )}
+      </Stack>
+    </Card>
   );
 }
