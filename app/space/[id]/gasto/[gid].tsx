@@ -102,6 +102,14 @@ export default function GastoCompartido() {
   const [description, setDescription] = useState(expense?.description ?? '');
   const [paymentMethodId, setPaymentMethodId] = useState<string | null>(null);
 
+  /** C-05 · el detalle privado de pago que ya tiene este gasto, si lo pagó él. */
+  const currentPaymentMethodId =
+    personalFacts.spaces
+      .find((membership) => membership.facts.space.id === spaceId)
+      ?.paymentDetails.find(
+        (detail) => detail.sourceId === expenseId && detail.slot === derived?.mySlot,
+      )?.paymentMethodId ?? null;
+
   const method =
     personalFacts.paymentMethods.find((item) => item.id === paymentMethodId) ?? null;
 
@@ -432,6 +440,9 @@ export default function GastoCompartido() {
                   setSplit(expense.split);
                   setInstallmentCount(expense.installments?.count ?? null);
                   setDescription(expense.description ?? '');
+                  // C-05 · el medio con que lo pagó, para no perderlo al
+                  // guardar: sin medio, el detalle de pago se borra.
+                  setPaymentMethodId(currentPaymentMethodId);
                   setEditing(true);
                 }}
               />
