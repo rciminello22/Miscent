@@ -44,8 +44,14 @@ describe('moreOptionsSummary', () => {
   const TODAY = '2026-10-10';
   const base = { date: TODAY, today: TODAY, installmentCount: null, repeats: false, description: '' };
 
-  it('todo por defecto', () => {
-    expect(moreOptionsSummary(base)).toBe('Hoy · en 1 pago');
+  it('todo por defecto: sin cuotas no dice nada de pagos', () => {
+    // "En 1 pago" es lenguaje de tarjeta de crédito: con transferencia o
+    // efectivo se leía como si el gasto fuera con tarjeta (12/10).
+    expect(moreOptionsSummary(base)).toBe('Hoy');
+  });
+
+  it('una cuota sola tampoco es "en cuotas"', () => {
+    expect(moreOptionsSummary({ ...base, installmentCount: 1 })).toBe('Hoy');
   });
 
   it('ayer, en cuotas', () => {

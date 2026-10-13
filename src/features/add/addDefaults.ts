@@ -32,8 +32,8 @@ export function lastUsedPaymentMethodId(
 }
 
 /**
- * La fila colapsada de "Más opciones" dice lo que tiene elegido: "Hoy · en 1
- * pago", "Ayer · 6 cuotas", "3 oct · se repite cada mes · "Netflix"".
+ * La fila colapsada de "Más opciones" dice lo que tiene elegido: "Hoy",
+ * "Ayer · 6 cuotas", "3 oct · se repite cada mes · "Netflix"".
  */
 export function moreOptionsSummary(args: {
   date: IsoDate;
@@ -49,11 +49,13 @@ export function moreOptionsSummary(args: {
         ? 'Ayer'
         : formatDayMonth(args.date);
 
+  // Sin cuotas no se dice nada: "en 1 pago" es lenguaje de tarjeta de crédito,
+  // y con transferencia o efectivo se leía como si fuera con tarjeta.
   const how = args.repeats
     ? 'se repite cada mes'
     : args.installmentCount != null && args.installmentCount >= 2
       ? `${args.installmentCount} cuotas`
-      : 'en 1 pago';
+      : null;
 
   const description = args.description.trim();
   return [when, how, description === '' ? null : `"${description}"`]
