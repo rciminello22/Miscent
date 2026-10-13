@@ -32,10 +32,12 @@ import {
   Pressable,
   Row,
   SectionHeader,
+  Sheet,
   Skeleton,
   Stack,
   Text,
 } from '@/ui/primitives';
+import { PaymentDetail } from './PaymentDetail';
 import { duration, stagger } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
 
@@ -84,6 +86,7 @@ export function SpaceScreen({
   const { derived, today, isLoading, isError, refetch } = useSpace(spaceId);
   const [refreshing, setRefreshing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<MemberPayment | null>(null);
 
   const currentMonth = monthOf(today);
 
@@ -138,6 +141,7 @@ export function SpaceScreen({
           text: 'Eliminar',
           style: 'destructive',
           onPress: () => {
+            setSelectedPayment(null);
             deletePayment
               .mutateAsync(payment.id)
               .then(() =>
@@ -470,7 +474,7 @@ export function SpaceScreen({
                       sentence={paymentSentence(movement.payment, derived.mySlot, other.displayName)}
                       date={movement.payment.date}
                       amount={movement.payment.amount}
-                      onPress={() => confirmDeletePayment(movement.payment)}
+                      onPress={() => setSelectedPayment(movement.payment)}
                     />
                   )}
                   {index < movements.length - 1 && <Divider />}
@@ -514,6 +518,31 @@ export function SpaceScreen({
         // §26 · solo quien creó el espacio, y solo si el otro está adentro.
         canRemoveOther={me.isCreator && other.status === 'active'}
       />
+
+      {/* §25 · tocar un pago lo muestra; eliminar queda adentro. */}
+      <Sheet
+        visible={selectedPayment != null}
+        onClose={() => setSelectedPayment(null)}
+        title="Pago entre ustedes"
+      >
+        {selectedPayment != null && (
+          <PaymentDetail
+            sentence={paymentSentence(selectedPayment, derived.mySlot, other.displayName)}
+            date={selectedPayment.date}
+            recordedBy={{
+              isMe: selectedPayment.recordedBySlot === derived.mySlot,
+              name:
+                derived.facts.space.members.find(
+                  (member) => member.slot === selectedPayment.recordedBySlot,
+                )?.displayName ?? other.displayName,
+            }}
+            // La confirmación sale sobre la hoja abierta: cerrar un Modal y
+            // abrir un Alert a la vez puede perder el Alert en iOS. Cancelar
+            // vuelve al detalle; eliminar cierra la hoja.
+            onDelete={() => confirmDeletePayment(selectedPayment)}
+          />
+        )}
+      </Sheet>
     </ScrollView>
   );
 }
