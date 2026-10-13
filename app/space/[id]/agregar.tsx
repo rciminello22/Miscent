@@ -210,6 +210,7 @@ export default function AgregarCompartido() {
           split,
           myPaymentMethodId: payerIsMe ? paymentMethodId : null,
           mySlot,
+          description,
         });
         feedback.saved({ audience, detail: effect, undo: { kind: 'recurrence', id, spaceId } });
       } else {

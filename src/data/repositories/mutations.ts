@@ -155,11 +155,19 @@ export type NewRecurrence = {
   startMonth: Month;
   endMonth: Month | null;
   paymentMethodId: string | null;
+  /** "Luz", "Monotributo". Vacío → se muestra por su categoría. */
+  description?: string | null;
   /** Solo si es del espacio. */
   spaceId?: string | null;
   payerSlot?: Slot | null;
   split?: Split | null;
 };
+
+/** El CHECK de la base no acepta texto vacío: vacío es `null`. */
+export function cleanDescription(description: string | null | undefined): string | null {
+  const trimmed = description?.trim() ?? '';
+  return trimmed === '' ? null : trimmed.slice(0, 140);
+}
 
 export async function createRecurrence(
   userId: string,
@@ -173,6 +181,7 @@ export async function createRecurrence(
       kind: input.kind,
       amount: input.amount,
       category: input.category,
+      description: cleanDescription(input.description),
       day_of_month: input.dayOfMonth,
       start_month: input.startMonth,
       end_month: input.endMonth,

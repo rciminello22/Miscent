@@ -125,6 +125,7 @@ export function toRecurrence(row: Row<'recurrences'>): Recurrence {
     kind: row.kind,
     amount: row.amount,
     category: row.category,
+    description: row.description,
     dayOfMonth: row.day_of_month,
     startMonth: row.start_month,
     endMonth: row.end_month,

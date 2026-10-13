@@ -329,7 +329,9 @@ export default function Futuro() {
                         style={{ paddingVertical: theme.space['3'] }}
                       >
                         <View style={{ flex: 1, gap: 2 }}>
-                          <Text variant="smallMedium">{prettyLabel(recurrence.category)}</Text>
+                          <Text variant="smallMedium">
+                            {recurrence.description ?? prettyLabel(recurrence.category)}
+                          </Text>
                           <Text variant="caption" tone="muted">
                             cada día {recurrence.dayOfMonth}
                             {recurrence.endMonth != null

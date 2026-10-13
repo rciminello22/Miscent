@@ -146,6 +146,8 @@ export type Recurrence = {
   kind: 'expense' | 'income';
   amount: Pesos;
   category: Category;
+  /** "Luz", "Monotributo". `null` → se muestra por su categoría. */
+  description: string | null;
   /** Día del mes en que ocurre. T-04 aplicado al expandir. */
   dayOfMonth: number;
   startMonth: Month;

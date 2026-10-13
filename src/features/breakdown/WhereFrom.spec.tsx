@@ -54,6 +54,7 @@ const FACTS: PersonalFacts = {
       kind: 'expense',
       amount: 480_000,
       category: 'alquiler',
+      description: null,
       dayOfMonth: 1,
       startMonth: '2026-01',
       endMonth: null,

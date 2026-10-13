@@ -217,6 +217,7 @@ export default function Agregar() {
             split,
             myPaymentMethodId: payerIsMe ? paymentMethodId : null,
             mySlot: space.mySlot,
+            description,
           });
           feedback.saved({ audience, detail: effect, undo: { kind: 'recurrence', id, spaceId } });
         } else {
@@ -249,6 +250,7 @@ export default function Agregar() {
           startMonth: monthOf(date),
           endMonth: null,
           paymentMethodId,
+          description,
         });
         feedback.saved({ audience: PRIVATE, detail: effect, undo: { kind: 'recurrence', id } });
       } else {

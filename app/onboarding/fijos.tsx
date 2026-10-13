@@ -1,18 +1,27 @@
-import { useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import { TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Check } from 'lucide-react-native';
+import { Check, Plus, X } from 'lucide-react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { monthOf } from '@domain/calendar';
 import { alreadyInSpaces } from '@domain/duplicates';
-import type { Category } from '@domain/types';
-import { categoryLabel, categoryMeta } from '@/features/add/categories';
+import { EXPENSE_CATEGORIES, categoryLabel, categoryMeta } from '@/features/add/categories';
+import { CategoryGrid } from '@/features/add/CategoryGrid';
 import { formatPesos } from '@/lib/format';
 import { AmountInput } from '@/features/add/AmountInput';
 import { DayPicker } from '@/features/onboarding/DayPicker';
 import { StepShell } from '@/features/onboarding/StepShell';
 import { alreadyInLine, anotherOneQuestion } from '@/features/onboarding/alreadyInSpacesCopy';
+import {
+  SUGGESTIONS,
+  fixedToSave,
+  matchesSuggestion,
+  type CustomFixed,
+  type FixedDraft,
+  type Suggestion,
+} from '@/features/onboarding/fixedSuggestions';
 import { Field } from '@/features/add/fields';
+import { useFeedback } from '@/features/shared/useFeedback';
 import { useCreateRecurrence, usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { useToday } from '@/features/shared/useToday';
 import { Button, Card, Pressable, Row, Stack, Text } from '@/ui/primitives';
@@ -22,8 +31,10 @@ import { useTheme } from '@/ui/theme';
 /**
  * O3 paso 5 · Gastos fijos: "sugerencias tildables".
  *
- * §13 da la lista exacta: alquiler, expensas, servicios, internet, celular,
- * gimnasio, streaming, prepaga.
+ * §13 da la lista: alquiler, expensas, servicios, internet, celular, gimnasio,
+ * streaming, prepaga. Servicios va abierto en Luz, Gas y Agua, porque cada uno
+ * llega en su factura y con su monto (12/10). Lo que no está en la lista se
+ * carga como "Otro fijo", con su nombre.
  *
  * Son sugerencias y no un formulario vacío por el usuario objetivo de §2:
  * alguien que abandonó la planilla. Una pantalla en blanco que dice "agregá
@@ -36,89 +47,98 @@ import { useTheme } from '@/ui/theme';
  * mismo alquiler, una por la parte de Casa (K9) y otra por el fijo personal.
  */
 
-const SUGGESTIONS: { category: Category; label: string; another: string }[] = [
-  { category: 'alquiler', label: 'Alquiler', another: '¿Es otro alquiler?' },
-  { category: 'expensas', label: 'Expensas', another: '¿Son otras expensas?' },
-  { category: 'servicios', label: 'Servicios', another: '¿Son otros servicios?' },
-  { category: 'internet', label: 'Internet', another: '¿Es otro internet?' },
-  { category: 'celular', label: 'Celular', another: '¿Es otro celular?' },
-  { category: 'gimnasio', label: 'Gimnasio', another: '¿Es otro gimnasio?' },
-  { category: 'suscripciones', label: 'Streaming', another: '¿Es otro streaming?' },
-  { category: 'salud', label: 'Prepaga', another: '¿Es otra prepaga?' },
-];
-
-const SUGGESTED = new Set(SUGGESTIONS.map((suggestion) => suggestion.category));
-
-type Draft = { amount: number; dayOfMonth: number };
-
 export default function Fijos() {
   const theme = useTheme();
   const router = useRouter();
   const today = useToday();
+  const feedback = useFeedback();
   const { facts } = usePersonalFacts();
   const createRecurrence = useCreateRecurrence();
 
-  const [drafts, setDrafts] = useState<Partial<Record<Category, Draft>>>({});
-  const [editing, setEditing] = useState<Category | null>(null);
+  const [drafts, setDrafts] = useState<Partial<Record<string, FixedDraft>>>({});
+  const [editing, setEditing] = useState<string | null>(null);
   // §11 paso 3 · la sugerencia que está preguntando "¿Es otro alquiler?".
-  const [confirming, setConfirming] = useState<Category | null>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [customs, setCustoms] = useState<CustomFixed[]>([]);
+  const keys = useRef(0);
   const [saving, setSaving] = useState(false);
 
   const inSpaces = useMemo(() => alreadyInSpaces(facts.spaces, today).fixed, [facts.spaces, today]);
-  const matchesFor = (category: Category) => inSpaces.filter((item) => item.category === category);
-  // Los fijos compartidos sin sugerencia propia también se muestran (CA-09).
-  const others = inSpaces.filter((item) => !SUGGESTED.has(item.category));
+  const matchesFor = (suggestion: Suggestion) =>
+    inSpaces.filter((item) => matchesSuggestion(item, suggestion));
+  // Los fijos compartidos que no son de ninguna sugerencia también se muestran (CA-09).
+  const others = inSpaces.filter(
+    (item) => !SUGGESTIONS.some((suggestion) => matchesSuggestion(item, suggestion)),
+  );
 
-  const chosen = Object.entries(drafts).filter(([, draft]) => (draft?.amount ?? 0) > 0);
+  const toSave = fixedToSave(drafts, customs);
 
-  function select(category: Category) {
+  function select(key: string) {
     setConfirming(null);
-    setEditing(category);
-    setDrafts((previous) => ({ ...previous, [category]: { amount: 0, dayOfMonth: 1 } }));
+    setEditing(key);
+    setDrafts((previous) => ({ ...previous, [key]: { amount: 0, dayOfMonth: 1 } }));
   }
 
-  function toggle(category: Category) {
-    if (drafts[category] != null) {
+  function toggle(suggestion: Suggestion) {
+    const { key } = suggestion;
+    if (drafts[key] != null) {
       setDrafts((previous) => {
         const next = { ...previous };
-        delete next[category];
+        delete next[key];
         return next;
       });
-      if (editing === category) setEditing(null);
+      if (editing === key) setEditing(null);
       return;
     }
-    if (matchesFor(category).length > 0) {
-      setConfirming(confirming === category ? null : category);
+    if (matchesFor(suggestion).length > 0) {
+      setConfirming(confirming === key ? null : key);
       return;
     }
-    select(category);
+    select(key);
   }
 
-  function update(category: Category, patch: Partial<Draft>) {
+  function update(key: string, patch: Partial<FixedDraft>) {
     setDrafts((previous) => ({
       ...previous,
-      [category]: { ...(previous[category] ?? { amount: 0, dayOfMonth: 1 }), ...patch },
+      [key]: { ...(previous[key] ?? { amount: 0, dayOfMonth: 1 }), ...patch },
     }));
+  }
+
+  function addCustom() {
+    keys.current += 1;
+    setCustoms((previous) => [
+      ...previous,
+      { key: String(keys.current), name: '', category: 'otros', amount: 0, dayOfMonth: 1 },
+    ]);
+  }
+  function updateCustom(key: string, patch: Partial<CustomFixed>) {
+    setCustoms((previous) =>
+      previous.map((custom) => (custom.key === key ? { ...custom, ...patch } : custom)),
+    );
+  }
+  function removeCustom(key: string) {
+    setCustoms((previous) => previous.filter((custom) => custom.key !== key));
   }
 
   async function save() {
     setSaving(true);
     try {
-      for (const [category, draft] of chosen) {
-        if (draft == null) continue;
+      for (const fixed of toSave) {
         await createRecurrence.mutateAsync({
           kind: 'expense',
-          amount: draft.amount,
-          category: category as Category,
-          dayOfMonth: draft.dayOfMonth,
+          amount: fixed.amount,
+          category: fixed.category,
+          description: fixed.description,
+          dayOfMonth: fixed.dayOfMonth,
           startMonth: monthOf(today),
           endMonth: null,
           paymentMethodId: null,
         });
       }
       router.replace('/onboarding/listo');
-    } catch {
+    } catch (cause) {
       setSaving(false);
+      feedback.error('No pudimos guardar tus fijos', cause);
     }
   }
 
@@ -132,25 +152,25 @@ export default function Fijos() {
       saving={saving}
       onContinue={() => void save()}
       onSkip={() => router.replace('/onboarding/listo')}
-      continueLabel={chosen.length > 0 ? `Guardar ${chosen.length}` : 'Continuar'}
+      continueLabel={toSave.length > 0 ? `Guardar ${toSave.length}` : 'Continuar'}
       continueDisabled={false}
     >
       <Stack gap="3">
         {SUGGESTIONS.map((suggestion, index) => {
-          const draft = drafts[suggestion.category];
+          const draft = drafts[suggestion.key];
           const selected = draft != null;
           const Icon = categoryMeta(suggestion.category).icon;
-          const isEditing = editing === suggestion.category;
-          const matches = matchesFor(suggestion.category);
+          const isEditing = editing === suggestion.key;
+          const matches = matchesFor(suggestion);
 
           return (
             <Animated.View
-              key={suggestion.category}
+              key={suggestion.key}
               layout={LinearTransition}
               entering={FadeInDown.delay(stagger(index, 50)).duration(duration.base)}
             >
               <Pressable
-                onPress={() => toggle(suggestion.category)}
+                onPress={() => toggle(suggestion)}
                 scaleOnPress={false}
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: selected }}
@@ -193,7 +213,7 @@ export default function Fijos() {
 
                   {selected && draft != null && draft.amount > 0 && !isEditing && (
                     <Pressable
-                      onPress={() => setEditing(suggestion.category)}
+                      onPress={() => setEditing(suggestion.key)}
                       haptic="none"
                       scaleOnPress={false}
                     >
@@ -205,7 +225,7 @@ export default function Fijos() {
                 </Row>
               </Pressable>
 
-              {confirming === suggestion.category && (
+              {confirming === suggestion.key && (
                 <Animated.View
                   entering={FadeInDown.duration(duration.base)}
                   style={{ marginTop: theme.space['2'] }}
@@ -225,7 +245,7 @@ export default function Fijos() {
                         <Button
                           label="Sí, es otro"
                           variant="secondary"
-                          onPress={() => select(suggestion.category)}
+                          onPress={() => select(suggestion.key)}
                           style={{ flex: 1 }}
                         />
                       </Row>
@@ -244,16 +264,14 @@ export default function Fijos() {
                       <View>
                         <AmountInput
                           value={draft.amount}
-                          onChange={(amount) => update(suggestion.category, { amount })}
+                          onChange={(amount) => update(suggestion.key, { amount })}
                         />
                       </View>
 
                       <Field label="¿Qué día lo pagás?">
                         <DayPicker
                           value={draft.dayOfMonth}
-                          onChange={(day) =>
-                            update(suggestion.category, { dayOfMonth: day ?? 1 })
-                          }
+                          onChange={(day) => update(suggestion.key, { dayOfMonth: day ?? 1 })}
                         />
                       </Field>
                     </Stack>
@@ -263,6 +281,28 @@ export default function Fijos() {
             </Animated.View>
           );
         })}
+
+        {customs.map((custom) => (
+          <Animated.View
+            key={custom.key}
+            layout={LinearTransition}
+            entering={FadeInDown.duration(duration.base)}
+          >
+            <CustomFixedForm
+              custom={custom}
+              onChange={(patch) => updateCustom(custom.key, patch)}
+              onRemove={() => removeCustom(custom.key)}
+            />
+          </Animated.View>
+        ))}
+
+        {/* Lo que no está en la lista: monotributo, telepase, la cuota del club… */}
+        <Button
+          label="Otro fijo"
+          variant="ghost"
+          icon={<Plus size={16} color={theme.colors.brand} />}
+          onPress={addCustom}
+        />
 
         {others.length > 0 && (
           <Card tone="sunken">
@@ -276,7 +316,9 @@ export default function Fijos() {
                   <Row key={item.recurrenceId} gap="3" align="center">
                     <OtherIcon size={16} color={theme.colors.textSecondary} />
                     <View style={{ flex: 1 }}>
-                      <Text variant="bodyMedium">{categoryLabel(item.category)}</Text>
+                      <Text variant="bodyMedium">
+                        {item.description ?? categoryLabel(item.category)}
+                      </Text>
                       <Text variant="caption" tone="shared">
                         {alreadyInLine(item)}
                       </Text>
@@ -289,5 +331,86 @@ export default function Fijos() {
         )}
       </Stack>
     </StepShell>
+  );
+}
+
+/** "Otro fijo": nombre propio, una categoría de la lista fija (P13), monto y día. */
+function CustomFixedForm({
+  custom,
+  onChange,
+  onRemove,
+}: {
+  custom: CustomFixed;
+  onChange: (patch: Partial<CustomFixed>) => void;
+  onRemove: () => void;
+}) {
+  const theme = useTheme();
+
+  return (
+    <Card tone="sunken">
+      <Stack gap="5">
+        <Row justify="space-between" align="center">
+          <Text variant="smallMedium">Otro fijo</Text>
+          <Pressable
+            onPress={onRemove}
+            haptic="none"
+            accessibilityRole="button"
+            accessibilityLabel="Quitar este fijo"
+            hitSlop={12}
+          >
+            <X size={18} color={theme.colors.textSecondary} />
+          </Pressable>
+        </Row>
+
+        <Field label="¿Cómo se llama?">
+          <TextInput
+            value={custom.name}
+            onChangeText={(name) => onChange({ name })}
+            placeholder="Monotributo, telepase, club…"
+            placeholderTextColor={theme.colors.textMuted}
+            maxLength={140}
+            autoFocus
+            accessibilityLabel="Nombre del fijo"
+            style={[
+              theme.typography.body,
+              {
+                color: theme.colors.text,
+                borderRadius: theme.radius.md,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                backgroundColor: theme.colors.surface,
+                paddingHorizontal: theme.space['4'],
+                height: 48,
+              },
+            ]}
+          />
+        </Field>
+
+        <Field label="¿De qué es?">
+          <CategoryGrid
+            categories={EXPENSE_CATEGORIES}
+            value={custom.category}
+            onChange={(category) => onChange({ category })}
+          />
+        </Field>
+
+        <Field label="¿Cuánto es por mes?">
+          <View>
+            <AmountInput
+              value={custom.amount}
+              onChange={(amount) => onChange({ amount })}
+              autoFocus={false}
+            />
+          </View>
+        </Field>
+
+        <Field label="¿Qué día lo pagás?">
+          <DayPicker
+            value={custom.dayOfMonth}
+            onChange={(day) => onChange({ dayOfMonth: day ?? 1 })}
+          />
+        </Field>
+      </Stack>
+    </Card>
   );
 }

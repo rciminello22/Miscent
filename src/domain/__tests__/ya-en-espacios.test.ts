@@ -55,6 +55,7 @@ describe('CA-09 · los fijos que ya están en sus espacios', () => {
         spaceId: 'casa',
         spaceName: 'Casa',
         category: 'alquiler',
+        description: null,
         myShare: 250_000,
         nextDate: '2026-10-10',
       },

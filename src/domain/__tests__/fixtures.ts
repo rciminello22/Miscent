@@ -141,12 +141,14 @@ export function sharedRecurrence(args: {
   endMonth?: Month | null;
   id?: string;
   paymentMethodId?: string | null;
+  description?: string | null;
 }): Recurrence {
   return {
     id: args.id ?? nextId('recurrence'),
     kind: 'expense',
     amount: args.amount,
     category: args.category ?? 'alquiler',
+    description: args.description ?? null,
     dayOfMonth: args.dayOfMonth,
     startMonth: args.startMonth,
     endMonth: args.endMonth ?? null,
@@ -167,12 +169,14 @@ export function personalRecurrence(args: {
   paymentMethodId?: string | null;
   endMonth?: Month | null;
   id?: string;
+  description?: string | null;
 }): Recurrence {
   return {
     id: args.id ?? nextId('recurrence'),
     kind: args.kind,
     amount: args.amount,
     category: args.category,
+    description: args.description ?? null,
     dayOfMonth: args.dayOfMonth,
     startMonth: args.startMonth,
     endMonth: args.endMonth ?? null,

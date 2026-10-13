@@ -206,7 +206,7 @@ export default function FijoDetalle() {
       <Stack gap="7">
         <Row justify="space-between" align="center">
           <Text variant="heading" numberOfLines={1} style={{ flex: 1 }}>
-            {prettyLabel(recurrence.category)}
+            {recurrence.description ?? prettyLabel(recurrence.category)}
           </Text>
           <Pressable
             onPress={() => goBack(router)}

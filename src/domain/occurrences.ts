@@ -223,7 +223,7 @@ function expandSharedRecurrence(
         id: `recurrence:${recurrence.id}:${month}`,
         sourceId: recurrence.id,
         sourceKind: 'recurrence' as const,
-        label: recurrence.category,
+        label: recurrence.description ?? recurrence.category,
         category: recurrence.category,
         amount,
         shares: proportionalShares(amount, recurrence.amount, split),
@@ -433,7 +433,7 @@ function expandPersonalRecurrence(
       // y de "Ingreso previsto".
       incomes.push({
         id: `recurrence:${recurrence.id}:${month}`,
-        label: recurrence.category,
+        label: recurrence.description ?? recurrence.category,
         amount,
         month,
         date,
@@ -448,7 +448,7 @@ function expandPersonalRecurrence(
     occurrences.push(
       ownOccurrence({
         id: `recurrence:${recurrence.id}:${month}`,
-        label: recurrence.category,
+        label: recurrence.description ?? recurrence.category,
         category: recurrence.category,
         total: amount,
         // N-02 · los fijos son Comprometido, también cuando la fecha ya pasó

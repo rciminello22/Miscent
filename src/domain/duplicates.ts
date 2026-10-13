@@ -22,6 +22,8 @@ export type FixedInSpace = {
   spaceId: string;
   spaceName: string;
   category: Category;
+  /** "Luz": dice CUÁL de los servicios es. `null` → por su categoría. */
+  description: string | null;
   /** Tu parte de la PRÓXIMA ocurrencia, con su ajuste (F-03) si lo tiene. */
   myShare: Pesos;
   nextDate: IsoDate;
@@ -87,6 +89,8 @@ export function alreadyInSpaces(
           recurrenceId: sourceId,
           ...space,
           category: next.category,
+          description:
+            facts.recurrences.find((recurrence) => recurrence.id === sourceId)?.description ?? null,
           myShare: shareOf(next.shares, mySlot),
           nextDate: next.balanceDate,
         });

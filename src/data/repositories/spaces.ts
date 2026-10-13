@@ -23,6 +23,7 @@ import { supabase } from '../supabase';
 import { installmentColumns, splitColumns, toSpaceFacts } from '../mappers';
 import { ownActiveMemberships } from '../memberships';
 import { fetchOverrideRows, throwIfError } from './personal';
+import { cleanDescription } from './mutations';
 
 export type SpaceSummary = {
   id: string;
@@ -245,6 +246,7 @@ export async function createSharedRecurrence(input: {
   split: Split;
   myPaymentMethodId: string | null;
   mySlot: Slot;
+  description?: string | null;
 }): Promise<string> {
   const { data, error } = await supabase
     .from('recurrences')
@@ -252,6 +254,7 @@ export async function createSharedRecurrence(input: {
       kind: 'expense',
       amount: input.amount,
       category: input.category,
+      description: cleanDescription(input.description),
       day_of_month: input.dayOfMonth,
       start_month: input.startMonth,
       end_month: null,
