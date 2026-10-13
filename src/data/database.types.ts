@@ -365,6 +365,7 @@ export type Database = {
           category: Database["public"]["Enums"]["category"]
           created_at: string
           day_of_month: number
+          description: string | null
           end_month: string | null
           id: string
           kind: Database["public"]["Enums"]["movement_kind"]
@@ -382,6 +383,7 @@ export type Database = {
           category: Database["public"]["Enums"]["category"]
           created_at?: string
           day_of_month: number
+          description?: string | null
           end_month?: string | null
           id?: string
           kind: Database["public"]["Enums"]["movement_kind"]
@@ -399,6 +401,7 @@ export type Database = {
           category?: Database["public"]["Enums"]["category"]
           created_at?: string
           day_of_month?: number
+          description?: string | null
           end_month?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["movement_kind"]
