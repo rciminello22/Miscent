@@ -154,12 +154,18 @@ export async function movePersonalToSpace(args: {
   if (error != null) throw new Error('No pudimos moverlo al espacio.');
 
   if (keepPaymentMethod && movement.paymentMethodId != null) {
-    await supabase.from('shared_payment_details').insert({
+    const detail = await supabase.from('shared_payment_details').insert({
       source_id: data.id,
       space_id: spaceId,
       slot: mySlot,
       payment_method_id: movement.paymentMethodId,
     });
+    // O todo o nada: el personal todavía no se borró, así que deshacer el
+    // compartido deja todo como estaba.
+    if (detail.error != null) {
+      await supabase.from('shared_expenses').delete().eq('id', data.id);
+      throw new Error('No pudimos moverlo al espacio.');
+    }
   }
 
   await deletePersonalMovementById(movement.id);
@@ -250,22 +256,23 @@ export async function updateSharedExpense(
   // medio propio deja de tener sentido y se borra. Lo mismo si pagó él y
   // destildó el medio: sin medio es al contado, y la tarjeta vieja no puede
   // seguir llevándose el gasto a su resumen.
-  if (!iPaid || input.myPaymentMethod == null) {
-    await supabase
-      .from('shared_payment_details')
-      .delete()
-      .eq('source_id', id)
-      .eq('slot', input.mySlot);
-    return;
-  }
+  const detail =
+    !iPaid || input.myPaymentMethod == null
+      ? await supabase
+          .from('shared_payment_details')
+          .delete()
+          .eq('source_id', id)
+          .eq('slot', input.mySlot)
+      : await supabase.from('shared_payment_details').upsert({
+          source_id: id,
+          space_id: input.spaceId,
+          slot: input.mySlot,
+          payment_method_id: input.myPaymentMethod.id,
+        });
 
-  if (input.myPaymentMethod != null) {
-    await supabase.from('shared_payment_details').upsert({
-      source_id: id,
-      space_id: input.spaceId,
-      slot: input.mySlot,
-      payment_method_id: input.myPaymentMethod.id,
-    });
+  // El gasto ya quedó guardado; volver a guardar es seguro (es un update).
+  if (detail.error != null) {
+    throw new Error('Guardamos los cambios, pero no con qué lo pagaste. Probá guardar de nuevo.');
   }
 }
 

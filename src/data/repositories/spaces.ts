@@ -22,6 +22,7 @@ import type {
 import { supabase } from '../supabase';
 import { installmentColumns, splitColumns, toSpaceFacts } from '../mappers';
 import { ownActiveMemberships } from '../memberships';
+import { fetchOverrideRows, throwIfError } from './personal';
 
 export type SpaceSummary = {
   id: string;
@@ -89,20 +90,17 @@ export async function fetchSpaceFacts(
   if (space.error != null || space.data == null) {
     throw new Error('No pudimos abrir este espacio.');
   }
+  throwIfError(members.error, 'miembros');
+  throwIfError(expenses.error, 'gastos compartidos');
+  throwIfError(recurrences.error, 'fijos compartidos');
+  throwIfError(payments.error, 'pagos entre miembros');
+  // Nunca suponer el lugar: con el slot equivocado, el saldo sale invertido y
+  // "tu parte" es la del otro (K9).
+  if (me.error != null || me.data == null) throw new Error('No pudimos abrir este espacio.');
 
   const recurrenceRows = recurrences.data ?? [];
-  const overrides =
-    recurrenceRows.length === 0
-      ? []
-      : ((
-          await supabase
-            .from('recurrence_overrides')
-            .select('*')
-            .in(
-              'recurrence_id',
-              recurrenceRows.map((row) => row.id),
-            )
-        ).data ?? []);
+  // F-03 · sin los ajustes, "Este mes fue distinto" se perdería en silencio.
+  const overrides = await fetchOverrideRows(recurrenceRows.map((row) => row.id));
 
   return {
     facts: toSpaceFacts({
@@ -113,7 +111,7 @@ export async function fetchSpaceFacts(
       overrides,
       payments: payments.data ?? [],
     }),
-    mySlot: (me.data ?? 1) as Slot,
+    mySlot: me.data as Slot,
   };
 }
 
@@ -213,12 +211,18 @@ export async function createSharedExpense(input: NewSharedExpense): Promise<stri
 
   // C-05 · el medio de pago, solo si lo pagó el propio usuario.
   if (iPaid && input.myPaymentMethod != null) {
-    await supabase.from('shared_payment_details').insert({
+    const detail = await supabase.from('shared_payment_details').insert({
       source_id: data.id,
       space_id: input.spaceId,
       slot: input.mySlot,
       payment_method_id: input.myPaymentMethod.id,
     });
+    // O todo o nada: sin el medio, el gasto no llega al resumen de la tarjeta,
+    // y dejarlo guardado invita a tocar Guardar otra vez y duplicarlo.
+    if (detail.error != null) {
+      await supabase.from('shared_expenses').delete().eq('id', data.id);
+      throw new Error('No pudimos guardar el gasto.');
+    }
   }
 
   return data.id;
@@ -265,12 +269,17 @@ export async function createSharedRecurrence(input: {
   if (error != null) throw new Error('No pudimos guardar el fijo compartido.');
 
   if (input.payerSlot === input.mySlot && input.myPaymentMethodId != null) {
-    await supabase.from('shared_payment_details').insert({
+    const detail = await supabase.from('shared_payment_details').insert({
       source_id: data.id,
       space_id: input.spaceId,
       slot: input.mySlot,
       payment_method_id: input.myPaymentMethodId,
     });
+    // O todo o nada, igual que en createSharedExpense.
+    if (detail.error != null) {
+      await supabase.from('recurrences').delete().eq('id', data.id);
+      throw new Error('No pudimos guardar el fijo compartido.');
+    }
   }
 
   return data.id;

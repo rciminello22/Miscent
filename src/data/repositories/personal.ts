@@ -78,6 +78,12 @@ async function fetchMembership(
   throwIfError(space.error, 'espacio');
   throwIfError(members.error, 'miembros');
   throwIfError(expenses.error, 'gastos compartidos');
+  throwIfError(recurrences.error, 'fijos compartidos');
+  throwIfError(payments.error, 'pagos entre miembros');
+  // Sin los detalles, los gastos que pagó con tarjeta no llegan a su resumen.
+  throwIfError(details.error, 'medios de pago de los gastos compartidos');
+  // Sin left_at, SA-05 no sabe desde cuándo dejar de contar los fijos.
+  throwIfError(myMember.error, 'espacios');
 
   const recurrenceRows = recurrences.data ?? [];
   const overrideRows = await fetchOverrideRows(recurrenceRows.map((row) => row.id));
@@ -103,7 +109,7 @@ async function fetchMembership(
  * acá los tipos del dominio obligaría a mapear dos veces, y el tipado lo
  * detecta.
  */
-async function fetchOverrideRows(recurrenceIds: readonly string[]) {
+export async function fetchOverrideRows(recurrenceIds: readonly string[]) {
   if (recurrenceIds.length === 0) return [];
   const { data, error } = await supabase
     .from('recurrence_overrides')
@@ -118,7 +124,11 @@ async function fetchOverrides(recurrenceIds: readonly string[]) {
   return (await fetchOverrideRows(recurrenceIds)).map(toRecurrenceOverride);
 }
 
-function throwIfError(error: { message: string } | null, what: string): void {
+/**
+ * Toda lectura mira su error. Un `data ?? []` sin esto convierte una falla de
+ * red en "no hay nada": un saldo en cero o un Futuro vacío, sin aviso.
+ */
+export function throwIfError(error: { message: string } | null, what: string): void {
   if (error != null) {
     throw new Error(`No pudimos leer tus ${what}.`);
   }
