@@ -128,6 +128,8 @@ export type SharedExpense = {
   updatedBySlot: Slot;
   /** Cuándo cambió por última vez. Lo pone el servidor (revisión, opción B). */
   updatedAt: Timestamp;
+  /** Cuándo se cargó. Lo pone el servidor (actividad reciente). */
+  createdAt: Timestamp;
 };
 
 /** Un instante que pone el servidor (timestamptz), en ISO 8601. */
@@ -201,6 +203,8 @@ export type Recurrence = {
   updatedBySlot: Slot | null;
   /** Cuándo cambió por última vez. Lo pone el servidor (revisión, opción B). */
   updatedAt: Timestamp;
+  /** Cuándo se cargó. Lo pone el servidor (actividad reciente). */
+  createdAt: Timestamp;
   /**
    * F-03 · los montos de antes de cada "Cambiar desde este mes". Sin esto, el
    * monto nuevo reescribía los meses que ya pasaron.
@@ -233,6 +237,8 @@ export type MemberPayment = {
   amount: Pesos;
   date: IsoDate;
   recordedBySlot: Slot;
+  /** Cuándo se registró. Lo pone el servidor (actividad reciente). */
+  createdAt: Timestamp;
 };
 
 export type InvitationStatus = 'active' | 'used' | 'expired' | 'revoked';

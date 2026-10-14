@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { monthOf } from '@domain/calendar';
 import { expandSpaceOccurrences, spaceHorizon } from '@domain/occurrences';
 import { pendingDeletions, pendingReview } from '@domain/review';
+import { recentActivity } from '@domain/activity';
 import {
   calculateSharedBalance,
   calculateSpaceMonth,
@@ -77,6 +78,8 @@ export function useSpace(spaceId: string) {
       pendingReview: pendingReview(facts, mySlot, reviews),
       /** Opción B · lo que eliminó el otro y todavía no revisé. */
       pendingDeletions: pendingDeletions(deletions, mySlot, reviews),
+      /** Should 6 · quién cargó, editó o eliminó qué, lo más reciente primero. */
+      activity: recentActivity(facts, deletions),
     };
   }, [query.data, today]);
 

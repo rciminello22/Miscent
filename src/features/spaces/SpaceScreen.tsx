@@ -33,6 +33,8 @@ import { calculateSharedBalance } from '@domain/shared-balance';
 import type { DeletedRecord, MemberPayment } from '@domain/types';
 import { SpaceMenu } from '@/features/spaces/SpaceMenu';
 import { spaceSummaryText } from './shareSummary';
+import { ActivityList } from './ActivityList';
+import { activityLine, activityWhen } from './activityCopy';
 import {
   AudienceBadge,
   Button,
@@ -99,6 +101,8 @@ export function SpaceScreen({
   const { derived, today, isLoading, isError, refetch } = useSpace(spaceId);
   const [refreshing, setRefreshing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Should 6 · la actividad reciente, en su propia hoja.
+  const [activityOpen, setActivityOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<MemberPayment | null>(null);
 
   const currentMonth = monthOf(today);
@@ -705,7 +709,27 @@ export function SpaceScreen({
         // §26 · solo quien creó el espacio, y solo si el otro está adentro.
         canRemoveOther={me.isCreator && other.status === 'active'}
         summaryText={summaryText}
+        // Una hoja por vez: se cierra el menú y la actividad abre después
+        // (dos Modal juntos se pisan en iOS).
+        onShowActivity={() => {
+          setMenuOpen(false);
+          setTimeout(() => setActivityOpen(true), 350);
+        }}
       />
+
+      <Sheet visible={activityOpen} onClose={() => setActivityOpen(false)} title="Actividad reciente">
+        <ActivityList
+          items={derived.activity.map((event) => ({
+            key: event.key,
+            line: activityLine(event, {
+              mySlot: derived.mySlot,
+              otherName: other.displayName,
+              categoryLabel: prettyLabel,
+            }),
+            when: activityWhen(event.at, today),
+          }))}
+        />
+      </Sheet>
 
       {/* §25 · tocar un pago lo muestra; eliminar queda adentro. */}
       <Sheet

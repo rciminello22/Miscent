@@ -92,6 +92,8 @@ export default function Pago() {
             amount,
             date,
             recordedBySlot: mySlot,
+            // Una vista previa: no se guarda ni cuenta para la actividad.
+            createdAt: `${date}T00:00:00+00:00`,
           },
         ],
       },

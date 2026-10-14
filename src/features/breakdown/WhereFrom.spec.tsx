@@ -60,6 +60,7 @@ const FACTS: PersonalFacts = {
       createdBySlot: null,
       updatedBySlot: null,
       updatedAt: '2026-01-01T00:00:00+00:00',
+      createdAt: '2026-01-01T00:00:00+00:00',
       pastTerms: [],
       dayOfMonth: 1,
       startMonth: '2026-01',

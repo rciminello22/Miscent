@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert, Share, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LogOut, Pencil, Share2, UserPlus, UserX } from 'lucide-react-native';
+import { History, LogOut, Pencil, Share2, UserPlus, UserX } from 'lucide-react-native';
 import { Button, Divider, Pressable, Row, Sheet, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 import { useRemoveMemberAccess, useRenameSpace } from './useSpaces';
@@ -23,6 +23,7 @@ export function SpaceMenu({
   otherHasAccess,
   canRemoveOther,
   summaryText,
+  onShowActivity,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -34,6 +35,8 @@ export function SpaceMenu({
   canRemoveOther: boolean;
   /** Should 3 · el resumen del espacio, ya escrito para leerse afuera. */
   summaryText: string;
+  /** Should 6 · abre la actividad reciente (la hoja vive en la pantalla). */
+  onShowActivity: () => void;
 }) {
   const theme = useTheme();
   const router = useRouter();
@@ -153,6 +156,13 @@ export function SpaceMenu({
             icon={<Pencil size={17} color={theme.colors.textSecondary} />}
             label="Renombrar"
             onPress={() => setEditing(true)}
+          />
+          <Divider />
+
+          <MenuRow
+            icon={<History size={17} color={theme.colors.textSecondary} />}
+            label="Actividad reciente"
+            onPress={onShowActivity}
           />
           <Divider />
 

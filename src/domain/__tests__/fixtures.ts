@@ -131,6 +131,7 @@ export function sharedExpense(args: {
     createdBySlot: args.payerSlot,
     updatedBySlot: args.payerSlot,
     updatedAt: `${args.date}T12:00:00+00:00`,
+    createdAt: `${args.date}T12:00:00+00:00`,
   };
 }
 
@@ -157,6 +158,7 @@ export function sharedRecurrence(args: {
     createdBySlot: null,
     updatedBySlot: null,
     updatedAt: '2026-01-01T00:00:00+00:00',
+    createdAt: '2026-01-01T00:00:00+00:00',
     pastTerms: [],
     dayOfMonth: args.dayOfMonth,
     startMonth: args.startMonth,
@@ -191,6 +193,7 @@ export function personalRecurrence(args: {
     createdBySlot: null,
     updatedBySlot: null,
     updatedAt: '2026-01-01T00:00:00+00:00',
+    createdAt: '2026-01-01T00:00:00+00:00',
     pastTerms: [],
     dayOfMonth: args.dayOfMonth,
     startMonth: args.startMonth,
@@ -247,6 +250,7 @@ export function memberPayment(args: {
     amount: args.amount,
     date: args.date,
     recordedBySlot: args.fromSlot,
+    createdAt: `${args.date}T12:00:00+00:00`,
   };
 }
 

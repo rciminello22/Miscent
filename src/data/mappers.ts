@@ -120,6 +120,7 @@ export function toSharedExpense(row: Row<'shared_expenses'>): SharedExpense {
     createdBySlot: toSlot(row.created_by_slot),
     updatedBySlot: toSlot(row.updated_by_slot),
     updatedAt: row.updated_at,
+    createdAt: row.created_at,
   };
 }
 
@@ -164,6 +165,7 @@ export function toRecurrence(row: Row<'recurrences'>): Recurrence {
     createdBySlot: row.created_by_slot == null ? null : toSlot(row.created_by_slot),
     updatedBySlot: row.updated_by_slot == null ? null : toSlot(row.updated_by_slot),
     updatedAt: row.updated_at,
+    createdAt: row.created_at,
     pastTerms: toPastTerms(row.past_terms),
     // El CHECK de la base garantiza que es uno de estos dos, o null.
     departureResolution:
@@ -224,6 +226,7 @@ export function toMemberPayment(row: Row<'member_payments'>): MemberPayment {
     amount: row.amount,
     date: row.date,
     recordedBySlot: toSlot(row.recorded_by_slot),
+    createdAt: row.created_at,
   };
 }
 
