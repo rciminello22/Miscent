@@ -92,6 +92,10 @@ export function FixedDetail({
     spaceName: string;
     /** "Lo cargó Martina · paga Renzo". */
     authorLine: string;
+    /** CA-28 · la confirmación, con cómo queda lo que se deben sin el fijo. */
+    deleteMessage: string;
+    /** Y lo mismo, en el aviso después de eliminarlo. */
+    deletedDetail: string;
     /** Opción B · "Lo cargó Martina · para revisar", si falta revisarlo. */
     review?: { label: string; loading: boolean; onReviewed: () => void };
   };
@@ -169,7 +173,7 @@ export function FixedDetail({
     mutationFn: () => deleteRecurrenceById(recurrence!.id),
     onSuccess: async () => {
       await invalidate();
-      feedback.deleted(feedbackAudience);
+      feedback.deleted(feedbackAudience, shared?.deletedDetail);
       goBack(router);
     },
     onError: (error: Error) => feedback.error('No pudimos eliminarlo', error),
@@ -195,7 +199,7 @@ export function FixedDetail({
       '¿Eliminar este fijo?',
       shared == null
         ? 'Desaparece de todos los meses, también de los que ya pasaron. Si lo que querés es dejar de pagarlo desde ahora, usá “Dejar de pagarlo”.'
-        : `Desaparece de todos los meses, también de los que ya pasaron, y lo que se deben con ${shared.otherName} se recalcula sin él. ${shared.otherName} también lo va a dejar de ver. Si lo que quieren es dejar de pagarlo desde ahora, usá “Dejar de pagarlo”.`,
+        : shared.deleteMessage,
       [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Eliminar', style: 'destructive', onPress: () => remove.mutate() },

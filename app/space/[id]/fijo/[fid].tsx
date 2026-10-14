@@ -7,6 +7,8 @@ import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
 import { reviewTag } from '@/features/spaces/reviewCopy';
 import { fixedAuthorLine } from '@/features/fixed/fixedCopy';
 import { useMarkReviewed, useSpace } from '@/features/spaces/useSpaces';
+import { balanceSentence } from '@/features/spaces/balanceCopy';
+import { calculateSharedBalance } from '@domain/shared-balance';
 
 /**
  * §21 · un fijo compartido: "Lo crean, editan y detienen los dos miembros".
@@ -35,6 +37,14 @@ export default function FijoCompartido() {
   if (derived == null) return null;
   const { other, mySlot } = derived;
 
+  // CA-28 · "Eliminar en un espacio confirma con el nuevo saldo". Un fijo se
+  // va de TODOS los meses, también de los que ya pasaron.
+  const after = calculateSharedBalance(
+    { ...derived.facts, recurrences: derived.facts.recurrences.filter((item) => item.id !== fid) },
+    mySlot,
+    today,
+  );
+
   return (
     <FixedDetail
       recurrence={recurrence}
@@ -59,6 +69,8 @@ export default function FijoCompartido() {
               otherName: other.displayName,
               spaceName: derived.facts.space.name,
               authorLine: fixedAuthorLine(recurrence, mySlot, other.displayName),
+              deleteMessage: `Desaparece de todos los meses, también de los que ya pasaron. ${other.displayName} también lo va a dejar de ver. El saldo pasa a: ${balanceSentence(after).toLowerCase()}. Si lo que quieren es dejar de pagarlo desde ahora, usá “Dejar de pagarlo”.`,
+              deletedDetail: `${balanceSentence(after)}.`,
               review: derived.pendingReview.has(recurrence.id)
                 ? {
                     label: reviewTag(other.displayName, derived.pendingReview.get(recurrence.id)!),
