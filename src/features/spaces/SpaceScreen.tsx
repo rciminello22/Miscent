@@ -34,6 +34,8 @@ import type { DeletedRecord, MemberPayment } from '@domain/types';
 import { SpaceMenu } from '@/features/spaces/SpaceMenu';
 import { spaceSummaryText } from './shareSummary';
 import { ActivityList } from './ActivityList';
+import { GuestWelcome, PersonalMoneyCard } from './GuestCards';
+import { useRememberedFlag } from '@/features/shared/useRememberedFlag';
 import { activityLine, activityWhen } from './activityCopy';
 import {
   AudienceBadge,
@@ -77,6 +79,9 @@ import { useTheme } from '@/ui/theme';
  *   profile · el invitado con un solo espacio, para quien el espacio ES su
  *             pantalla principal (§33 U1): no hay a dónde volver
  */
+/** §33 U1 · "Ahora no" vale para siempre, en la lista y en el espacio. */
+export const PERSONAL_CARD_NOT_NOW = 'radar.u1.personalCard.notNow';
+
 export type SpaceLeading = { kind: 'back'; onPress: () => void } | { kind: 'profile' };
 
 /**
@@ -171,6 +176,11 @@ export function SpaceScreen({
     );
   }
   const { accountState } = useSession();
+  // §33 U1 · para el invitado con un solo espacio, esta ES su pantalla
+  // principal: bienvenida única y "Tu plata personal", que nunca insiste.
+  const isGuestHome = accountState === 'guest' && leading.kind === 'profile';
+  const [welcomed, markWelcomed] = useRememberedFlag(`radar.u1.welcome.${spaceId}`);
+  const [notNow, markNotNow] = useRememberedFlag(PERSONAL_CARD_NOT_NOW);
   // Con el detalle privado de pago, que solo está en los hechos personales.
   const { facts: personalFacts } = usePersonalFacts();
   const myMembership = personalFacts.spaces.find(
@@ -364,6 +374,15 @@ export function SpaceScreen({
             </Pressable>
           </Row>
         </Row>
+
+        {/* §33 U1 · "Bienvenida única". */}
+        {isGuestHome && welcomed === false && (
+          <GuestWelcome
+            spaceName={derived.facts.space.name}
+            otherName={other.displayName}
+            onDismiss={markWelcomed}
+          />
+        )}
 
         {/* SA-04 · §27 · "¿Lo seguís pagando vos?", arriba de todo: es lo
             que explica por qué cambió el radar. */}
@@ -708,6 +727,17 @@ export function SpaceScreen({
             fullWidth
             icon={<UserPlus size={16} color={theme.colors.text} />}
             onPress={() => router.push(`/space/${spaceId}/invitar`)}
+          />
+        )}
+
+        {/* §33 U1 · "Tarjeta fija 'Tu plata personal'". */}
+        {isGuestHome && notNow != null && (
+          <PersonalMoneyCard
+            spaceName={derived.facts.space.name}
+            otherName={other.displayName}
+            reduced={notNow}
+            onCreate={() => router.push('/onboarding/cuenta-personal')}
+            onNotNow={markNotNow}
           />
         )}
 

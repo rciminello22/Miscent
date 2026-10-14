@@ -7,6 +7,8 @@ import { CircleUser } from 'lucide-react-native';
 import { useSpaces } from '@/features/spaces/useSpaces';
 import { SpaceList } from '@/features/spaces/SpaceList';
 import { FormerSpaces } from '@/features/spaces/FormerSpaces';
+import { PERSONAL_CARD_NOT_NOW } from '@/features/spaces/SpaceScreen';
+import { useRememberedFlag } from '@/features/shared/useRememberedFlag';
 import { useSession } from '@/features/auth/SessionProvider';
 import {
   Button,
@@ -44,7 +46,8 @@ export default function Espacios() {
   const { profile } = useSession();
   const { data: spaces, isLoading, refetch } = useSpaces();
 
-  const [dismissed, setDismissed] = useState(false);
+  // §33 U1 · "Ahora no" la reduce a una línea, también después de cerrar la app.
+  const [dismissed, markDismissed] = useRememberedFlag(PERSONAL_CARD_NOT_NOW);
   const [refreshing, setRefreshing] = useState(false);
 
   // §14 · con un solo espacio, entra directo. Para el invitado es su app.
@@ -132,7 +135,7 @@ export default function Espacios() {
 
         {/* §33 U1 · "Tu plata personal" */}
         <Animated.View entering={FadeInDown.duration(duration.deliberate)}>
-          {dismissed ? (
+          {dismissed == null ? null : dismissed ? (
             <Pressable onPress={() => router.push('/onboarding/cuenta-personal')} haptic="none">
               <Text variant="small" tone="brand">
                 Crear mi cuenta personal
@@ -155,7 +158,7 @@ export default function Espacios() {
                     fullWidth
                     onPress={() => router.push('/onboarding/cuenta-personal')}
                   />
-                  <Pressable onPress={() => setDismissed(true)} haptic="none">
+                  <Pressable onPress={markDismissed} haptic="none">
                     <Text variant="small" tone="muted" align="center">
                       Ahora no
                     </Text>
