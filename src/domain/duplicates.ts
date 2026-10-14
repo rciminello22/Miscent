@@ -14,7 +14,7 @@ import { addMonths, hasPassed, monthOf, type IsoDate } from './calendar';
 import { expandSpaceOccurrences, type SpaceOccurrence } from './occurrences';
 import type { Pesos } from './money';
 import { shareOf } from './split';
-import type { Category, PersonalFacts } from './types';
+import type { Category, PersonalFacts, SharedExpense } from './types';
 
 /** CA-09 · un fijo compartido: "Ya en Casa · tu parte $250.000". */
 export type FixedInSpace = {
@@ -114,4 +114,31 @@ export function alreadyInSpaces(
   }
 
   return { fixed, installments };
+}
+
+/**
+ * Should 2 · §32 · "Los dos cargan el mismo gasto". Un gasto del espacio con
+ * el mismo monto y a 3 días o menos puede ser el mismo, cargado por el otro
+ * (o dos veces por uno). Devuelve el más cercano en fecha, o `null`.
+ *
+ * Solo el monto y la fecha: la categoría o la descripción las elige cada uno
+ * a su manera ("Super" y "Supermercado"), y compararlas escondería el caso
+ * más común.
+ */
+const DUPLICATE_WINDOW_DAYS = 3;
+
+export function possibleDuplicate(
+  expenses: readonly SharedExpense[],
+  candidate: { amount: Pesos; date: IsoDate },
+): SharedExpense | null {
+  const at = Date.parse(candidate.date);
+  const day = 24 * 60 * 60 * 1000;
+
+  const near = expenses
+    .filter((expense) => expense.amount === candidate.amount)
+    .map((expense) => ({ expense, distance: Math.abs(Date.parse(expense.date) - at) / day }))
+    .filter((item) => item.distance <= DUPLICATE_WINDOW_DAYS)
+    .sort((a, b) => a.distance - b.distance);
+
+  return near[0]?.expense ?? null;
 }

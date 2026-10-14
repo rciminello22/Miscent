@@ -29,6 +29,7 @@ import { encodePersonalDraft } from '@/features/add/personalDraftCodec';
 import { rememberPersonalDraft } from '@/features/add/personalDraft';
 import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
 import { SplitPicker } from '@/features/spaces/SplitPicker';
+import { confirmIfDuplicate } from '@/features/spaces/confirmDuplicate';
 import {
   useCreateSharedExpense,
   useCreateSharedRecurrence,
@@ -208,6 +209,19 @@ export default function AgregarCompartido() {
 
   async function save() {
     if (!canSave || category == null) return;
+
+    // Should 2 · §32 · "los dos cargan el mismo gasto": se pregunta antes.
+    if (!repeats) {
+      const go = await confirmIfDuplicate({
+        expenses: derived!.facts.expenses,
+        amount,
+        date,
+        mySlot,
+        otherName: other.displayName,
+      });
+      if (!go) return;
+    }
+
     setSaving(true);
 
     try {

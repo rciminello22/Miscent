@@ -39,6 +39,7 @@ import type { FeedbackAudience } from '@/features/shared/feedbackCopy';
 
 const PRIVATE: FeedbackAudience = { kind: 'private' };
 import { SplitPicker } from '@/features/spaces/SplitPicker';
+import { confirmIfDuplicate } from '@/features/spaces/confirmDuplicate';
 import {
   useCreateSharedExpense,
   useCreateSharedRecurrence,
@@ -196,6 +197,19 @@ export default function Agregar() {
 
   async function save() {
     if (!canSave || category == null) return;
+
+    // Should 2 · §32 · "los dos cargan el mismo gasto": se pregunta antes.
+    if (isShared && space != null && kind === 'expense' && !repeats) {
+      const go = await confirmIfDuplicate({
+        expenses: space.facts.expenses,
+        amount,
+        date,
+        mySlot: space.mySlot,
+        otherName: space.other.displayName,
+      });
+      if (!go) return;
+    }
+
     setSaving(true);
 
     try {
