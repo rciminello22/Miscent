@@ -134,6 +134,38 @@ export type Database = {
           },
         ]
       }
+      former_memberships: {
+        Row: {
+          left_at: string
+          slot: number
+          snapshot: Json
+          space_id: string
+          user_id: string
+        }
+        Insert: {
+          left_at?: string
+          slot: number
+          snapshot: Json
+          space_id: string
+          user_id: string
+        }
+        Update: {
+          left_at?: string
+          slot?: number
+          snapshot?: Json
+          space_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "former_memberships_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           created_at: string

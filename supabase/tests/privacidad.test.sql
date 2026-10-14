@@ -26,7 +26,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
 
-select plan(74);
+select plan(78);
 
 -- ───────────────────────────────────────────────────────────────────────────
 -- Montaje: Renzo (con cuenta personal), Martina (invitada, Estado B) y Juan.
@@ -644,6 +644,30 @@ insert into tests.results(line) select is(
   'SA-02 / CA-40 · quien sale pierde el acceso al espacio'
 );
 
+-- SA-05 · P6 · pierde el acceso, pero conserva la foto de cómo estaba.
+insert into tests.results(line) select is(
+  (select (snapshot ? 'expenses')::text || ':' || slot from former_memberships
+   where space_id = tests.get('casa_id')::uuid),
+  'true:2',
+  'SA-05 · quien sale conserva la foto del espacio, con su lugar'
+);
+
+insert into tests.results(line) select is(
+  (select count(*)::int from former_memberships fm,
+     jsonb_array_elements(fm.snapshot -> 'members') as member
+   where fm.space_id = tests.get('casa_id')::uuid and member ? 'user_id'),
+  0,
+  'PR-02 · la foto no lleva el user_id de nadie'
+);
+
+insert into tests.results(line) select throws_ok(
+  $$ insert into former_memberships (user_id, space_id, slot, snapshot)
+     values ('22222222-2222-2222-2222-222222222222', gen_random_uuid(), 2, '{}'::jsonb) $$,
+  '42501',
+  null,
+  'SA-05 · nadie se escribe una foto a mano'
+);
+
 select tests.authenticate_as('11111111-1111-1111-1111-111111111111');
 
 insert into tests.results(line) select is(
@@ -651,6 +675,12 @@ insert into tests.results(line) select is(
    where space_id = tests.get('casa_id')::uuid and slot = 2),
   'Martina',
   'K4 / CA-40 · el nombre de quien salió queda en el historial como ex miembro'
+);
+
+insert into tests.results(line) select is(
+  (select count(*)::int from former_memberships),
+  0,
+  'PR-02 · Renzo no ve la foto que se llevó Martina'
 );
 
 -- La salida detiene el alquiler de Renzo, pero no es una edición de Martina:
