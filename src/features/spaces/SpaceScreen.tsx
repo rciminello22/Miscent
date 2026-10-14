@@ -508,6 +508,22 @@ export function SpaceScreen({
                 que ya pasó, igual que lo que se deben.
               </Text>
 
+              {/* Should 7 · por categoría, en lista y sin gráficos (§6). Con
+                  una sola categoría repetiría el total: no aparece. */}
+              {month.byCategory.length > 1 && (
+                <Stack gap="2">
+                  <Text variant="smallMedium" tone="secondary">
+                    Por categoría
+                  </Text>
+                  {month.byCategory.map((item) => (
+                    <Row key={item.category} justify="space-between" align="baseline">
+                      <Text variant="small">{prettyLabel(item.category)}</Text>
+                      <Money amount={item.total} variant="small" />
+                    </Row>
+                  ))}
+                </Stack>
+              )}
+
               {/* §25 · "en el mes: Pagos entre ustedes". No cambian lo que cada
                   uno puso (P-04): por eso van aparte, y no en las barras. */}
               {month.payments.length > 0 && (

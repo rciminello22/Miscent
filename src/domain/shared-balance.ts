@@ -12,7 +12,7 @@ import { compareMonths, monthOf, type IsoDate, type Month } from './calendar';
 import type { Pesos } from './money';
 import { expandSpaceOccurrences, spaceHorizon, type SpaceOccurrence } from './occurrences';
 import { otherSlot, shareOf } from './split';
-import type { Slot, SpaceFacts } from './types';
+import type { Category, Slot, SpaceFacts } from './types';
 
 export type SharedBalance = {
   /**
@@ -94,6 +94,11 @@ export type SpaceMonth = {
   upcoming: { label: string; amount: Pesos; date: IsoDate; payerSlot: Slot }[];
   /** Pagos entre miembros declarados en el mes. */
   payments: { amount: Pesos; fromSlot: Slot; toSlot: Slot; date: IsoDate }[];
+  /**
+   * Should 7 · el total por categoría, de mayor a menor. Sale de las mismas
+   * ocurrencias que `total`: la suma da exacto.
+   */
+  byCategory: { category: Category; total: Pesos }[];
 };
 
 /** S-04 · el mes del espacio agrupa las ocurrencias por su fecha de impacto. */
@@ -129,8 +134,11 @@ export function calculateSpaceMonth(
   let otherPut = 0;
   let otherShare = 0;
 
+  const byCategory = new Map<Category, Pesos>();
+
   for (const occurrence of occurrences) {
     total += occurrence.amount;
+    byCategory.set(occurrence.category, (byCategory.get(occurrence.category) ?? 0) + occurrence.amount);
     viewerShare += shareOf(occurrence.shares, viewerSlot);
     otherShare += shareOf(occurrence.shares, opposite);
     if (occurrence.payerSlot === viewerSlot) viewerPut += occurrence.amount;
@@ -161,6 +169,9 @@ export function calculateSpaceMonth(
         toSlot: payment.toSlot,
         date: payment.date,
       })),
+    byCategory: [...byCategory]
+      .map(([category, categoryTotal]) => ({ category, total: categoryTotal }))
+      .sort((a, b) => b.total - a.total),
   };
 }
 

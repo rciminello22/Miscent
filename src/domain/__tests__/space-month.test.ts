@@ -60,3 +60,31 @@ describe('el mes del espacio · hasta hoy', () => {
     expect(mes.upcoming).toEqual([]);
   });
 });
+
+/**
+ * Should 7 · totales del espacio por categoría. Del mismo cálculo que el
+ * total del mes: lo que ya ocurrió (S-04), así la suma da exacto el total.
+ */
+describe('Should 7 · el mes del espacio por categoría', () => {
+  const facts = spaceFacts({
+    expenses: [
+      sharedExpense({ amount: 100_000, date: '2026-10-05', payerSlot: RENZO, category: 'supermercado' }),
+      sharedExpense({ amount: 30_000, date: '2026-10-08', payerSlot: MARTINA, category: 'supermercado' }),
+      sharedExpense({ amount: 40_000, date: '2026-10-06', payerSlot: MARTINA, category: 'servicios' }),
+      // Todavía no ocurrió: no suma, igual que en el total.
+      sharedExpense({ amount: 99_000, date: '2026-10-25', payerSlot: RENZO, category: 'ocio' }),
+    ],
+  });
+  const month = calculateSpaceMonth(facts, RENZO, '2026-10', '2026-10-14');
+
+  it('agrupa por categoría, de mayor a menor', () => {
+    expect(month.byCategory).toEqual([
+      { category: 'supermercado', total: 130_000 },
+      { category: 'servicios', total: 40_000 },
+    ]);
+  });
+
+  it('la suma es exactamente el total del mes', () => {
+    expect(month.byCategory.reduce((sum, item) => sum + item.total, 0)).toBe(month.total);
+  });
+});
