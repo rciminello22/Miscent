@@ -726,6 +726,21 @@ export type Database = {
       }
       app_my_slot: { Args: { target_space_id: string }; Returns: number }
       app_my_space_ids: { Args: never; Returns: string[] }
+      app_record_shared_deletion: {
+        Args: {
+          p_amount: number
+          p_category: Database["public"]["Enums"]["category"]
+          p_created_by_slot: number
+          p_description: string
+          p_from_slot: number
+          p_kind: string
+          p_occurred_on: string
+          p_record_created_at: string
+          p_source_id: string
+          p_space_id: string
+        }
+        Returns: undefined
+      }
       app_remove_member_access: {
         Args: { target_space_id: string }
         Returns: undefined
