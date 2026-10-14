@@ -202,7 +202,7 @@ avisar**. En una app cuyo valor es "confiá en estas cifras", es lo más caro.
 
 | # | Qué | Por qué |
 |---|---|---|
-| **1** | **Completar con qué se pagó** un gasto que cargó el otro a tu nombre (1º Should, §11 paso 4) | Si Martina carga "pagó Renzo", el gasto nunca entra al resumen estimado de la Visa de Renzo |
+| **1** | **Revisión de lo que carga el otro** (opción B, decidida el 14/10): lo que carga Martina cuenta enseguida, igual para los dos, pero queda marcado "Lo cargó Martina · para revisar" hasta que lo mirás ("Está bien" / editar / eliminar). El paso 1, "¿Con qué lo pagaste?", ya está (`fd5f7dc`). Falta extenderlo a todo lo que carga el otro: necesita guardar qué revisó cada uno (migración) y pasar por §38, porque complementa K3 | Que otro pueda mover tus números sin que te enteres rompe la confianza. Se descartó "solo cuenta si lo aceptás": infla Sin asignar (casi un "te queda", G-05) y rompe "un solo saldo para los dos" |
 | 2 | "Con esto, Martina te debe $X" en el aviso al guardar un gasto compartido (§17) | Hoy el aviso dice quién lo ve y el efecto, pero no cómo queda el saldo |
 | 3 | Comparar con el mes pasado a la misma altura ("¿voy bien?"), a llevar a §38 | Pedido de la prueba del 12/10. Reemplaza la idea de "disponible por día", que G-05 prohíbe |
 | 4 | Iniciales con color en vez de foto de perfil | La foto suma Storage, RLS y privacidad (P9–P11). Las iniciales no guardan nada |
