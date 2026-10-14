@@ -365,6 +365,7 @@ export type Database = {
           category: Database["public"]["Enums"]["category"]
           created_at: string
           day_of_month: number
+          departure_resolution: string | null
           description: string | null
           end_month: string | null
           id: string
@@ -377,12 +378,14 @@ export type Database = {
           space_id: string | null
           split_mode: Database["public"]["Enums"]["split_mode"] | null
           start_month: string
+          stopped_by_departure_on: string | null
         }
         Insert: {
           amount: number
           category: Database["public"]["Enums"]["category"]
           created_at?: string
           day_of_month: number
+          departure_resolution?: string | null
           description?: string | null
           end_month?: string | null
           id?: string
@@ -395,12 +398,14 @@ export type Database = {
           space_id?: string | null
           split_mode?: Database["public"]["Enums"]["split_mode"] | null
           start_month: string
+          stopped_by_departure_on?: string | null
         }
         Update: {
           amount?: number
           category?: Database["public"]["Enums"]["category"]
           created_at?: string
           day_of_month?: number
+          departure_resolution?: string | null
           description?: string | null
           end_month?: string | null
           id?: string
@@ -413,6 +418,7 @@ export type Database = {
           space_id?: string | null
           split_mode?: Database["public"]["Enums"]["split_mode"] | null
           start_month?: string
+          stopped_by_departure_on?: string | null
         }
         Relationships: [
           {
@@ -638,6 +644,10 @@ export type Database = {
         Returns: string
       }
       app_delete_account: { Args: never; Returns: undefined }
+      app_departure_end_month: {
+        Args: { as_of: string; day_of_month: number }
+        Returns: unknown
+      }
       app_has_personal_account: { Args: never; Returns: boolean }
       app_is_anonymous: { Args: never; Returns: boolean }
       app_leave_space: { Args: { target_space_id: string }; Returns: undefined }
@@ -650,6 +660,10 @@ export type Database = {
       app_remove_member_access: {
         Args: { target_space_id: string }
         Returns: undefined
+      }
+      app_resolve_stopped_recurrence: {
+        Args: { keep: boolean; target_recurrence_id: string }
+        Returns: string
       }
     }
     Enums: {

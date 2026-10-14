@@ -8,9 +8,9 @@
 -- `authenticated`, igual que un cliente de la app. No hay atajos: si una
 -- política está mal, el test lo ve.
 --
--- 46 asserts. Cubre: PR-01, PR-02, CA-05, CA-11, CA-12, CA-13, CA-22, CA-40,
+-- 60 asserts. Cubre: PR-01, PR-02, CA-05, CA-11, CA-12, CA-13, CA-22, CA-40,
 -- CA-47, CA-48, C-02, C-05, D-01, E-01, E-02, I-02, I-04, I-07, K1, K3, K4,
--- P5, P7, SA-02, SA-06, SY-02, X-02, §26 quitar acceso, la asimetría de
+-- P5, P7, SA-02, SA-04, SA-06, SY-02, X-02, §26 quitar acceso, la asimetría de
 -- shared_payment_details y el usuario anónimo de O2 sin email.
 --
 -- Se corre de dos formas, y las dos funcionan sobre este mismo archivo:
@@ -26,7 +26,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
 
-select plan(46);
+select plan(60);
 
 -- ───────────────────────────────────────────────────────────────────────────
 -- Montaje: Renzo (con cuenta personal), Martina (invitada, Estado B) y Juan.
@@ -469,6 +469,32 @@ insert into tests.results(line) select throws_ok(
 -- SA-02 / CA-40 · al salir se pierde el acceso y el historial queda
 -- ───────────────────────────────────────────────────────────────────────────
 
+-- SA-04 · dos fijos compartidos en Casa antes de que Martina salga: el
+-- alquiler (Renzo lo pasa a sus fijos) y las expensas (Renzo las termina).
+select tests.authenticate_as('11111111-1111-1111-1111-111111111111');
+
+with created as (
+  insert into recurrences (
+    kind, amount, category, day_of_month, start_month, space_id,
+    payer_slot, split_mode, share_slot_1, share_slot_2
+  ) values (
+    'expense', 500000, 'alquiler', 10, '2026-01', tests.get('casa_id')::uuid,
+    1, 'even', 250000, 250000
+  ) returning id
+)
+select tests.put('alquiler_id', id::text) from created;
+
+with created as (
+  insert into recurrences (
+    kind, amount, category, day_of_month, start_month, space_id,
+    payer_slot, split_mode, share_slot_1, share_slot_2
+  ) values (
+    'expense', 80000, 'expensas', 5, '2026-01', tests.get('casa_id')::uuid,
+    1, 'even', 40000, 40000
+  ) returning id
+)
+select tests.put('expensas_id', id::text) from created;
+
 select tests.authenticate_as('22222222-2222-2222-2222-222222222222');
 select app_leave_space(tests.get('casa_id')::uuid);
 
@@ -485,6 +511,109 @@ insert into tests.results(line) select is(
    where space_id = tests.get('casa_id')::uuid and slot = 2),
   'Martina',
   'K4 / CA-40 · el nombre de quien salió queda en el historial como ex miembro'
+);
+
+
+-- ───────────────────────────────────────────────────────────────────────────
+-- SA-04 · los fijos compartidos se detienen DESDE la salida, y quien queda
+-- decide: "¿Lo seguís pagando vos?" → Pasarlo a mis fijos / Terminarlo (14/10)
+-- ───────────────────────────────────────────────────────────────────────────
+
+select tests.as_service();
+
+-- El corte por fecha, con fechas fijas: hasta el 14/10 la del 10/10 ya
+-- ocurrió (sigue compartida), la del 28/10 todavía no (ya no lo es).
+insert into tests.results(line) select is(
+  app_departure_end_month(10::smallint, '2026-10-14'::date), '2026-10',
+  'SA-04 · un fijo cuyo día ya llegó este mes sigue compartido este mes'
+);
+insert into tests.results(line) select is(
+  app_departure_end_month(28::smallint, '2026-10-14'::date), '2026-09',
+  'SA-04 · un fijo cuyo día todavía no llegó deja de ser compartido este mes'
+);
+insert into tests.results(line) select is(
+  app_departure_end_month(14::smallint, '2026-10-14'::date), '2026-10',
+  'SA-04 / Q-05 · el mismo día de la salida, la ocurrencia ya pasó'
+);
+insert into tests.results(line) select is(
+  app_departure_end_month(31::smallint, '2027-02-28'::date), '2027-02',
+  'SA-04 / T-04 · el 31 en febrero es el 28: ese día ya llegó'
+);
+
+insert into tests.results(line) select ok(
+  (select stopped_by_departure_on is not null and departure_resolution is null
+   from recurrences where id = tests.get('alquiler_id')::uuid),
+  'SA-04 · la salida marca el fijo como detenido, con la decisión pendiente'
+);
+
+select tests.authenticate_as('22222222-2222-2222-2222-222222222222');
+
+insert into tests.results(line) select throws_ok(
+  $$ select app_resolve_stopped_recurrence(tests.get('alquiler_id')::uuid, true) $$,
+  '42501',
+  null,
+  'SA-04 · quien salió no decide sobre los fijos del espacio'
+);
+
+select tests.authenticate_as('33333333-3333-3333-3333-333333333333');
+
+insert into tests.results(line) select throws_ok(
+  $$ select app_resolve_stopped_recurrence(tests.get('alquiler_id')::uuid, true) $$,
+  '42501',
+  null,
+  'SA-04 / PR-02 · alguien de afuera tampoco'
+);
+
+select tests.authenticate_as('11111111-1111-1111-1111-111111111111');
+
+insert into tests.results(line) select lives_ok(
+  $$ select tests.put('alquiler_personal_id',
+       app_resolve_stopped_recurrence(tests.get('alquiler_id')::uuid, true)::text) $$,
+  'SA-04 · quien queda pasa el alquiler a sus fijos'
+);
+
+insert into tests.results(line) select ok(
+  (select personal.amount = 500000
+      and personal.owner_user_id = '11111111-1111-1111-1111-111111111111'
+      and personal.space_id is null
+      and personal.start_month = to_char((shared.end_month || '-01')::date + interval '1 month', 'YYYY-MM')
+   from recurrences personal, recurrences shared
+   where personal.id = tests.get('alquiler_personal_id')::uuid
+     and shared.id = tests.get('alquiler_id')::uuid),
+  'Caso 13 · pasa a sus fijos por el TOTAL, desde el mes siguiente al corte'
+);
+
+insert into tests.results(line) select throws_ok(
+  $$ select app_resolve_stopped_recurrence(tests.get('alquiler_id')::uuid, true) $$,
+  '23505',
+  null,
+  'SA-04 · no se resuelve dos veces: reintentar no duplica el alquiler'
+);
+
+insert into tests.results(line) select lives_ok(
+  $$ select app_resolve_stopped_recurrence(tests.get('expensas_id')::uuid, false) $$,
+  'SA-04 · quien queda también puede terminarlo'
+);
+
+insert into tests.results(line) select is(
+  (select count(*)::int from recurrences
+   where owner_user_id = '11111111-1111-1111-1111-111111111111' and space_id is null),
+  1,
+  'SA-04 · terminarlo no crea ningún fijo personal'
+);
+
+select tests.as_service();
+
+insert into tests.results(line) select is(
+  has_function_privilege('authenticated', 'public.app_resolve_stopped_recurrence(uuid, boolean)', 'execute'),
+  true,
+  'SA-04 · la app puede resolver los fijos detenidos'
+);
+
+insert into tests.results(line) select is(
+  has_function_privilege('authenticated', 'public.app_departure_end_month(smallint, date)', 'execute'),
+  false,
+  'Interna · el cálculo del corte no se ejecuta desde la app'
 );
 
 -- SA-06 · sin miembros con acceso, el espacio se elimina, y con él sus
