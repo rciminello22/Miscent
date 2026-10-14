@@ -1,7 +1,7 @@
 # Handoff · Radar del sueldo comprometido
 
 Contexto para retomar el proyecto en una sesión nueva.
-Última actualización: 10 de octubre de 2026 · working tree limpio.
+Última actualización: 14 de octubre de 2026 · working tree limpio.
 
 ---
 
@@ -150,7 +150,7 @@ radar/
 | Área | Estado |
 |---|---|
 | Dominio (§29 completo) | ✅ Los 7 casos de §29.1 pasan exactos |
-| Supabase + RLS | ✅ 13 tablas, 32 políticas, 8 migraciones, 2 triggers · **46/46 asserts** |
+| Supabase + RLS | ✅ 13 tablas, 32 políticas, 12 migraciones, 2 triggers · **60/60 asserts** |
 | UI base | ✅ Tokens claro/oscuro, motion, 14 primitivas propias, teclado y footer fijo (§11) |
 | O1 · O2 · O3 | ✅ Completos, con T-07/Q-06 derivados del último cierre |
 | Acceso | ✅ Código de 8 dígitos + enlace · "Ya tengo cuenta" sin alta · invitada **sin email** (ver §10) |
@@ -178,9 +178,9 @@ npm run verify:full  # + los de RLS
 
 | Nivel | Qué | Cuántos |
 |---|---|---|
-| 1 · Dominio y reglas puras (vitest) | Casos A–G, CA-*, casos de uso, identidad, navegación, Agregar | 212 |
+| 1 · Dominio y reglas puras (vitest) | Casos A–G, CA-*, casos de uso, identidad, navegación, Agregar | 270 |
 | 2 · Autorización (pgTAP) | PR-01, PR-02, CA-11..13, CA-47, CA-48, SY-02, SA-06, D-01, P7, §26, anónimos, permisos de funciones | 46 |
-| 3 · Componentes (jest-expo) | El lenguaje **obligatorio** | 28 |
+| 3 · Componentes (jest-expo) | El lenguaje **obligatorio** | 41 |
 | 4 · Lint de lenguaje | **Automatiza CA-00** | en CI |
 
 El nivel 4 ya cazó **4 errores míos** ("te quedaría", "el saldo", "Te quedan N
@@ -190,29 +190,36 @@ cuotas"). El nivel 3 encontró **2 bugs reales**.
 
 ## 5. Qué falta
 
-### ▶ Por dónde seguir (orden acordado con Renzo el 11/10)
+### ▶ Por dónde seguir (actualizado el 14/10)
 
-Los tres primeros tienen algo en común: **la app muestra un número mal sin
+**Hecho entre el 11 y el 14/10** (ver `git log`): CA-09 · SA-04 con corte por
+fecha · medios al contado en Agregar · avisos al guardar con Deshacer (§12) ·
+detalle del pago entre miembros · varias cuotas por tarjeta en O3 · Luz, Gas,
+Agua y "Otro fijo" (fijos con nombre) · auditoría de errores de Supabase.
+
+Lo que sigue tiene algo en común: **la app muestra un número mal sin
 avisar**. En una app cuyo valor es "confiá en estas cifras", es lo más caro.
 
 | # | Qué | Por qué |
 |---|---|---|
-| **1** | **CA-09 / §11 paso 3 · NO ESTÁ HECHO.** En O3, los fijos y cuotas que ya están en un espacio aparecen como "Ya en Casa · tu parte $250.000" | Criterio de aceptación. Sin esto, quien activa su cuenta carga "Alquiler" como fijo personal y se cuenta DOS veces en el radar |
-| **2** | **SA-04** · al salir alguien, preguntarle a quien queda "¿Lo seguís pagando vos?" por cada fijo compartido detenido (Caso 13) | Hoy el fijo se corta sin aviso y el radar de quien queda baja de golpe |
-| **3** | **Completar con qué se pagó** un gasto que cargó el otro a tu nombre (1º Should, §11 paso 4) | Si Martina carga "pagó Renzo", el gasto nunca entra al resumen estimado de la Visa de Renzo |
-| 4 | Editar un fijo **compartido** | Los personales ya se editan |
-| 5 | §33 U1 · tarjeta "Tu plata personal" para la invitada con un solo espacio | Hoy solo la ve en su Perfil |
-| 6 | P6 · qué ve un ex miembro (decidido: resumen fijo del saldo al salir) | Hoy deja de ver todo |
-| 7 | Should de §5, en su orden: aviso de duplicado · compartir resumen como texto · CSV · actividad reciente · totales por categoría · categoría sugerida | — |
-| 8 | §35 · métricas del piloto (acciones, sin montos ni nombres, PR-04) | Sin esto no se mide la hipótesis. Elegir proveedor toca P11 |
+| **1** | **Completar con qué se pagó** un gasto que cargó el otro a tu nombre (1º Should, §11 paso 4) | Si Martina carga "pagó Renzo", el gasto nunca entra al resumen estimado de la Visa de Renzo |
+| 2 | "Con esto, Martina te debe $X" en el aviso al guardar un gasto compartido (§17) | Hoy el aviso dice quién lo ve y el efecto, pero no cómo queda el saldo |
+| 3 | Comparar con el mes pasado a la misma altura ("¿voy bien?"), a llevar a §38 | Pedido de la prueba del 12/10. Reemplaza la idea de "disponible por día", que G-05 prohíbe |
+| 4 | Iniciales con color en vez de foto de perfil | La foto suma Storage, RLS y privacidad (P9–P11). Las iniciales no guardan nada |
+| 5 | Unificar los campos de texto (`DescriptionInput` está repetido en Agregar, deuda y fijos) | Refactor, sin cambio visible |
+| 6 | Editar un fijo **compartido** | Los personales ya se editan |
+| 7 | §33 U1 · tarjeta "Tu plata personal" para la invitada con un solo espacio | Hoy solo la ve en su Perfil |
+| 8 | P6 · qué ve un ex miembro (decidido: resumen fijo del saldo al salir) | Hoy deja de ver todo |
+| 9 | Should de §5, en su orden: aviso de duplicado · compartir resumen como texto · CSV · actividad reciente · totales por categoría · categoría sugerida | — |
+| 10 | §35 · métricas del piloto (acciones, sin montos ni nombres, PR-04) | Sin esto no se mide la hipótesis. Elegir proveedor toca P11 |
 
-**Sin probar todavía en el iPhone:** Agregar con "Más opciones", crear espacio
-paso a paso, flujo invitada → cuenta personal.
+**Sin probar todavía en el iPhone:** SA-04 (salir de un espacio con un fijo
+compartido y volver con quien queda), varias cuotas por tarjeta y "Otro fijo"
+en O3, Deshacer en los avisos.
 
 ### Del Must
-Todo salvo **CA-09** (punto 1 de arriba). T-07, SY-02, la fecha editable, M3
-(destino en Agregar) y el bloque "Tus espacios" de Inicio se cerraron el 9 y
-10/10.
+**Completo.** CA-09 se cerró el 12/10. T-07, SY-02, la fecha editable, M3
+(destino en Agregar) y el bloque "Tus espacios" de Inicio, el 9 y 10/10.
 
 ### Antes de producción (decisiones tomadas para la etapa de testeo)
 - **Método de acceso.** Hoy: código de 8 dígitos + enlace, sin contraseña. Lo
@@ -264,10 +271,21 @@ datos, y cifrado/ubicación/uso para entrenar IA del proveedor. La base está en
 - **`revoke ... from public` NO cierra una función.** Supabase da EXECUTE
   explícito a `anon` y `authenticated`. La 0007 dejó `app_member_departs`
   (security definer, interna) ejecutable por cualquiera; la 0008 lo cerró y
-  cambió los default privileges: **una función nueva nace cerrada** y cada
-  migración da su `grant ... to authenticated` explícito. Verificar con
-  `has_function_privilege`. `db:types` lista las funciones expuestas: si
-  aparece una interna, hay un agujero.
+  sacó los default privileges de `anon` y `authenticated`.
+- **Y eso tampoco alcanzaba (14/10).** Postgres además le da EXECUTE a
+  **PUBLIC** a toda función nueva, y `anon` es miembro de PUBLIC:
+  `app_resolve_stopped_recurrence` nació abierta sin sesión (en `proacl`,
+  `=X/postgres` es el EXECUTE de PUBLIC). La 0012 sacó también el default de
+  PUBLIC: **desde la 0012**, una función nueva nace cerrada de verdad, y cada
+  migración da su `grant ... to authenticated` explícito.
+- **La única verificación confiable es `has_function_privilege`**, que es lo
+  que miran los tests ("Sin sesión no se ejecuta ninguna función de la
+  app"). `db:types` lista TODAS las funciones, cerradas incluidas: que una
+  aparezca ahí no dice nada.
+- **supabase-js no lanza: devuelve `{ error }`.** Toda lectura y escritura lo
+  mira (`throwIfError` en `personal.ts`). Un `data ?? []` sin chequear
+  convierte una falla de red en "no hay nada": un saldo en cero o un Futuro
+  vacío, sin aviso. Nunca suponer valores: `me.data ?? 1` invertía el saldo.
 - **Los tests pgTAP corren contra la base REAL** (en una transacción con
   rollback). Nunca buscar datos del test por nombre: un dato real puede
   llamarse igual (pasó con "Casa"). Primero RED contra la base actual, después
