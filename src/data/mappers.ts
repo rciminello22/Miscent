@@ -133,6 +133,12 @@ export function toRecurrence(row: Row<'recurrences'>): Recurrence {
     spaceId: row.space_id,
     paymentMethodId: row.payment_method_id,
     payerSlot: row.payer_slot == null ? null : toSlot(row.payer_slot),
+    stoppedByDepartureOn: row.stopped_by_departure_on,
+    // El CHECK de la base garantiza que es uno de estos dos, o null.
+    departureResolution:
+      row.departure_resolution === 'moved' || row.departure_resolution === 'ended'
+        ? row.departure_resolution
+        : null,
     split:
       row.split_mode == null
         ? null

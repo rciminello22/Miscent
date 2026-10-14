@@ -20,6 +20,7 @@ import {
   fetchSpaceFacts,
   removeMemberAccess,
   renameSpace,
+  resolveStoppedRecurrence,
   type NewSharedExpense,
 } from '@/data/repositories/spaces';
 import { useSession } from '@/features/auth/SessionProvider';
@@ -129,6 +130,18 @@ export function useDeleteSharedExpense(spaceId: string) {
   return useMutation({
     mutationFn: (id: string) => deleteSharedExpense(id),
     onSuccess: () => void invalidate(),
+  });
+}
+
+/** SA-04 · decide sobre un fijo detenido por una salida. */
+export function useResolveStoppedRecurrence(spaceId: string) {
+  const invalidate = useInvalidateSpace(spaceId);
+
+  return useMutation({
+    mutationFn: (input: { recurrenceId: string; keep: boolean }) =>
+      resolveStoppedRecurrence(input.recurrenceId, input.keep),
+    // Cambia el espacio (la pregunta se va) y el radar (el fijo pasa a ser suyo).
+    onSuccess: () => invalidate(),
   });
 }
 

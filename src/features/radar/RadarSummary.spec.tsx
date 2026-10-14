@@ -85,6 +85,8 @@ function factsFor(input: {
               amount: input.fixed,
               category: 'alquiler' as const,
               description: null,
+              stoppedByDepartureOn: null,
+              departureResolution: null,
               dayOfMonth: 1,
               startMonth: '2026-01',
               endMonth: null,

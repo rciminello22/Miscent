@@ -161,6 +161,10 @@ export type Recurrence = {
   /** Solo si es del espacio. */
   payerSlot: Slot | null;
   split: Split | null;
+  /** SA-04 · lo detuvo la salida de un miembro (y cuándo). */
+  stoppedByDepartureOn: IsoDate | null;
+  /** SA-04 · qué decidió quien quedó. `null` = falta decidir. */
+  departureResolution: 'moved' | 'ended' | null;
 };
 
 /** F-03 · "Este mes fue distinto": ajuste de un mes de un recurrente. */

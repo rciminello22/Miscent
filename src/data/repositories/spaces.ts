@@ -326,6 +326,27 @@ export async function removeMemberAccess(spaceId: string): Promise<void> {
   if (error != null) throw new Error('No pudimos quitar el acceso.');
 }
 
+/**
+ * SA-04 · "¿Lo seguís pagando vos?". Pasarlo a mis fijos (keep) crea el fijo
+ * personal y marca la decisión en UNA transacción del servidor: con dos
+ * escrituras, reintentar después de una falla duplicaba el alquiler.
+ */
+export async function resolveStoppedRecurrence(
+  recurrenceId: string,
+  keep: boolean,
+): Promise<string | null> {
+  const { data, error } = await supabase.rpc('app_resolve_stopped_recurrence', {
+    target_recurrence_id: recurrenceId,
+    keep,
+  });
+  if (error != null) {
+    // Ya resuelto en otro teléfono: no es un error para quien lo ve.
+    if (error.code === '23505') return null;
+    throw new Error('No pudimos guardar lo que decidiste.');
+  }
+  return data ?? null;
+}
+
 export async function deleteMemberPayment(id: string): Promise<void> {
   const { error } = await supabase.from('member_payments').delete().eq('id', id);
   if (error != null) throw new Error('No pudimos eliminar el pago.');

@@ -1,4 +1,7 @@
+import { View } from 'react-native';
+import { pendingStoppedFixed } from '@domain/departure';
 import type { SpaceSummary } from '@/data/repositories/spaces';
+import { pendingFixedLine } from './departureCopy';
 import { Pressable, Row, SectionHeader, Skeleton, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 import { balanceSentence } from './balanceCopy';
@@ -39,6 +42,8 @@ function SpaceLine({ space }: { space: SpaceSummary }) {
   const openSpace = useOpenSpace();
   // El mismo cálculo que adentro del espacio: una sola fuente para la cifra.
   const { derived, isLoading } = useSpace(space.id);
+  // SA-04 · la pista de por qué bajó el radar: la pregunta vive en el espacio.
+  const pending = derived == null ? 0 : pendingStoppedFixed(derived.facts, derived.mySlot).length;
 
   return (
     <Pressable
@@ -46,13 +51,20 @@ function SpaceLine({ space }: { space: SpaceSummary }) {
       haptic="none"
       scaleOnPress={false}
       accessibilityRole="button"
-      accessibilityLabel={space.name}
+      accessibilityLabel={pending > 0 ? `${space.name}. ${pendingFixedLine(pending)}` : space.name}
       style={{ paddingVertical: theme.space['2'] }}
     >
       <Row justify="space-between" align="center" gap="3">
-        <Text variant="bodyMedium" numberOfLines={1} style={{ flexShrink: 1 }}>
-          {space.name}
-        </Text>
+        <View style={{ flexShrink: 1 }}>
+          <Text variant="bodyMedium" numberOfLines={1}>
+            {space.name}
+          </Text>
+          {pending > 0 && (
+            <Text variant="caption" tone="shared">
+              {pendingFixedLine(pending)}
+            </Text>
+          )}
+        </View>
         {isLoading ? (
           <Skeleton width={120} height={13} />
         ) : derived != null ? (

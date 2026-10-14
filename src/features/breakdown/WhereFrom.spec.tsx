@@ -55,6 +55,8 @@ const FACTS: PersonalFacts = {
       amount: 480_000,
       category: 'alquiler',
       description: null,
+      stoppedByDepartureOn: null,
+      departureResolution: null,
       dayOfMonth: 1,
       startMonth: '2026-01',
       endMonth: null,

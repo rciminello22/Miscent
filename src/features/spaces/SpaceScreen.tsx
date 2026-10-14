@@ -6,8 +6,11 @@ import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addMonths, monthOf } from '@domain/calendar';
 import type { SpaceOccurrence } from '@domain/occurrences';
-import { formatDayMonth, formatInstallment, formatMonth } from '@/lib/format';
+import { pendingStoppedFixed } from '@domain/departure';
+import { formatDayMonth, formatInstallment, formatMonth, formatPesos } from '@/lib/format';
 import { prettyLabel } from '@/features/add/categories';
+import { useSession } from '@/features/auth/SessionProvider';
+import { StoppedFixedCard } from './StoppedFixedCard';
 import {
   balanceSentence,
   paymentSentence,
@@ -15,7 +18,11 @@ import {
   previousMonthSentence,
   putExtraSentence,
 } from '@/features/spaces/balanceCopy';
-import { useDeleteMemberPayment, useSpace } from '@/features/spaces/useSpaces';
+import {
+  useDeleteMemberPayment,
+  useResolveStoppedRecurrence,
+  useSpace,
+} from '@/features/spaces/useSpaces';
 import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
 import { calculateSharedBalance } from '@domain/shared-balance';
 import type { MemberPayment } from '@domain/types';
@@ -120,6 +127,35 @@ export function SpaceScreen({
 
   const deletePayment = useDeleteMemberPayment(spaceId);
   const feedback = useFeedback();
+  const { accountState } = useSession();
+
+  // SA-04 · los fijos que detuvo una salida y que quien queda todavía no decidió.
+  const stopped = useMemo(
+    () => (derived == null ? [] : pendingStoppedFixed(derived.facts, derived.mySlot)),
+    [derived],
+  );
+  const resolveStopped = useResolveStoppedRecurrence(spaceId);
+  const [resolving, setResolving] = useState<string | null>(null);
+
+  function resolve(recurrenceId: string, keep: boolean) {
+    const item = stopped.find((candidate) => candidate.recurrenceId === recurrenceId);
+    if (item == null) return;
+    // Desde el mes siguiente al último en que fue compartido.
+    const from = formatMonth(addMonths(item.endMonth, 1), currentMonth);
+
+    setResolving(recurrenceId);
+    resolveStopped
+      .mutateAsync({ recurrenceId, keep })
+      .then(() =>
+        feedback.updated(
+          keep
+            ? `Ahora está en tus fijos: ${formatPesos(item.amount)} por mes desde ${from}.`
+            : `Deja de contar desde ${from}.`,
+        ),
+      )
+      .catch((cause: unknown) => feedback.error('No pudimos guardarlo', cause))
+      .finally(() => setResolving(null));
+  }
 
   /** §25 · "confirmación al eliminar con el nuevo saldo y 'Martina también lo va a dejar de ver'". */
   function confirmDeletePayment(payment: MemberPayment) {
@@ -253,6 +289,26 @@ export function SpaceScreen({
             </Pressable>
           </Row>
         </Row>
+
+        {/* SA-04 · §27 · "¿Lo seguís pagando vos?", arriba de todo: es lo
+            que explica por qué cambió el radar. */}
+        {stopped.length > 0 && (
+          <Animated.View entering={FadeInDown.duration(duration.base)}>
+            <StoppedFixedCard
+              otherName={stopped[0]!.otherName}
+              spaceName={derived.facts.space.name}
+              items={stopped.map((item) => ({
+                recurrenceId: item.recurrenceId,
+                label: item.description ?? prettyLabel(item.category),
+                amount: item.amount,
+              }))}
+              canKeep={accountState === 'personal'}
+              busyId={resolving}
+              onKeep={(recurrenceId) => resolve(recurrenceId, true)}
+              onEnd={(recurrenceId) => resolve(recurrenceId, false)}
+            />
+          </Animated.View>
+        )}
 
         {/* ── El saldo compartido ──────────────────────────────────────── */}
         <Animated.View entering={FadeInDown.duration(duration.deliberate)}>
