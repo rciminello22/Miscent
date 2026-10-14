@@ -781,6 +781,10 @@ export type Database = {
         Args: { keep: boolean; target_recurrence_id: string }
         Returns: string
       }
+      app_space_snapshot: {
+        Args: { my_slot_value: number; target_space_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       category:
