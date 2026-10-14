@@ -7,6 +7,10 @@ import { formatMonth } from '@/lib/format';
 import { useSession } from '@/features/auth/SessionProvider';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { activatePersonalAccount } from '@/data/repositories/mutations';
+import { takePersonalDraft } from '@/features/add/personalDraft';
+import { useCreateMovement } from '@/features/shared/usePersonalFacts';
+import { useFeedback } from '@/features/shared/useFeedback';
+import { formatPesos } from '@/lib/format';
 import {
   Button,
   Card,
@@ -35,6 +39,8 @@ export default function Listo() {
   const router = useRouter();
   const { profile, refreshProfile } = useSession();
   const { expansion, today } = usePersonalFacts();
+  const createMovement = useCreateMovement();
+  const feedback = useFeedback();
 
   const from = addMonths(monthOf(today), 1);
   const future = useMemo(() => calculateFuture(expansion, from, 6), [expansion, from]);
@@ -48,6 +54,28 @@ export default function Listo() {
       await activatePersonalAccount();
       await refreshProfile();
     }
+
+    // CA-07 · Caso 18 · lo que la invitada quiso cargar como personal antes de
+    // tener la cuenta. Recién ahora tiene dónde guardarse.
+    const draft = await takePersonalDraft();
+    if (draft != null) {
+      try {
+        await createMovement.mutateAsync({
+          kind: 'expense',
+          ...draft,
+          paymentMethod: null,
+          installmentCount: null,
+          pinnedFirstMonth: null,
+        });
+        feedback.saved({
+          audience: { kind: 'private' },
+          detail: `Tu gasto de ${formatPesos(draft.amount)} quedó en tu cuenta personal.`,
+        });
+      } catch (cause) {
+        feedback.error(`No pudimos guardar tu gasto de ${formatPesos(draft.amount)}`, cause);
+      }
+    }
+
     router.replace('/(personal)/futuro');
   }
 

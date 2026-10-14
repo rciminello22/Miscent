@@ -24,6 +24,9 @@ import { PastDateField } from '@/features/add/DateField';
 import { MoreOptions } from '@/features/add/MoreOptions';
 import { lastUsedPaymentMethodId, moreOptionsSummary } from '@/features/add/addDefaults';
 import { PaymentMethodField } from '@/features/add/PaymentMethodField';
+import { GuestPersonalSheet } from '@/features/add/GuestPersonalSheet';
+import { encodePersonalDraft } from '@/features/add/personalDraftCodec';
+import { rememberPersonalDraft } from '@/features/add/personalDraft';
 import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
 import { SplitPicker } from '@/features/spaces/SplitPicker';
 import {
@@ -102,6 +105,8 @@ export default function AgregarCompartido() {
   const [date, setDate] = useState(today);
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
+  // CA-07 · Caso 18 · la invitada tocó "Personal" en Destino.
+  const [personalAsked, setPersonalAsked] = useState(false);
 
   const method = personalFacts.paymentMethods.find((item) => item.id === paymentMethodId) ?? null;
   const isCard = method?.kind === 'card';
@@ -193,6 +198,14 @@ export default function AgregarCompartido() {
     ]);
   }
 
+  /** Caso 18 · "Si crea la cuenta, el borrador se guarda como personal al terminar". */
+  async function createAccountWithDraft() {
+    const encoded = encodePersonalDraft({ amount, category, date, description });
+    if (encoded != null) await rememberPersonalDraft(encoded);
+    setPersonalAsked(false);
+    router.push('/onboarding/cuenta-personal');
+  }
+
   async function save() {
     if (!canSave || category == null) return;
     setSaving(true);
@@ -280,6 +293,17 @@ export default function AgregarCompartido() {
         <Field label="Categoría">
           <CategoryGrid categories={categories} value={category} onChange={setCategory} />
         </Field>
+
+        {/* CA-07 · Caso 18 · sin cuenta personal, "Personal" se ofrece igual:
+            explica dónde viven esos gastos en vez de esconder la opción. */}
+        {accountState !== 'personal' && (
+          <Field label="Destino" hint={`${other.displayName} lo va a ver.`}>
+            <Row gap="2">
+              <Chip label="Personal" selected={false} onPress={() => setPersonalAsked(true)} />
+              <Chip label={derived.facts.space.name} selected onPress={() => undefined} />
+            </Row>
+          </Field>
+        )}
 
         {/* §17 campo 5 · G-06 · quién fue DECLARADO como pagador. */}
         <Field
@@ -440,6 +464,14 @@ export default function AgregarCompartido() {
           reparto. No va a ver con qué lo pagaste.
         </Text>
       </Stack>
+
+      <GuestPersonalSheet
+        visible={personalAsked}
+        spaceName={derived.facts.space.name}
+        onCreateAccount={() => void createAccountWithDraft()}
+        onLoadInSpace={() => setPersonalAsked(false)}
+        onCancel={() => setPersonalAsked(false)}
+      />
     </Screen>
   );
 }
