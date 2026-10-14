@@ -1,7 +1,7 @@
 # Handoff · Radar del sueldo comprometido
 
 Contexto para retomar el proyecto en una sesión nueva.
-Última actualización: 14 de octubre de 2026 · working tree limpio.
+Última actualización: 14 de octubre de 2026 (tarde) · working tree limpio · **0015–0017 sin aplicar al remoto**.
 
 ---
 
@@ -150,7 +150,7 @@ radar/
 | Área | Estado |
 |---|---|
 | Dominio (§29 completo) | ✅ Los 7 casos de §29.1 pasan exactos |
-| Supabase + RLS | ✅ 13 tablas, 32 políticas, 14 migraciones, 3 triggers · **66/66 asserts** |
+| Supabase + RLS | ✅ 14 tablas, 17 migraciones · **74 asserts** (66/66 verificados; 0015–0017 sin aplicar) |
 | UI base | ✅ Tokens claro/oscuro, motion, 14 primitivas propias, teclado y footer fijo (§11) |
 | O1 · O2 · O3 | ✅ Completos, con T-07/Q-06 derivados del último cierre |
 | Acceso | ✅ Código de 8 dígitos + enlace · "Ya tengo cuenta" sin alta · invitada **sin email** (ver §10) |
@@ -190,32 +190,57 @@ cuotas"). El nivel 3 encontró **2 bugs reales**.
 
 ## 5. Qué falta
 
-### ▶ Por dónde seguir (actualizado el 14/10)
+### ▶ Por dónde seguir (actualizado el 14/10, tarde)
 
-**Hecho entre el 11 y el 14/10** (ver `git log`): CA-09 · SA-04 con corte por
-fecha · medios al contado en Agregar · avisos al guardar con Deshacer (§12) ·
-detalle del pago entre miembros · varias cuotas por tarjeta en O3 · Luz, Gas,
-Agua y "Otro fijo" (fijos con nombre) · auditoría de errores de Supabase.
+> ⚠️ **Las migraciones 0015, 0016 y 0017 están commiteadas pero NO aplicadas
+> al remoto** (esperan el OK de Renzo). Hasta aplicarlas, la app falla al leer
+> un espacio: el mapper exige `recurrences.past_terms`. Pasos: `supabase
+> login` → `npm run db:push` → `npm run db:types` (debería dar el mismo
+> archivo que el commiteado) → `npm run test:rls` (74 asserts).
 
-Lo que sigue tiene algo en común: **la app muestra un número mal sin
-avisar**. En una app cuyo valor es "confiá en estas cifras", es lo más caro.
+**Hecho el 14/10** (ver `git log`): la revisión de lo que carga el otro
+(opción B, ya en la spec como **K10** en §37, y sus detalles no aprobados
+como **P21** en §38) · lo que el otro **elimina** también queda para revisar
+(0015) · **editar un fijo compartido** (§21, 0017) · "Lo editó Martina"
+(CA-27) · eliminar un fijo compartido con el saldo nuevo (CA-28).
 
-| # | Qué | Por qué |
+**Bug grave arreglado (`bb8d1e9`, 0016):** "Cambiar desde este mes"
+reescribía TODOS los meses pasados, aunque la pantalla decía que no. En un
+fijo compartido cambiaba el saldo por cada mes anterior. Ahora el fijo
+guarda sus tramos (`past_terms`).
+
+#### Qué falta para cerrar la V1 del MVP (auditoría del 14/10 contra §5 y §36)
+
+**Must (§5): los 20 están.** De los 50 criterios de §36, 37 tienen su ID en
+tests o código. De los 13 que no, 12 están cubiertos por otro nombre (SA-04,
+SA-06, D-01, I-02, P-04…). Falta uno:
+
+| # | Qué | Dónde en la spec |
 |---|---|---|
-| **1** | **Llevar a la spec (§38) la revisión de lo que carga el otro**, que ya está hecha (opción B, 14/10: `fd5f7dc`, `a47b57d`, `d79e1dd`). Lo que carga Martina cuenta enseguida, igual para los dos, y queda "Lo cargó Martina · para revisar" hasta que se mira. Falta: una edición de un fijo compartido (cuando exista, punto 6) tiene que volver a ponerlo para revisar, y lo que el otro **elimina** no se marca | Complementa K3, que es una DECISIÓN. Se descartó "solo cuenta si lo aceptás": infla Sin asignar (casi un "te queda", G-05) y rompe "un solo saldo para los dos" |
-| 2 | "Con esto, Martina te debe $X" en el aviso al guardar un gasto compartido (§17) | Hoy el aviso dice quién lo ve y el efecto, pero no cómo queda el saldo |
-| 3 | Comparar con el mes pasado a la misma altura ("¿voy bien?"), a llevar a §38 | Pedido de la prueba del 12/10. Reemplaza la idea de "disponible por día", que G-05 prohíbe |
-| 4 | Iniciales con color en vez de foto de perfil | La foto suma Storage, RLS y privacidad (P9–P11). Las iniciales no guardan nada |
-| 5 | Unificar los campos de texto (`DescriptionInput` está repetido en Agregar, deuda y fijos) | Refactor, sin cambio visible |
-| 6 | Editar un fijo **compartido** | Los personales ya se editan |
-| 7 | §33 U1 · tarjeta "Tu plata personal" para la invitada con un solo espacio | Hoy solo la ve en su Perfil |
-| 8 | P6 · qué ve un ex miembro (decidido: resumen fijo del saldo al salir) | Hoy deja de ver todo |
-| 9 | Should de §5, en su orden: aviso de duplicado · compartir resumen como texto · CSV · actividad reciente · totales por categoría · categoría sugerida | — |
-| 10 | §35 · métricas del piloto (acciones, sin montos ni nombres, PR-04) | Sin esto no se mide la hipótesis. Elegir proveedor toca P11 |
+| **1** | **CA-07 · Caso 18**: la invitada que en Agregar elige "Personal" ve la hoja "Tus gastos personales viven en tu cuenta personal…" con [Crear mi cuenta personal] · [Cargarlo en Casa] · [Cancelar]. Si crea la cuenta, el borrador se guarda como personal al terminar. Hoy el Agregar del espacio no ofrece "Personal" | §36 CA-07, §31 Caso 18 |
+
+**Should (§5), en su orden:** ✅ completar con qué se pagó · ❌ aviso de
+posible duplicado · ❌ compartir el resumen del espacio como texto · ❌
+exportar mis datos (CSV) · ✅ quitar el acceso · ❌ actividad reciente del
+espacio · ❌ totales del espacio por categoría · ❌ categoría sugerida.
+
+**§38 que el código ya resolvió y la spec no registra:** P6 (resumen fijo del
+saldo para el ex miembro, **decidido pero sin construir**), P7 (reinvitar,
+hecho), P8 (cuotas del que sale, hecho), P13 (categorías fijas), P18 (30
+días, 3), P20.
+
+**Para el piloto (no es código de pantallas):** §35 métricas (sin montos ni
+nombres, PR-04) · P9–P11 antes de publicar privacidad · build propio (EAS).
+
+**Lo que agregó la prueba real y no está en la spec:** "Con esto, Martina te
+debe $X" en el aviso al guardar · comparar con el mes pasado a la misma
+altura (llevar a §38) · iniciales en vez de foto · unificar los campos de
+texto (refactor).
 
 **Sin probar todavía en el iPhone:** SA-04 (salir de un espacio con un fijo
 compartido y volver con quien queda), varias cuotas por tarjeta y "Otro fijo"
-en O3, Deshacer en los avisos.
+en O3, Deshacer en los avisos, y todo lo del 14/10 tarde: eliminar algo con
+la otra cuenta, editar un fijo compartido, "Cambiar desde este mes".
 
 ### Del Must
 **Completo.** CA-09 se cerró el 12/10. T-07, SY-02, la fecha editable, M3
@@ -347,6 +372,11 @@ datos, y cifrado/ubicación/uso para entrenar IA del proveedor. La base está en
   archivos dos veces (se come las comillas de los props).
 - Los scripts largos de Node van a un archivo en el scratchpad, no inline: las
   comillas anidadas rompen el parser.
+- **Nunca un junction de `node_modules` dentro de un `git worktree`.** El
+  14/10, `git worktree remove --force` entró al junction y borró parte del
+  `node_modules` real (se arregló con `npm ci`). Para verificar commits
+  intermedios: sacar el junction con `(Get-Item …).Delete()` ANTES de
+  quitar el worktree, o copiar en vez de enlazar.
 
 ---
 
