@@ -252,6 +252,8 @@ export default function GastoCompartido() {
   }
 
   const { mySlot, other, me } = derived;
+  // Opción B · CA-27 · si falta revisarlo, y si el otro lo cargó o solo lo editó.
+  const reviewReason = derived.pendingReview.get(expense.id);
   const shares = resolveShares(expense.amount, expense.split);
   const myShare = mySlot === 1 ? shares.slot1 : shares.slot2;
   const otherShare = mySlot === 1 ? shares.slot2 : shares.slot1;
@@ -399,10 +401,10 @@ export default function GastoCompartido() {
             </Text>
 
             {/* Opción B · revisar no es aprobar: ya cuenta, igual para los dos. */}
-            {derived.pendingReview.has(expense.id) && (
+            {reviewReason != null && (
               <Row justify="space-between" align="center" gap="3">
                 <Text variant="caption" tone="shared" style={{ flex: 1 }}>
-                  {reviewTag(other.displayName)}
+                  {reviewTag(other.displayName, reviewReason)}
                 </Text>
                 <Button
                   label="Está bien"

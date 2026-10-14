@@ -116,7 +116,10 @@ export function buildMovementList(args: {
     const spaceName = spaceFacts.space.name;
     // Opción B · lo que cargó el otro y todavía no revisé.
     const pending = pendingReview(spaceFacts, mySlot, membership.reviews);
-    const tagFor = (sourceId: string) => (pending.has(sourceId) ? reviewTag(other.displayName) : null);
+    const tagFor = (sourceId: string) => {
+      const reason = pending.get(sourceId);
+      return reason == null ? null : reviewTag(other.displayName, reason);
+    };
 
     for (const expense of spaceFacts.expenses) {
       // §16 · el gasto aparece UNA vez, en su fecha de compra.

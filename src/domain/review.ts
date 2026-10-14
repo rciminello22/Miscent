@@ -14,8 +14,16 @@
 import type { DeletedRecord, Review, Slot, SpaceFacts } from './types';
 
 /**
- * Los registros del espacio que el usuario todavía no revisó. Devuelve sus
- * ids: el de un gasto, un fijo o un pago.
+ * Por qué algo está para revisar, para decirlo sin inventar (CA-27):
+ *   created · lo cargó el otro y todavía no lo miraste
+ *   edited  · lo cambió el otro: era tuyo, ya lo habías revisado, o no se
+ *             sabe quién lo cargó
+ */
+export type ReviewReason = 'created' | 'edited';
+
+/**
+ * Los registros del espacio que el usuario todavía no revisó, con su motivo.
+ * La clave es el id de un gasto, un fijo o un pago.
  *
  *   gasto · si su último cambio lo hizo el otro y no se revisó DESDE ese
  *           cambio: una edición del otro lo vuelve a poner para revisar
@@ -27,14 +35,20 @@ export function pendingReview(
   facts: SpaceFacts,
   mySlot: Slot,
   reviews: readonly Review[],
-): Set<string> {
+): Map<string, ReviewReason> {
   const reviewedAt = new Map(reviews.map((review) => [review.sourceId, Date.parse(review.reviewedAt)]));
-  const pending = new Set<string>();
+  const pending = new Map<string, ReviewReason>();
+
+  // "Lo cargó" solo si lo cargó quien lo cambió y es la primera vez que lo ves.
+  const reasonFor = (createdBySlot: Slot | null, editor: Slot, reviewed: number | undefined) =>
+    createdBySlot === editor && reviewed == null ? 'created' : 'edited';
 
   for (const expense of facts.expenses) {
     if (expense.updatedBySlot === mySlot) continue;
     const reviewed = reviewedAt.get(expense.id);
-    if (reviewed == null || reviewed < Date.parse(expense.updatedAt)) pending.add(expense.id);
+    if (reviewed == null || reviewed < Date.parse(expense.updatedAt)) {
+      pending.set(expense.id, reasonFor(expense.createdBySlot, expense.updatedBySlot, reviewed));
+    }
   }
 
   for (const recurrence of facts.recurrences) {
@@ -43,12 +57,14 @@ export function pendingReview(
     const editor = recurrence.updatedBySlot ?? recurrence.createdBySlot;
     if (editor == null || editor === mySlot) continue;
     const reviewed = reviewedAt.get(recurrence.id);
-    if (reviewed == null || reviewed < Date.parse(recurrence.updatedAt)) pending.add(recurrence.id);
+    if (reviewed == null || reviewed < Date.parse(recurrence.updatedAt)) {
+      pending.set(recurrence.id, reasonFor(recurrence.createdBySlot, editor, reviewed));
+    }
   }
 
   for (const payment of facts.payments) {
     if (payment.recordedBySlot === mySlot) continue;
-    if (!reviewedAt.has(payment.id)) pending.add(payment.id);
+    if (!reviewedAt.has(payment.id)) pending.set(payment.id, 'created');
   }
 
   return pending;

@@ -21,7 +21,7 @@ const delSuper = {
 describe('qué queda para revisar', () => {
   it('un gasto que cargó el otro, sin revisar', () => {
     const pending = pendingReview(spaceFacts({ expenses: [delSuper] }), RENZO, []);
-    expect([...pending]).toEqual(['super']);
+    expect([...pending.keys()]).toEqual(['super']);
   });
 
   it('una vez revisado, ya no', () => {
@@ -36,7 +36,7 @@ describe('qué queda para revisar', () => {
     const pending = pendingReview(spaceFacts({ expenses: [editado] }), RENZO, [
       { sourceId: 'super', reviewedAt: '2026-10-10T16:00:00+00:00' },
     ]);
-    expect([...pending]).toEqual(['super']);
+    expect([...pending.keys()]).toEqual(['super']);
   });
 
   it('lo que cargó o editó uno mismo nunca es para revisar', () => {
@@ -48,7 +48,7 @@ describe('qué queda para revisar', () => {
   it('un fijo compartido que cargó el otro', () => {
     const luz = { ...sharedRecurrence({ id: 'luz', amount: 40_000, dayOfMonth: 15, startMonth: '2026-10', payerSlot: MARTINA }), createdBySlot: MARTINA };
     const pending = pendingReview(spaceFacts({ recurrences: [luz] }), RENZO, []);
-    expect([...pending]).toEqual(['luz']);
+    expect([...pending.keys()]).toEqual(['luz']);
   });
 
   it('§21 · si el otro edita un fijo DESPUÉS de revisarlo, vuelve a quedar para revisar', () => {
@@ -61,7 +61,7 @@ describe('qué queda para revisar', () => {
     const pending = pendingReview(spaceFacts({ recurrences: [luz] }), RENZO, [
       { sourceId: 'luz', reviewedAt: '2026-10-11T09:00:00+00:00' },
     ]);
-    expect([...pending]).toEqual(['luz']);
+    expect([...pending.keys()]).toEqual(['luz']);
   });
 
   it('§21 · un fijo del otro que edité yo después, ya lo vi', () => {
@@ -86,7 +86,7 @@ describe('qué queda para revisar', () => {
       recordedBySlot: MARTINA,
     };
     const pending = pendingReview(spaceFacts({ payments: [pago] }), RENZO, []);
-    expect([...pending]).toEqual(['pago']);
+    expect([...pending.keys()]).toEqual(['pago']);
   });
 });
 
@@ -152,5 +152,39 @@ describe('qué eliminó el otro y queda para revisar', () => {
       'pago',
       'super',
     ]);
+  });
+});
+
+/**
+ * CA-27 · "Una edición del otro miembro se ve al abrir o refrescar, con
+ * 'Editó [nombre]'". Decir "Lo cargó Martina" de un gasto que cargó Renzo y
+ * ella solo editó es afirmar algo falso (§4 principio 2).
+ */
+describe('por qué algo está para revisar', () => {
+  it('lo cargó el otro y todavía no lo revisé: "cargó"', () => {
+    const pending = pendingReview(spaceFacts({ expenses: [delSuper] }), RENZO, []);
+    expect(pending.get('super')).toBe('created');
+  });
+
+  it('lo cargué yo y el otro lo editó: "editó"', () => {
+    const mio = { ...delSuper, createdBySlot: RENZO, updatedBySlot: MARTINA };
+    expect(pendingReview(spaceFacts({ expenses: [mio] }), RENZO, []).get('super')).toBe('edited');
+  });
+
+  it('lo cargó el otro, lo revisé, y lo volvió a cambiar: "editó"', () => {
+    const editado = { ...delSuper, updatedAt: '2026-10-11T09:00:00+00:00' };
+    const pending = pendingReview(spaceFacts({ expenses: [editado] }), RENZO, [
+      { sourceId: 'super', reviewedAt: '2026-10-10T16:00:00+00:00' },
+    ]);
+    expect(pending.get('super')).toBe('edited');
+  });
+
+  it('un fijo de antes, sin autor conocido, que el otro editó: "editó", no se inventa que lo cargó', () => {
+    const viejo = {
+      ...sharedRecurrence({ id: 'viejo', amount: 40_000, dayOfMonth: 15, startMonth: '2026-10', payerSlot: RENZO }),
+      createdBySlot: null,
+      updatedBySlot: MARTINA,
+    };
+    expect(pendingReview(spaceFacts({ recurrences: [viejo] }), RENZO, []).get('viejo')).toBe('edited');
   });
 });

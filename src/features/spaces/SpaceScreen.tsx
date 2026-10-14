@@ -161,7 +161,7 @@ export function SpaceScreen({
   function reviewAll() {
     if (derived == null) return;
     reviewIds(
-      [...derived.pendingReview, ...derived.pendingDeletions.map((item) => item.sourceId)],
+      [...derived.pendingReview.keys(), ...derived.pendingDeletions.map((item) => item.sourceId)],
       'Listo, ya lo revisaste.',
     );
   }
@@ -608,7 +608,10 @@ export function SpaceScreen({
                       myName={me.displayName}
                       reviewTag={
                         taggedOccurrences.has(movement.occurrence.id)
-                          ? reviewTag(other.displayName)
+                          ? reviewTag(
+                              other.displayName,
+                              derived.pendingReview.get(movement.occurrence.sourceId)!,
+                            )
                           : null
                       }
                       onPress={() =>
@@ -628,7 +631,7 @@ export function SpaceScreen({
                       amount={movement.payment.amount}
                       reviewTag={
                         derived.pendingReview.has(movement.payment.id)
-                          ? reviewTag(other.displayName)
+                          ? reviewTag(other.displayName, 'created')
                           : null
                       }
                       onPress={() => setSelectedPayment(movement.payment)}
@@ -699,7 +702,8 @@ export function SpaceScreen({
             review={
               derived.pendingReview.has(selectedPayment.id)
                 ? {
-                    label: reviewTag(other.displayName),
+                    // Los pagos no se editan: siempre los cargó el otro.
+                    label: reviewTag(other.displayName, 'created'),
                     onReviewed: () => {
                       setSelectedPayment(null);
                       reviewIds([selectedPayment.id], 'Listo, ya lo revisaste.');

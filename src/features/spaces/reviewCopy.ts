@@ -5,10 +5,12 @@
  * lo cargó, no si está bien o mal. Revisar no es aprobar.
  */
 
+import type { ReviewReason } from '@domain/review';
 import type { DeletedRecord, Slot } from '@domain/types';
 
-export function reviewTag(otherName: string): string {
-  return `Lo cargó ${otherName} · para revisar`;
+/** CA-27 · "Lo editó Martina" si solo lo cambió: "Lo cargó" sería falso. */
+export function reviewTag(otherName: string, reason: ReviewReason): string {
+  return `${reason === 'edited' ? 'Lo editó' : 'Lo cargó'} ${otherName} · para revisar`;
 }
 
 /** En el espacio y, sutil, en Inicio. */

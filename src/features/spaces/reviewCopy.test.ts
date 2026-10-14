@@ -3,7 +3,11 @@ import { deletedLabel, deletedTag, markAllLabel, reviewTag, toReviewLine } from 
 
 describe('Opción B · el texto de "para revisar"', () => {
   it('en cada registro: quién lo cargó (autoría visible, K3)', () => {
-    expect(reviewTag('Martina')).toBe('Lo cargó Martina · para revisar');
+    expect(reviewTag('Martina', 'created')).toBe('Lo cargó Martina · para revisar');
+  });
+
+  it('CA-27 · si solo lo editó, se dice que lo editó', () => {
+    expect(reviewTag('Martina', 'edited')).toBe('Lo editó Martina · para revisar');
   });
 
   it('el resumen, en singular y en plural', () => {

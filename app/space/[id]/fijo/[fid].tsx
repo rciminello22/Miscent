@@ -61,7 +61,7 @@ export default function FijoCompartido() {
               authorLine: fixedAuthorLine(recurrence, mySlot, other.displayName),
               review: derived.pendingReview.has(recurrence.id)
                 ? {
-                    label: reviewTag(other.displayName),
+                    label: reviewTag(other.displayName, derived.pendingReview.get(recurrence.id)!),
                     loading: markReviewed.isPending,
                     onReviewed: () =>
                       markReviewed

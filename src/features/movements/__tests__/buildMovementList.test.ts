@@ -42,6 +42,21 @@ describe('opción B · "para revisar" en Movimientos', () => {
     expect(rows[0]?.reviewTag).toBe('Lo cargó Martina · para revisar');
   });
 
+  it('CA-27 · lo que cargué yo y editó el otro: "Lo editó Martina"', () => {
+    const rows = buildMovementList({
+      facts: personalFacts({
+        spaces: [
+          membership({
+            facts: spaceFacts({ expenses: [{ ...delSuper, createdBySlot: RENZO }] }),
+            mySlot: RENZO,
+          }),
+        ],
+      }),
+      ...options,
+    });
+    expect(rows[0]?.reviewTag).toBe('Lo editó Martina · para revisar');
+  });
+
   it('ya revisado, no', () => {
     const rows = buildMovementList({
       facts: personalFacts({
