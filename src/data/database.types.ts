@@ -434,6 +434,8 @@ export type Database = {
           split_mode: Database["public"]["Enums"]["split_mode"] | null
           start_month: string
           stopped_by_departure_on: string | null
+          updated_at: string
+          updated_by_slot: number | null
         }
         Insert: {
           amount: number
@@ -456,6 +458,8 @@ export type Database = {
           split_mode?: Database["public"]["Enums"]["split_mode"] | null
           start_month: string
           stopped_by_departure_on?: string | null
+          updated_at?: string
+          updated_by_slot?: number | null
         }
         Update: {
           amount?: number
@@ -478,6 +482,8 @@ export type Database = {
           split_mode?: Database["public"]["Enums"]["split_mode"] | null
           start_month?: string
           stopped_by_departure_on?: string | null
+          updated_at?: string
+          updated_by_slot?: number | null
         }
         Relationships: [
           {

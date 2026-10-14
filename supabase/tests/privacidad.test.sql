@@ -26,7 +26,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
 
-select plan(71);
+select plan(74);
 
 -- ───────────────────────────────────────────────────────────────────────────
 -- Montaje: Renzo (con cuenta personal), Martina (invitada, Estado B) y Juan.
@@ -433,6 +433,32 @@ with created as (
   ) returning id
 )
 select tests.put('fijo_borrado_id', id::text) from created;
+
+-- §21 · los dos editan un fijo compartido, y el servidor registra quién.
+select tests.authenticate_as('11111111-1111-1111-1111-111111111111');
+
+insert into recurrence_overrides (recurrence_id, month, amount)
+values (tests.get('fijo_borrado_id')::uuid, '2026-11', 35000);
+
+insert into tests.results(line) select is(
+  (select created_by_slot || ':' || updated_by_slot from recurrences
+   where id = tests.get('fijo_borrado_id')::uuid),
+  '2:1',
+  'Revisión · "Este mes fue distinto" de Renzo cuenta como edición suya del fijo de Martina'
+);
+
+update recurrences set created_by_slot = 1, updated_by_slot = 2
+where id = tests.get('fijo_borrado_id')::uuid;
+
+insert into tests.results(line) select is(
+  (select created_by_slot || ':' || updated_by_slot from recurrences
+   where id = tests.get('fijo_borrado_id')::uuid),
+  '2:1',
+  'Revisión · nadie reescribe quién cargó o editó un fijo: lo pone el servidor'
+);
+
+-- Martina lo elimina con su ajuste adentro: el ajuste se va en cascada.
+select tests.authenticate_as('22222222-2222-2222-2222-222222222222');
 delete from recurrences where id = tests.get('fijo_borrado_id')::uuid;
 
 select tests.authenticate_as('11111111-1111-1111-1111-111111111111');
@@ -625,6 +651,14 @@ insert into tests.results(line) select is(
    where space_id = tests.get('casa_id')::uuid and slot = 2),
   'Martina',
   'K4 / CA-40 · el nombre de quien salió queda en el historial como ex miembro'
+);
+
+-- La salida detiene el alquiler de Renzo, pero no es una edición de Martina:
+-- eso lo pregunta SA-04 con su tarjeta, no "para revisar".
+insert into tests.results(line) select is(
+  (select updated_by_slot::int from recurrences where id = tests.get('alquiler_id')::uuid),
+  1,
+  'Revisión / SA-04 · detener los fijos al salir no cuenta como edición de quien sale'
 );
 
 
