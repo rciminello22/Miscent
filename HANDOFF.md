@@ -150,7 +150,7 @@ radar/
 | Área | Estado |
 |---|---|
 | Dominio (§29 completo) | ✅ Los 7 casos de §29.1 pasan exactos |
-| Supabase + RLS | ✅ 13 tablas, 32 políticas, 12 migraciones, 2 triggers · **60/60 asserts** |
+| Supabase + RLS | ✅ 13 tablas, 32 políticas, 14 migraciones, 3 triggers · **66/66 asserts** |
 | UI base | ✅ Tokens claro/oscuro, motion, 14 primitivas propias, teclado y footer fijo (§11) |
 | O1 · O2 · O3 | ✅ Completos, con T-07/Q-06 derivados del último cierre |
 | Acceso | ✅ Código de 8 dígitos + enlace · "Ya tengo cuenta" sin alta · invitada **sin email** (ver §10) |
@@ -178,9 +178,9 @@ npm run verify:full  # + los de RLS
 
 | Nivel | Qué | Cuántos |
 |---|---|---|
-| 1 · Dominio y reglas puras (vitest) | Casos A–G, CA-*, casos de uso, identidad, navegación, Agregar | 270 |
+| 1 · Dominio y reglas puras (vitest) | Casos A–G, CA-*, casos de uso, identidad, navegación, Agregar | 298 |
 | 2 · Autorización (pgTAP) | PR-01, PR-02, CA-11..13, CA-47, CA-48, SY-02, SA-06, D-01, P7, §26, anónimos, permisos de funciones | 46 |
-| 3 · Componentes (jest-expo) | El lenguaje **obligatorio** | 41 |
+| 3 · Componentes (jest-expo) | El lenguaje **obligatorio** | 46 |
 | 4 · Lint de lenguaje | **Automatiza CA-00** | en CI |
 
 El nivel 4 ya cazó **4 errores míos** ("te quedaría", "el saldo", "Te quedan N
@@ -202,7 +202,7 @@ avisar**. En una app cuyo valor es "confiá en estas cifras", es lo más caro.
 
 | # | Qué | Por qué |
 |---|---|---|
-| **1** | **Revisión de lo que carga el otro** (opción B, decidida el 14/10): lo que carga Martina cuenta enseguida, igual para los dos, pero queda marcado "Lo cargó Martina · para revisar" hasta que lo mirás ("Está bien" / editar / eliminar). El paso 1, "¿Con qué lo pagaste?", ya está (`fd5f7dc`). Falta extenderlo a todo lo que carga el otro: necesita guardar qué revisó cada uno (migración) y pasar por §38, porque complementa K3 | Que otro pueda mover tus números sin que te enteres rompe la confianza. Se descartó "solo cuenta si lo aceptás": infla Sin asignar (casi un "te queda", G-05) y rompe "un solo saldo para los dos" |
+| **1** | **Llevar a la spec (§38) la revisión de lo que carga el otro**, que ya está hecha (opción B, 14/10: `fd5f7dc`, `a47b57d`, `d79e1dd`). Lo que carga Martina cuenta enseguida, igual para los dos, y queda "Lo cargó Martina · para revisar" hasta que se mira. Falta: una edición de un fijo compartido (cuando exista, punto 6) tiene que volver a ponerlo para revisar, y lo que el otro **elimina** no se marca | Complementa K3, que es una DECISIÓN. Se descartó "solo cuenta si lo aceptás": infla Sin asignar (casi un "te queda", G-05) y rompe "un solo saldo para los dos" |
 | 2 | "Con esto, Martina te debe $X" en el aviso al guardar un gasto compartido (§17) | Hoy el aviso dice quién lo ve y el efecto, pero no cómo queda el saldo |
 | 3 | Comparar con el mes pasado a la misma altura ("¿voy bien?"), a llevar a §38 | Pedido de la prueba del 12/10. Reemplaza la idea de "disponible por día", que G-05 prohíbe |
 | 4 | Iniciales con color en vez de foto de perfil | La foto suma Storage, RLS y privacidad (P9–P11). Las iniciales no guardan nada |
@@ -275,9 +275,16 @@ datos, y cifrado/ubicación/uso para entrenar IA del proveedor. La base está en
 - **Y eso tampoco alcanzaba (14/10).** Postgres además le da EXECUTE a
   **PUBLIC** a toda función nueva, y `anon` es miembro de PUBLIC:
   `app_resolve_stopped_recurrence` nació abierta sin sesión (en `proacl`,
-  `=X/postgres` es el EXECUTE de PUBLIC). La 0012 sacó también el default de
-  PUBLIC: **desde la 0012**, una función nueva nace cerrada de verdad, y cada
-  migración da su `grant ... to authenticated` explícito.
+  `=X/postgres` es el EXECUTE de PUBLIC). La 0012 intentó sacarlo con
+  `alter default privileges IN SCHEMA public ...` y **no sirvió**: los
+  default privileges por esquema solo se SUMAN a los globales, no pueden
+  sacar nada. `app_mark_reviewed` (0013) nació abierta otra vez. La **0014**
+  lo revoca en el default GLOBAL (`for role postgres`, sin `in schema`).
+  **Desde la 0014** una función nueva nace cerrada: verificado creando una
+  función de prueba en un `begin/rollback` (ACL `{postgres, service_role}`).
+  Cada migración da su `grant ... to authenticated` explícito.
+- **Para afirmar algo de privilegios, probarlo**: crear una función de
+  prueba en una transacción y mirar su ACL. La 0012 se afirmó sin probar.
 - **La única verificación confiable es `has_function_privilege`**, que es lo
   que miran los tests ("Sin sesión no se ejecuta ninguna función de la
   app"). `db:types` lista TODAS las funciones, cerradas incluidas: que una
