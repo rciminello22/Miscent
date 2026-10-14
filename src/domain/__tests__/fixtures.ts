@@ -6,6 +6,7 @@
 
 import type {
   DeclaredStatement,
+  DeletedRecord,
   Member,
   MemberPayment,
   PaymentMethod,
@@ -264,6 +265,7 @@ export function membership(args: {
   paymentDetails?: SharedPaymentDetail[];
   leftOn?: IsoDate | null;
   reviews?: Review[];
+  deletions?: DeletedRecord[];
 }): PersonalFacts['spaces'][number] {
   return {
     facts: args.facts,
@@ -271,6 +273,7 @@ export function membership(args: {
     paymentDetails: args.paymentDetails ?? [],
     leftOn: args.leftOn ?? null,
     reviews: args.reviews ?? [],
+    deletions: args.deletions ?? [],
   };
 }
 

@@ -11,7 +11,7 @@
  * verdades.
  */
 
-import type { Review, Slot, SpaceFacts } from './types';
+import type { DeletedRecord, Review, Slot, SpaceFacts } from './types';
 
 /**
  * Los registros del espacio que el usuario todavía no revisó. Devuelve sus
@@ -48,4 +48,45 @@ export function pendingReview(
   }
 
   return pending;
+}
+
+/**
+ * Cuánto tiene que haber durado un registro para que su eliminación sea
+ * noticia. Menos que esto es Deshacer o un error corregido al toque: quien lo
+ * eliminó lo había cargado recién, y el otro nunca llegó a contar con él.
+ */
+const QUICK_UNDO_MS = 10 * 60 * 1000;
+
+/**
+ * Lo que el otro eliminó y el usuario todavía no revisó, lo más reciente
+ * primero. Un registro borrado no puede llevar la marca: la lleva su rastro.
+ *
+ * Una revisión de ANTES de eliminarlo no cuenta: revisaste el gasto, no que
+ * desapareciera. Por eso se compara contra `deletedAt`, igual que una edición
+ * se compara contra `updatedAt`.
+ */
+export function pendingDeletions(
+  deletions: readonly DeletedRecord[],
+  mySlot: Slot,
+  reviews: readonly Review[],
+): DeletedRecord[] {
+  const reviewedAt = new Map(reviews.map((review) => [review.sourceId, Date.parse(review.reviewedAt)]));
+
+  return deletions
+    .filter((item) => {
+      if (item.deletedBySlot === mySlot) return false;
+      // Un rastro de antes de guardar qué era: no se puede decir qué fue.
+      if (item.amount == null) return false;
+
+      const deletedAt = Date.parse(item.deletedAt);
+      const quickUndo =
+        item.createdBySlot === item.deletedBySlot &&
+        item.recordCreatedAt != null &&
+        deletedAt - Date.parse(item.recordCreatedAt) < QUICK_UNDO_MS;
+      if (quickUndo) return false;
+
+      const reviewed = reviewedAt.get(item.sourceId);
+      return reviewed == null || reviewed < deletedAt;
+    })
+    .sort((a, b) => Date.parse(b.deletedAt) - Date.parse(a.deletedAt));
 }

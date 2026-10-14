@@ -14,6 +14,7 @@
 import type { Database } from './database.types';
 import type {
   DeclaredStatement,
+  DeletedRecord,
   InstallmentPlan,
   Member,
   MemberPayment,
@@ -124,6 +125,24 @@ export function toSharedExpense(row: Row<'shared_expenses'>): SharedExpense {
 /** Opción B · lo que revisó el usuario. La RLS devuelve solo las suyas. */
 export function toReview(row: Row<'record_reviews'>): Review {
   return { sourceId: row.source_id, reviewedAt: row.reviewed_at };
+}
+
+/** Opción B · el rastro de lo que se eliminó en un espacio (trigger de la base). */
+export function toDeletedRecord(row: Row<'deleted_shared_records'>): DeletedRecord {
+  return {
+    sourceId: row.source_id,
+    // El CHECK de la base garantiza que es uno de estos tres.
+    kind: row.kind === 'recurrence' || row.kind === 'payment' ? row.kind : 'expense',
+    deletedBySlot: toSlot(row.deleted_by_slot),
+    deletedAt: row.deleted_at,
+    amount: row.amount,
+    occurredOn: row.occurred_on,
+    category: row.category,
+    description: row.description,
+    fromSlot: row.from_slot == null ? null : toSlot(row.from_slot),
+    createdBySlot: row.created_by_slot == null ? null : toSlot(row.created_by_slot),
+    recordCreatedAt: row.record_created_at,
+  };
 }
 
 export function toRecurrence(row: Row<'recurrences'>): Recurrence {

@@ -54,7 +54,7 @@ function SpaceLine({ space }: { space: SpaceSummary }) {
   const toComplete =
     membership == null ? 0 : paidByMeWithoutMethod(membership, today, { includeOwn: false }).length;
   // Opción B · sutil: el detalle está en el espacio.
-  const toReview = derived?.pendingReview.size ?? 0;
+  const toReview = (derived?.pendingReview.size ?? 0) + (derived?.pendingDeletions.length ?? 0);
   const hints = [
     pending > 0 ? pendingFixedLine(pending) : null,
     toComplete > 0 ? toCompleteLine(toComplete) : null,

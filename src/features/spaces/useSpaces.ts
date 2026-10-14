@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { monthOf } from '@domain/calendar';
 import { expandSpaceOccurrences, spaceHorizon } from '@domain/occurrences';
-import { pendingReview } from '@domain/review';
+import { pendingDeletions, pendingReview } from '@domain/review';
 import {
   calculateSharedBalance,
   calculateSpaceMonth,
@@ -57,7 +57,7 @@ export function useSpace(spaceId: string) {
 
   const derived = useMemo(() => {
     if (query.data == null) return null;
-    const { facts, mySlot, reviews } = query.data;
+    const { facts, mySlot, reviews, deletions } = query.data;
 
     const balance = calculateSharedBalance(facts, mySlot, today);
 
@@ -75,6 +75,8 @@ export function useSpace(spaceId: string) {
       me: facts.space.members.find((member) => member.slot === mySlot)!,
       /** Opción B · los ids de lo que cargó el otro y todavía no revisé. */
       pendingReview: pendingReview(facts, mySlot, reviews),
+      /** Opción B · lo que eliminó el otro y todavía no revisé. */
+      pendingDeletions: pendingDeletions(deletions, mySlot, reviews),
     };
   }, [query.data, today]);
 

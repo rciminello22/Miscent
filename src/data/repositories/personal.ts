@@ -12,6 +12,7 @@ import type { PersonalFacts, Slot } from '@domain/types';
 import { supabase } from '../supabase';
 import {
   toDeclaredStatement,
+  toDeletedRecord,
   toPaymentMethod,
   toPersonalMovement,
   toRecurrence,
@@ -65,7 +66,7 @@ async function fetchMembership(
   spaceId: string,
   mySlot: Slot,
 ): Promise<PersonalFacts['spaces'][number]> {
-  const [space, members, expenses, recurrences, payments, details, myMember, reviews] =
+  const [space, members, expenses, recurrences, payments, details, myMember, reviews, deletions] =
     await Promise.all([
       supabase.from('spaces').select('*').eq('id', spaceId).single(),
       supabase.from('space_members').select('*').eq('space_id', spaceId),
@@ -77,6 +78,7 @@ async function fetchMembership(
       supabase.from('space_members').select('left_at').eq('space_id', spaceId).eq('slot', mySlot).single(),
       // Opción B · y solo sus propias revisiones.
       supabase.from('record_reviews').select('*').eq('space_id', spaceId),
+      fetchRecentDeletions(spaceId),
     ]);
 
   throwIfError(space.error, 'espacio');
@@ -89,6 +91,7 @@ async function fetchMembership(
   // Sin left_at, SA-05 no sabe desde cuándo dejar de contar los fijos.
   throwIfError(myMember.error, 'espacios');
   throwIfError(reviews.error, 'revisiones');
+  throwIfError(deletions.error, 'eliminaciones');
 
   const recurrenceRows = recurrences.data ?? [];
   const overrideRows = await fetchOverrideRows(recurrenceRows.map((row) => row.id));
@@ -107,7 +110,25 @@ async function fetchMembership(
     // SA-05 · si salió, sus cuotas compartidas siguen pero los fijos no.
     leftOn: myMember.data?.left_at?.slice(0, 10) ?? null,
     reviews: (reviews.data ?? []).map(toReview),
+    deletions: (deletions.data ?? []).map(toDeletedRecord),
   };
+}
+
+/** Lo eliminado hace más que esto ya no es noticia: no se pide revisarlo. */
+const DELETIONS_WINDOW_DAYS = 60;
+
+/**
+ * Opción B · los rastros de lo que se eliminó en el espacio, de los últimos
+ * días. Lo que queda para revisar lo decide el dominio (`pendingDeletions`).
+ * La ventana corta solo el volumen de la consulta: no es una cifra.
+ */
+export function fetchRecentDeletions(spaceId: string) {
+  const since = new Date(Date.now() - DELETIONS_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  return supabase
+    .from('deleted_shared_records')
+    .select('*')
+    .eq('space_id', spaceId)
+    .gte('deleted_at', since);
 }
 
 /**

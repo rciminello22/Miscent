@@ -137,6 +137,28 @@ export type Timestamp = string;
 export type Review = { sourceId: string; reviewedAt: Timestamp };
 
 /**
+ * Opción B · el rastro de un registro compartido que alguien eliminó. Lo
+ * escribe un trigger de la base (deleted_shared_records), nunca la app: así
+ * quien eliminó es un dato, no una suposición (SY-02).
+ */
+export type DeletedRecord = {
+  sourceId: string;
+  kind: 'expense' | 'recurrence' | 'payment';
+  deletedBySlot: Slot;
+  deletedAt: Timestamp;
+  /** Lo que era. `null` en los rastros de antes de guardarlo. */
+  amount: Pesos | null;
+  /** La fecha del gasto o del pago. Un fijo no tiene una sola. */
+  occurredOn: IsoDate | null;
+  category: Category | null;
+  description: string | null;
+  /** Solo los pagos: quién le pagó a quién. */
+  fromSlot: Slot | null;
+  createdBySlot: Slot | null;
+  recordCreatedAt: Timestamp | null;
+};
+
+/**
  * §7.4 · Detalle privado de pago: con qué pagó un miembro un gasto compartido.
  * SOLO lo ve quien pagó (C-05, PR-02). Por eso es una entidad separada: en la
  * base lleva su propia política de RLS.
@@ -239,5 +261,7 @@ export type PersonalFacts = {
     leftOn: IsoDate | null;
     /** Opción B · lo que revisó, de lo que cargó el otro. Solo las suyas. */
     reviews: readonly Review[];
+    /** Opción B · lo que se eliminó en el espacio en los últimos días. */
+    deletions: readonly DeletedRecord[];
   }[];
 };

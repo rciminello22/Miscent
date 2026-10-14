@@ -14,6 +14,7 @@ import type { IsoDate, Month } from '@domain/calendar';
 import type { Pesos } from '@domain/money';
 import type {
   Category,
+  DeletedRecord,
   PaymentMethod,
   Review,
   Slot,
@@ -21,9 +22,9 @@ import type {
   Split,
 } from '@domain/types';
 import { supabase } from '../supabase';
-import { installmentColumns, splitColumns, toReview, toSpaceFacts } from '../mappers';
+import { installmentColumns, splitColumns, toDeletedRecord, toReview, toSpaceFacts } from '../mappers';
 import { ownActiveMemberships } from '../memberships';
-import { fetchOverrideRows, throwIfError } from './personal';
+import { fetchOverrideRows, fetchRecentDeletions, throwIfError } from './personal';
 import { cleanDescription } from './mutations';
 
 export type SpaceSummary = {
@@ -79,8 +80,8 @@ export async function fetchMySpaces(): Promise<SpaceSummary[]> {
 
 export async function fetchSpaceFacts(
   spaceId: string,
-): Promise<{ facts: SpaceFacts; mySlot: Slot; reviews: Review[] }> {
-  const [space, members, expenses, recurrences, payments, me, reviews] = await Promise.all([
+): Promise<{ facts: SpaceFacts; mySlot: Slot; reviews: Review[]; deletions: DeletedRecord[] }> {
+  const [space, members, expenses, recurrences, payments, me, reviews, deletions] = await Promise.all([
     supabase.from('spaces').select('*').eq('id', spaceId).single(),
     supabase.from('space_members').select('*').eq('space_id', spaceId).order('slot'),
     supabase.from('shared_expenses').select('*').eq('space_id', spaceId),
@@ -89,6 +90,7 @@ export async function fetchSpaceFacts(
     supabase.rpc('app_my_slot', { target_space_id: spaceId }),
     // Opción B · la RLS devuelve solo las revisiones propias.
     supabase.from('record_reviews').select('*').eq('space_id', spaceId),
+    fetchRecentDeletions(spaceId),
   ]);
 
   if (space.error != null || space.data == null) {
@@ -99,6 +101,7 @@ export async function fetchSpaceFacts(
   throwIfError(recurrences.error, 'fijos compartidos');
   throwIfError(payments.error, 'pagos entre miembros');
   throwIfError(reviews.error, 'revisiones');
+  throwIfError(deletions.error, 'eliminaciones');
   // Nunca suponer el lugar: con el slot equivocado, el saldo sale invertido y
   // "tu parte" es la del otro (K9).
   if (me.error != null || me.data == null) throw new Error('No pudimos abrir este espacio.');
@@ -118,6 +121,7 @@ export async function fetchSpaceFacts(
     }),
     mySlot: me.data as Slot,
     reviews: (reviews.data ?? []).map((row) => toReview(row)),
+    deletions: (deletions.data ?? []).map(toDeletedRecord),
   };
 }
 

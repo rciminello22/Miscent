@@ -7,7 +7,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { pendingReview } from '../review';
+import { pendingDeletions, pendingReview } from '../review';
+import type { DeletedRecord } from '../types';
 import { MARTINA, RENZO, memberPayment, sharedExpense, sharedRecurrence, spaceFacts } from './fixtures';
 
 const delSuper = {
@@ -64,5 +65,70 @@ describe('qué queda para revisar', () => {
     };
     const pending = pendingReview(spaceFacts({ payments: [pago] }), RENZO, []);
     expect([...pending]).toEqual(['pago']);
+  });
+});
+
+/**
+ * Lo que ELIMINA el otro. Un registro borrado no puede llevar la marca, así
+ * que la lleva su rastro (deleted_shared_records): "Martina eliminó
+ * Supermercado · $100.000".
+ */
+describe('qué eliminó el otro y queda para revisar', () => {
+  const borrado = (overrides: Partial<DeletedRecord> = {}): DeletedRecord => ({
+    sourceId: 'super',
+    kind: 'expense',
+    deletedBySlot: MARTINA,
+    deletedAt: '2026-10-12T10:00:00+00:00',
+    amount: 100_000,
+    occurredOn: '2026-10-05',
+    category: 'supermercado',
+    description: 'Supermercado',
+    fromSlot: null,
+    createdBySlot: RENZO,
+    recordCreatedAt: '2026-10-05T12:00:00+00:00',
+    ...overrides,
+  });
+
+  it('lo que eliminó el otro, sin revisar', () => {
+    expect(pendingDeletions([borrado()], RENZO, []).map((item) => item.sourceId)).toEqual(['super']);
+  });
+
+  it('lo que eliminé yo, nunca', () => {
+    expect(pendingDeletions([borrado({ deletedBySlot: RENZO })], RENZO, [])).toEqual([]);
+  });
+
+  it('revisado después de eliminarlo, ya no', () => {
+    const reviews = [{ sourceId: 'super', reviewedAt: '2026-10-12T11:00:00+00:00' }];
+    expect(pendingDeletions([borrado()], RENZO, reviews)).toEqual([]);
+  });
+
+  it('revisado ANTES de eliminarlo (cuando existía), sigue para revisar: la eliminación es otro cambio', () => {
+    const reviews = [{ sourceId: 'super', reviewedAt: '2026-10-06T09:00:00+00:00' }];
+    expect(pendingDeletions([borrado()], RENZO, reviews)).toHaveLength(1);
+  });
+
+  it('si lo cargó y lo borró enseguida quien lo eliminó (Deshacer), no hay nada que revisar', () => {
+    const deshecho = borrado({
+      createdBySlot: MARTINA,
+      recordCreatedAt: '2026-10-12T09:58:00+00:00',
+    });
+    expect(pendingDeletions([deshecho], RENZO, [])).toEqual([]);
+  });
+
+  it('si lo había cargado ella hace días, sí: el saldo que Renzo vio cambió', () => {
+    const viejo = borrado({ createdBySlot: MARTINA, recordCreatedAt: '2026-10-05T12:00:00+00:00' });
+    expect(pendingDeletions([viejo], RENZO, [])).toHaveLength(1);
+  });
+
+  it('un rastro de antes, sin lo que era, no se muestra: no se inventa', () => {
+    expect(pendingDeletions([borrado({ amount: null })], RENZO, [])).toEqual([]);
+  });
+
+  it('lo más reciente primero', () => {
+    const pagos = borrado({ sourceId: 'pago', kind: 'payment', deletedAt: '2026-10-13T10:00:00+00:00' });
+    expect(pendingDeletions([borrado(), pagos], RENZO, []).map((item) => item.sourceId)).toEqual([
+      'pago',
+      'super',
+    ]);
   });
 });

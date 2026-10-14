@@ -13,7 +13,7 @@ import { useSession } from '@/features/auth/SessionProvider';
 import { StoppedFixedCard } from './StoppedFixedCard';
 import { PaidByMeSection } from './PaidByMeSection';
 import { paidByOtherTitle } from './paidByMeCopy';
-import { markAllLabel, reviewTag, toReviewLine } from './reviewCopy';
+import { deletedLabel, deletedTag, markAllLabel, reviewTag, toReviewLine } from './reviewCopy';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import {
   balanceSentence,
@@ -30,7 +30,7 @@ import {
 } from '@/features/spaces/useSpaces';
 import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
 import { calculateSharedBalance } from '@domain/shared-balance';
-import type { MemberPayment } from '@domain/types';
+import type { DeletedRecord, MemberPayment } from '@domain/types';
 import { SpaceMenu } from '@/features/spaces/SpaceMenu';
 import {
   AudienceBadge,
@@ -160,7 +160,10 @@ export function SpaceScreen({
 
   function reviewAll() {
     if (derived == null) return;
-    reviewIds([...derived.pendingReview], 'Listo, ya lo revisaste.');
+    reviewIds(
+      [...derived.pendingReview, ...derived.pendingDeletions.map((item) => item.sourceId)],
+      'Listo, ya lo revisaste.',
+    );
   }
   const { accountState } = useSession();
   // Con el detalle privado de pago, que solo está en los hechos personales.
@@ -265,6 +268,7 @@ export function SpaceScreen({
   }
 
   const { balance, month, other, me, settlement, pendingInstallments } = derived;
+  const toReviewCount = derived.pendingReview.size + derived.pendingDeletions.length;
 
   return (
     <ScrollView
@@ -543,16 +547,38 @@ export function SpaceScreen({
 
           {/* Opción B · lo que cargó el otro y no revisaste. Revisar no es
               aprobar: ya cuenta, igual para los dos. */}
-          {derived.pendingReview.size > 0 && (
+          {toReviewCount > 0 && (
             <Row justify="space-between" align="center" gap="3">
-              <ReviewTag label={toReviewLine(derived.pendingReview.size)} />
+              <ReviewTag label={toReviewLine(toReviewCount)} />
               <Button
-                label={markAllLabel(derived.pendingReview.size)}
+                label={markAllLabel(toReviewCount)}
                 variant="ghost"
                 loading={markReviewed.isPending}
                 onPress={() => reviewAll()}
               />
             </Row>
+          )}
+
+          {/* Opción B · lo que eliminó el otro ya no está en la lista: queda
+              su rastro hasta que lo revisás. */}
+          {derived.pendingDeletions.length > 0 && (
+            <Stack gap="0">
+              {derived.pendingDeletions.map((item, index) => (
+                <View key={`deleted-${item.sourceId}`}>
+                  <DeletedRow
+                    item={item}
+                    label={deletedLabel(item, {
+                      mySlot: derived.mySlot,
+                      otherName: other.displayName,
+                      categoryLabel: prettyLabel,
+                    })}
+                    tag={deletedTag(other.displayName)}
+                    onReviewed={() => reviewIds([item.sourceId], 'Listo, ya lo revisaste.')}
+                  />
+                  {index < derived.pendingDeletions.length - 1 && <Divider />}
+                </View>
+              ))}
+            </Stack>
           )}
 
           {movements.length === 0 ? (
@@ -780,6 +806,64 @@ function PaymentRow({
         <Money amount={amount} variant="bodyMedium" tone="muted" />
       </Row>
     </Pressable>
+  );
+}
+
+/**
+ * Opción B · el rastro de algo que eliminó el otro. Tachado y en gris: ya no
+ * cuenta en ningún número, y se dice qué era para que se entienda el cambio.
+ */
+function DeletedRow({
+  item,
+  label,
+  tag,
+  onReviewed,
+}: {
+  item: DeletedRecord;
+  label: string;
+  tag: string;
+  onReviewed: () => void;
+}) {
+  const theme = useTheme();
+
+  return (
+    <View style={{ paddingVertical: theme.space['3'], gap: 3 }}>
+      <Row gap="3" align="flex-start">
+        <View style={{ flex: 1, gap: 3 }}>
+          <Text
+            variant="bodyMedium"
+            tone="muted"
+            numberOfLines={1}
+            style={{ textDecorationLine: 'line-through' }}
+          >
+            {label}
+          </Text>
+          {item.occurredOn != null && (
+            <Text variant="caption" tone="muted">
+              {formatDayMonth(item.occurredOn)}
+            </Text>
+          )}
+          <ReviewTag label={tag} />
+        </View>
+        <View style={{ alignItems: 'flex-end', gap: 2 }}>
+          {item.amount != null && (
+            <Text
+              variant="bodyMedium"
+              tone="muted"
+              tabular
+              style={{ textDecorationLine: 'line-through' }}
+            >
+              {formatPesos(item.amount)}
+            </Text>
+          )}
+          <Pressable onPress={onReviewed} haptic="none" accessibilityRole="button">
+            <Text variant="smallMedium" tone="brand">
+              Está bien
+            </Text>
+          </Pressable>
+        </View>
+      </Row>
+    </View>
   );
 }
 
