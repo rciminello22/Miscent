@@ -611,15 +611,14 @@ export function SpaceScreen({
                           ? reviewTag(other.displayName)
                           : null
                       }
-                      onPress={
-                        // Un fijo compartido se edita desde su propio fijo; un
-                        // gasto, desde el detalle del gasto.
-                        movement.occurrence.sourceKind === 'expense'
-                          ? () =>
-                              router.push(
-                                `/space/${spaceId}/gasto/${movement.occurrence.sourceId}`,
-                              )
-                          : undefined
+                      onPress={() =>
+                        // Un gasto se edita desde su detalle; un fijo, desde el
+                        // fijo (§21: los dos lo editan), no desde un mes suelto.
+                        router.push(
+                          movement.occurrence.sourceKind === 'expense'
+                            ? `/space/${spaceId}/gasto/${movement.occurrence.sourceId}`
+                            : `/space/${spaceId}/fijo/${movement.occurrence.sourceId}`,
+                        )
                       }
                     />
                   ) : (

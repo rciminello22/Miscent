@@ -197,6 +197,10 @@ export type Recurrence = {
   departureResolution: 'moved' | 'ended' | null;
   /** Quién cargó un fijo compartido. `null` en los personales y en los de antes. */
   createdBySlot: Slot | null;
+  /** Quién lo cambió por última vez (§21: los dos lo editan). `null` igual que arriba. */
+  updatedBySlot: Slot | null;
+  /** Cuándo cambió por última vez. Lo pone el servidor (revisión, opción B). */
+  updatedAt: Timestamp;
   /**
    * F-03 · los montos de antes de cada "Cambiar desde este mes". Sin esto, el
    * monto nuevo reescribía los meses que ya pasaron.

@@ -19,7 +19,8 @@ import type { DeletedRecord, Review, Slot, SpaceFacts } from './types';
  *
  *   gasto · si su último cambio lo hizo el otro y no se revisó DESDE ese
  *           cambio: una edición del otro lo vuelve a poner para revisar
- *   fijo  · si lo cargó el otro (los compartidos todavía no se editan)
+ *   fijo  · igual que un gasto: si su último cambio (o su alta) lo hizo el
+ *           otro, incluido un "Este mes fue distinto"
  *   pago  · si lo registró el otro (los pagos no se editan)
  */
 export function pendingReview(
@@ -37,9 +38,12 @@ export function pendingReview(
   }
 
   for (const recurrence of facts.recurrences) {
-    // Sin autor conocido (personales, o de antes de guardarlo) no se inventa.
-    if (recurrence.createdBySlot == null || recurrence.createdBySlot === mySlot) continue;
-    if (!reviewedAt.has(recurrence.id)) pending.add(recurrence.id);
+    // §21 · los dos lo editan: cuenta quién lo cambió por última vez. Sin
+    // autor conocido (personales, o de antes de guardarlo) no se inventa.
+    const editor = recurrence.updatedBySlot ?? recurrence.createdBySlot;
+    if (editor == null || editor === mySlot) continue;
+    const reviewed = reviewedAt.get(recurrence.id);
+    if (reviewed == null || reviewed < Date.parse(recurrence.updatedAt)) pending.add(recurrence.id);
   }
 
   for (const payment of facts.payments) {

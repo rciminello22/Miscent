@@ -70,6 +70,7 @@ export function FixedDetail({
   feedbackAudience,
   methodName,
   invalidate,
+  shared,
 }: {
   /** `null` si ya no existe (lo eliminó alguien, o desde otro teléfono). */
   recurrence: Recurrence | null;
@@ -82,6 +83,18 @@ export function FixedDetail({
   methodName?: string | null;
   /** Lo que hay que volver a leer después de un cambio. */
   invalidate: () => Promise<void>;
+  /**
+   * §21 · un fijo compartido: lo editan los dos (K3). Cambia lo que se dice
+   * al detenerlo o eliminarlo, porque también cambia lo que se deben.
+   */
+  shared?: {
+    otherName: string;
+    spaceName: string;
+    /** "Lo cargó Martina · paga Renzo". */
+    authorLine: string;
+    /** Opción B · "Lo cargó Martina · para revisar", si falta revisarlo. */
+    review?: { label: string; loading: boolean; onReviewed: () => void };
+  };
 }) {
   const theme = useTheme();
   const router = useRouter();
@@ -180,7 +193,9 @@ export function FixedDetail({
   function confirmDelete() {
     Alert.alert(
       '¿Eliminar este fijo?',
-      'Desaparece de todos los meses, también de los que ya pasaron. Si lo que querés es dejar de pagarlo desde ahora, usá “Dejar de pagarlo”.',
+      shared == null
+        ? 'Desaparece de todos los meses, también de los que ya pasaron. Si lo que querés es dejar de pagarlo desde ahora, usá “Dejar de pagarlo”.'
+        : `Desaparece de todos los meses, también de los que ya pasaron, y lo que se deben con ${shared.otherName} se recalcula sin él. ${shared.otherName} también lo va a dejar de ver. Si lo que quieren es dejar de pagarlo desde ahora, usá “Dejar de pagarlo”.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Eliminar', style: 'destructive', onPress: () => remove.mutate() },
@@ -235,6 +250,28 @@ export function FixedDetail({
         </Row>
 
         <AudienceBadge audience={audience} />
+
+        {shared != null && (
+          <Stack gap="3">
+            <Text variant="caption" tone="muted">
+              {shared.authorLine}
+            </Text>
+            {/* Opción B · revisar no es aprobar: ya cuenta, igual para los dos. */}
+            {shared.review != null && (
+              <Row justify="space-between" align="center" gap="3">
+                <Text variant="caption" tone="shared" style={{ flex: 1 }}>
+                  {shared.review.label}
+                </Text>
+                <Button
+                  label="Está bien"
+                  variant="secondary"
+                  loading={shared.review.loading}
+                  onPress={shared.review.onReviewed}
+                />
+              </Row>
+            )}
+          </Stack>
+        )}
 
         <Stack gap="2">
           <Money amount={recurrence.amount} variant="display" />
@@ -405,8 +442,11 @@ export function FixedDetail({
                   />
                   <Card tone="sunken">
                     <Text variant="small" tone="secondary">
-                      Después de {formatMonth(targetMonth, currentMonth)} deja de contar en
-                      tus próximos meses. Lo anterior no se toca.
+                      {`Después de ${formatMonth(targetMonth, currentMonth)} deja de contar en ${
+                        shared == null
+                          ? 'tus próximos meses'
+                          : `los próximos meses de ${shared.spaceName}, para los dos`
+                      }. Lo anterior no se toca.`}
                     </Text>
                   </Card>
                 </Stack>

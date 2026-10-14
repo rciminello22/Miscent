@@ -88,6 +88,8 @@ function factsFor(input: {
               stoppedByDepartureOn: null,
               departureResolution: null,
               createdBySlot: null,
+              updatedBySlot: null,
+              updatedAt: '2026-01-01T00:00:00+00:00',
               pastTerms: [],
               dayOfMonth: 1,
               startMonth: '2026-01',

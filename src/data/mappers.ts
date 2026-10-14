@@ -162,6 +162,8 @@ export function toRecurrence(row: Row<'recurrences'>): Recurrence {
     payerSlot: row.payer_slot == null ? null : toSlot(row.payer_slot),
     stoppedByDepartureOn: row.stopped_by_departure_on,
     createdBySlot: row.created_by_slot == null ? null : toSlot(row.created_by_slot),
+    updatedBySlot: row.updated_by_slot == null ? null : toSlot(row.updated_by_slot),
+    updatedAt: row.updated_at,
     pastTerms: toPastTerms(row.past_terms),
     // El CHECK de la base garantiza que es uno de estos dos, o null.
     departureResolution:

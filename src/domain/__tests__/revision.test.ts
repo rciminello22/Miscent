@@ -51,6 +51,28 @@ describe('qué queda para revisar', () => {
     expect([...pending]).toEqual(['luz']);
   });
 
+  it('§21 · si el otro edita un fijo DESPUÉS de revisarlo, vuelve a quedar para revisar', () => {
+    const luz = {
+      ...sharedRecurrence({ id: 'luz', amount: 40_000, dayOfMonth: 15, startMonth: '2026-10', payerSlot: RENZO }),
+      createdBySlot: RENZO,
+      updatedBySlot: MARTINA,
+      updatedAt: '2026-10-12T09:00:00+00:00',
+    };
+    const pending = pendingReview(spaceFacts({ recurrences: [luz] }), RENZO, [
+      { sourceId: 'luz', reviewedAt: '2026-10-11T09:00:00+00:00' },
+    ]);
+    expect([...pending]).toEqual(['luz']);
+  });
+
+  it('§21 · un fijo del otro que edité yo después, ya lo vi', () => {
+    const luz = {
+      ...sharedRecurrence({ id: 'luz', amount: 40_000, dayOfMonth: 15, startMonth: '2026-10', payerSlot: MARTINA }),
+      createdBySlot: MARTINA,
+      updatedBySlot: RENZO,
+    };
+    expect(pendingReview(spaceFacts({ recurrences: [luz] }), RENZO, []).size).toBe(0);
+  });
+
   it('un fijo sin autor conocido (de antes) no se marca: no se inventa quién lo cargó', () => {
     const viejo = { ...sharedRecurrence({ id: 'viejo', amount: 40_000, dayOfMonth: 15, startMonth: '2026-10', payerSlot: MARTINA }), createdBySlot: null };
     const pending = pendingReview(spaceFacts({ recurrences: [viejo] }), RENZO, []);
