@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Alert, TextInput, View } from 'react-native';
-import { LogOut, ShieldCheck, Trash2, User } from 'lucide-react-native';
+import { Download, LogOut, ShieldCheck, Trash2, User } from 'lucide-react-native';
 import { useMutation } from '@tanstack/react-query';
 import { signOut } from '@/data/auth';
 import { supabase } from '@/data/supabase';
 import { updateDisplayName } from '@/data/repositories/mutations';
 import { useSession } from '@/features/auth/SessionProvider';
 import { useFeedback } from '@/features/shared/useFeedback';
+import { useExportData } from './useExportData';
 import {
   Button,
   Card,
@@ -129,6 +130,7 @@ export function DisplayNameCard() {
  */
 export function PrivacySection() {
   const theme = useTheme();
+  const { exportData, exporting } = useExportData();
 
   return (
     <Stack gap="4">
@@ -173,6 +175,16 @@ export function PrivacySection() {
           </Text>
         </Stack>
       </Card>
+
+      {/* Should 4 · tus datos, en un archivo que abre Excel o Sheets. */}
+      <Button
+        label="Exportar mis datos (CSV)"
+        variant="secondary"
+        fullWidth
+        loading={exporting}
+        icon={<Download size={16} color={theme.colors.text} />}
+        onPress={() => void exportData()}
+      />
     </Stack>
   );
 }
@@ -207,6 +219,7 @@ export function AccountActions({ kind }: { kind: 'personal' | 'guest' }) {
   const theme = useTheme();
   const { session, isAnonymous } = useSession();
   const copy = DELETE_COPY[kind];
+  const { exportData } = useExportData();
 
   function confirmSignOut() {
     Alert.alert('¿Cerrar sesión?', 'Vas a tener que pedir un enlace nuevo para volver.', [
@@ -218,6 +231,8 @@ export function AccountActions({ kind }: { kind: 'personal' | 'guest' }) {
   function confirmDelete() {
     Alert.alert(copy.title, copy.body, [
       { text: 'Cancelar', style: 'cancel' },
+      // §28 · "Antes: … exportar". Después no hay de dónde sacarlos.
+      { text: 'Exportar mis datos antes', onPress: () => void exportData() },
       {
         text: 'Continuar',
         style: 'destructive',
