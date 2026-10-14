@@ -66,6 +66,22 @@ function monthsIn(horizon: MonthHorizon): Month[] {
   return Array.from({ length: to - from + 1 }, (_, index) => addMonths(horizon.from, index));
 }
 
+/**
+ * F-03 · el monto base y el reparto que valían en un mes: el tramo de antes
+ * de un "Cambiar desde este mes", o el actual. Sin esto, el monto nuevo
+ * reescribía el pasado.
+ */
+function recurrenceTermsIn(
+  recurrence: Recurrence,
+  month: Month,
+): { amount: Pesos; split: Split | null } {
+  // El primer tramo que todavía valía ese mes (vienen ordenados por `until`).
+  const past = [...recurrence.pastTerms]
+    .sort((a, b) => compareMonths(a.until, b.until))
+    .find((terms) => compareMonths(month, terms.until) <= 0);
+  return past ?? { amount: recurrence.amount, split: recurrence.split };
+}
+
 /** Monto de un recurrente en un mes dado, aplicando el ajuste de F-03. */
 function recurrenceAmountIn(
   recurrence: Recurrence,
@@ -75,7 +91,7 @@ function recurrenceAmountIn(
   const override = overrides.find(
     (item) => item.recurrenceId === recurrence.id && item.month === month,
   );
-  return override?.amount ?? recurrence.amount;
+  return override?.amount ?? recurrenceTermsIn(recurrence, month).amount;
 }
 
 function recurrenceActiveIn(recurrence: Recurrence, month: Month): boolean {
@@ -213,12 +229,14 @@ function expandSharedRecurrence(
   if (recurrence.kind !== 'expense') return [];
 
   const payerSlot = recurrence.payerSlot ?? 1;
-  const split: Split = recurrence.split ?? { mode: 'even' };
 
   return monthsIn(horizon)
     .filter((month) => recurrenceActiveIn(recurrence, month))
     .map((month) => {
       const amount = recurrenceAmountIn(recurrence, month, overrides);
+      // F-04 · el reparto del tramo de ese mes, y un ajuste en proporción a él.
+      const terms = recurrenceTermsIn(recurrence, month);
+      const split: Split = terms.split ?? { mode: 'even' };
       return {
         id: `recurrence:${recurrence.id}:${month}`,
         sourceId: recurrence.id,
@@ -226,7 +244,7 @@ function expandSharedRecurrence(
         label: recurrence.description ?? recurrence.category,
         category: recurrence.category,
         amount,
-        shares: proportionalShares(amount, recurrence.amount, split),
+        shares: proportionalShares(amount, terms.amount, split),
         payerSlot,
         balanceDate: dateInMonth(month, recurrence.dayOfMonth), // S-02 · su día del mes
         month,

@@ -106,7 +106,7 @@ export default function FijoDetalle() {
           await setMonthOverride(recurrence.id, targetMonth, amount);
           break;
         case 'from-now':
-          await changeRecurrenceAmount(recurrence.id, amount);
+          await changeRecurrenceAmount(recurrence, amount, currentMonth);
           break;
         case 'correct':
           await correctRecurrence(recurrence.id, { dayOfMonth: day });

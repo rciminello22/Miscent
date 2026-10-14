@@ -58,6 +58,7 @@ const FACTS: PersonalFacts = {
       stoppedByDepartureOn: null,
       departureResolution: null,
       createdBySlot: null,
+      pastTerms: [],
       dayOfMonth: 1,
       startMonth: '2026-01',
       endMonth: null,

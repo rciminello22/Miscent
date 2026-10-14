@@ -12,6 +12,7 @@
  */
 
 import type { Database } from './database.types';
+import { toPastTerms } from './pastTerms';
 import type {
   DeclaredStatement,
   DeletedRecord,
@@ -161,6 +162,7 @@ export function toRecurrence(row: Row<'recurrences'>): Recurrence {
     payerSlot: row.payer_slot == null ? null : toSlot(row.payer_slot),
     stoppedByDepartureOn: row.stopped_by_departure_on,
     createdBySlot: row.created_by_slot == null ? null : toSlot(row.created_by_slot),
+    pastTerms: toPastTerms(row.past_terms),
     // El CHECK de la base garantiza que es uno de estos dos, o null.
     departureResolution:
       row.departure_resolution === 'moved' || row.departure_resolution === 'ended'

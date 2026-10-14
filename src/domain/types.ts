@@ -197,6 +197,20 @@ export type Recurrence = {
   departureResolution: 'moved' | 'ended' | null;
   /** Quién cargó un fijo compartido. `null` en los personales y en los de antes. */
   createdBySlot: Slot | null;
+  /**
+   * F-03 · los montos de antes de cada "Cambiar desde este mes". Sin esto, el
+   * monto nuevo reescribía los meses que ya pasaron.
+   */
+  pastTerms: readonly PastTerms[];
+};
+
+/** "Hasta septiembre fue $500.000 (y se repartía así)". */
+export type PastTerms = {
+  /** El último mes en que valió. */
+  until: Month;
+  amount: Pesos;
+  /** El reparto de ese tramo. `null` en los personales. */
+  split: Split | null;
 };
 
 /** F-03 · "Este mes fue distinto": ajuste de un mes de un recurrente. */

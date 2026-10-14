@@ -15,12 +15,15 @@ import type {
   InstallmentPlan,
   PaymentMethod,
   PersonalMovement,
+  Recurrence,
   SharedExpense,
   Slot,
   Split,
 } from '@domain/types';
+import { changeAmountFrom } from '@domain/fixedChanges';
 import { supabase } from '../supabase';
 import { installmentColumns, splitColumns } from '../mappers';
+import { fromPastTerms } from '../pastTerms';
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /*  Movimientos personales                                                   */
@@ -328,13 +331,23 @@ export async function endSharedInstallmentsNow(
  * radar de un mes cerrado dejaría de coincidir con lo que el usuario vio.
  */
 export async function changeRecurrenceAmount(
-  recurrenceId: string,
+  recurrence: Recurrence,
   amount: Pesos,
+  fromMonth: Month,
 ): Promise<void> {
+  const next = changeAmountFrom(recurrence, amount, fromMonth);
+
+  // Un solo update: el monto nuevo y los tramos de antes cambian juntos o no
+  // cambia ninguno. Por separado, una falla a mitad reescribía el pasado.
   const { error } = await supabase
     .from('recurrences')
-    .update({ amount })
-    .eq('id', recurrenceId);
+    .update({
+      amount: next.amount,
+      past_terms: fromPastTerms(next.pastTerms),
+      // F-04 · en un compartido personalizado, las partes nuevas en proporción.
+      ...(next.split != null ? splitColumns(next.amount, next.split) : {}),
+    })
+    .eq('id', recurrence.id);
 
   if (error != null) throw new Error('No pudimos cambiar el monto.');
 }

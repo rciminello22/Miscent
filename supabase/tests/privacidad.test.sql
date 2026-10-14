@@ -26,7 +26,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
 
-select plan(70);
+select plan(71);
 
 -- ───────────────────────────────────────────────────────────────────────────
 -- Montaje: Renzo (con cuenta personal), Martina (invitada, Estado B) y Juan.
@@ -560,6 +560,15 @@ insert into tests.results(line) select is(
   (select created_by_slot::int from recurrences where id = tests.get('alquiler_id')::uuid),
   1,
   'Revisión · el servidor registra quién cargó un fijo compartido'
+);
+
+-- F-03 · los tramos de antes de "Cambiar desde este mes" son una lista; otra
+-- cosa no llega a la base.
+insert into tests.results(line) select throws_ok(
+  $$ update recurrences set past_terms = '{}'::jsonb where id = tests.get('alquiler_id')::uuid $$,
+  '23514',
+  null,
+  'F-03 · past_terms solo acepta una lista de tramos'
 );
 
 select tests.put('revisado_id', gen_random_uuid()::text);

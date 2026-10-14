@@ -425,6 +425,7 @@ export type Database = {
           id: string
           kind: Database["public"]["Enums"]["movement_kind"]
           owner_user_id: string | null
+          past_terms: Json
           payer_slot: number | null
           payment_method_id: string | null
           share_slot_1: number | null
@@ -446,6 +447,7 @@ export type Database = {
           id?: string
           kind: Database["public"]["Enums"]["movement_kind"]
           owner_user_id?: string | null
+          past_terms?: Json
           payer_slot?: number | null
           payment_method_id?: string | null
           share_slot_1?: number | null
@@ -467,6 +469,7 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["movement_kind"]
           owner_user_id?: string | null
+          past_terms?: Json
           payer_slot?: number | null
           payment_method_id?: string | null
           share_slot_1?: number | null
