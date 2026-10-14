@@ -83,20 +83,44 @@ export type Database = {
       }
       deleted_shared_records: {
         Row: {
+          amount: number | null
+          category: Database["public"]["Enums"]["category"] | null
+          created_by_slot: number | null
           deleted_at: string
           deleted_by_slot: number
+          description: string | null
+          from_slot: number | null
+          kind: string
+          occurred_on: string | null
+          record_created_at: string | null
           source_id: string
           space_id: string
         }
         Insert: {
+          amount?: number | null
+          category?: Database["public"]["Enums"]["category"] | null
+          created_by_slot?: number | null
           deleted_at?: string
           deleted_by_slot: number
+          description?: string | null
+          from_slot?: number | null
+          kind: string
+          occurred_on?: string | null
+          record_created_at?: string | null
           source_id: string
           space_id: string
         }
         Update: {
+          amount?: number | null
+          category?: Database["public"]["Enums"]["category"] | null
+          created_by_slot?: number | null
           deleted_at?: string
           deleted_by_slot?: number
+          description?: string | null
+          from_slot?: number | null
+          kind?: string
+          occurred_on?: string | null
+          record_created_at?: string | null
           source_id?: string
           space_id?: string
         }

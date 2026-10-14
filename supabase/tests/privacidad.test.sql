@@ -26,7 +26,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
 
-select plan(66);
+select plan(70);
 
 -- ───────────────────────────────────────────────────────────────────────────
 -- Montaje: Renzo (con cuenta personal), Martina (invitada, Estado B) y Juan.
@@ -402,6 +402,62 @@ insert into tests.results(line) select throws_ok(
   '42501',
   null,
   'SY-02 · nadie puede inventar un borrado a nombre del otro'
+);
+
+-- Opción B · lo que elimina el otro queda para revisar: el rastro guarda qué
+-- era, y lo dejan también los pagos y los fijos compartidos.
+insert into tests.results(line) select is(
+  (select kind || ':' || (amount is not null)::text from deleted_shared_records
+   where source_id = 'bbbbbbbb-0000-0000-0000-000000000001'),
+  'expense:true',
+  'Revisión · el rastro de un gasto eliminado dice qué era'
+);
+
+select tests.authenticate_as('22222222-2222-2222-2222-222222222222');
+
+with created as (
+  insert into member_payments (space_id, from_slot, to_slot, amount, date, recorded_by_slot)
+  values (tests.get('casa_id')::uuid, 2, 1, 15000, '2026-10-12', 2)
+  returning id
+)
+select tests.put('pago_borrado_id', id::text) from created;
+delete from member_payments where id = tests.get('pago_borrado_id')::uuid;
+
+with created as (
+  insert into recurrences (
+    kind, amount, category, day_of_month, start_month, space_id,
+    payer_slot, split_mode, share_slot_1, share_slot_2
+  ) values (
+    'expense', 30000, 'internet', 8, '2026-10', tests.get('casa_id')::uuid,
+    2, 'even', 15000, 15000
+  ) returning id
+)
+select tests.put('fijo_borrado_id', id::text) from created;
+delete from recurrences where id = tests.get('fijo_borrado_id')::uuid;
+
+select tests.authenticate_as('11111111-1111-1111-1111-111111111111');
+
+insert into tests.results(line) select is(
+  (select kind || ':' || deleted_by_slot || ':' || from_slot from deleted_shared_records
+   where source_id = tests.get('pago_borrado_id')::uuid),
+  'payment:2:2',
+  'Revisión · Renzo sabe que Martina eliminó un pago, y en qué dirección era'
+);
+
+insert into tests.results(line) select is(
+  (select kind || ':' || deleted_by_slot || ':' || amount from deleted_shared_records
+   where source_id = tests.get('fijo_borrado_id')::uuid),
+  'recurrence:2:30000',
+  'Revisión · Renzo sabe que Martina eliminó un fijo compartido'
+);
+
+insert into tests.results(line) select ok(
+  not has_function_privilege(
+    'authenticated',
+    'app_record_shared_deletion(uuid, uuid, text, integer, date, category, text, smallint, smallint, timestamptz)',
+    'execute'
+  ),
+  'Revisión · nadie registra un borrado llamando a la función interna'
 );
 
 select tests.authenticate_as('33333333-3333-3333-3333-333333333333');
