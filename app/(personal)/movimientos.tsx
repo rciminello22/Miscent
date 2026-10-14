@@ -187,6 +187,8 @@ export default function Movimientos() {
                   row={row}
                   onPress={() => {
                     // §16 · tocar abre el detalle, con Editar y Eliminar.
+                    // SA-02 · de un espacio del que saliste ya no hay detalle.
+                    if (row.formerSpace) return;
                     if (row.spaceId != null) {
                       openSpace(row.spaceId);
                       return;

@@ -29,3 +29,12 @@ export function keepDetail(amount: Pesos): string {
 export function pendingFixedLine(count: number): string {
   return count === 1 ? 'Hay 1 fijo para revisar' : `Hay ${count} fijos para revisar`;
 }
+
+/**
+ * SA-05 · §33 "Ex miembro en Futuro: 'Casa · ya no sos miembro'". Las cuotas
+ * de un espacio del que saliste siguen siendo tuyas; el nombre dice por qué
+ * ya no lo ves.
+ */
+export function spaceContext(spaceName: string, fromFormerMembership: boolean): string {
+  return fromFormerMembership ? `${spaceName} · ya no sos miembro` : spaceName;
+}

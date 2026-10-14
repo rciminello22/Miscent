@@ -9,6 +9,7 @@ import { prettyLabel } from '@/features/add/categories';
 import { AudienceIcon, Divider, Money, Row, Sheet, Stack, Text } from '@/ui/primitives';
 import { duration, stagger } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
+import { spaceContext } from '@/features/spaces/departureCopy';
 
 /**
  * M18 · "¿De dónde sale?" · §33 U8 · CA-04 y CA-52.
@@ -247,7 +248,9 @@ function OccurrenceList({
 
                 <Text variant="caption" tone="muted">
                   {[
-                    occurrence.spaceName != null ? `${occurrence.spaceName} · tu parte` : null,
+                    occurrence.spaceName != null
+                      ? `${spaceContext(occurrence.spaceName, occurrence.fromFormerMembership)} · tu parte`
+                      : null,
                     occurrence.installment != null
                       ? `cuota ${occurrence.installment.index} de ${occurrence.installment.count}`
                       : null,

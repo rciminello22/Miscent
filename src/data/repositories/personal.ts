@@ -22,14 +22,17 @@ import {
   toSpaceFacts,
 } from '../mappers';
 import { ownActiveMemberships } from '../memberships';
+import { toFormerMembership } from '../formerMembership';
 
 export async function fetchPersonalFacts(userId: string): Promise<PersonalFacts> {
-  const [methods, movements, recurrences, statements, memberships] = await Promise.all([
+  const [methods, movements, recurrences, statements, memberships, formers] = await Promise.all([
     supabase.from('payment_methods').select('*').eq('archived', false),
     supabase.from('personal_movements').select('*').order('date', { ascending: false }),
     supabase.from('recurrences').select('*'),
     supabase.from('declared_statements').select('*'),
     supabase.from('space_members').select('space_id, slot, user_id, status'),
+    // SA-05 · P6 · la foto de los espacios de los que salió. Solo las suyas.
+    supabase.from('former_memberships').select('*'),
   ]);
 
   throwIfError(methods.error, 'medios de pago');
@@ -37,17 +40,23 @@ export async function fetchPersonalFacts(userId: string): Promise<PersonalFacts>
   throwIfError(recurrences.error, 'fijos');
   throwIfError(statements.error, 'resúmenes declarados');
   throwIfError(memberships.error, 'espacios');
+  throwIfError(formers.error, 'espacios de los que saliste');
 
   const recurrenceRows = recurrences.data ?? [];
   const overrides = await fetchOverrides(recurrenceRows.map((row) => row.id));
 
   // K9 · la parte de cada espacio llega al radar calculada, nunca copiada.
   // Solo con las filas PROPIAS: con las del otro, el radar sumaba su parte.
+  const active = ownActiveMemberships(memberships.data ?? [], userId);
   const spaces = await Promise.all(
-    ownActiveMemberships(memberships.data ?? [], userId).map((membership) =>
-      fetchMembership(membership.spaceId, membership.slot),
-    ),
+    active.map((membership) => fetchMembership(membership.spaceId, membership.slot)),
   );
+  // P7 · si volvió al espacio, cuenta el espacio vivo y no la foto: las dos
+  // juntas sumarían su parte dos veces (K9).
+  const activeIds = new Set(active.map((membership) => membership.spaceId));
+  const former = (formers.data ?? [])
+    .filter((row) => !activeIds.has(row.space_id))
+    .map(toFormerMembership);
 
   return {
     userId,
@@ -58,7 +67,7 @@ export async function fetchPersonalFacts(userId: string): Promise<PersonalFacts>
     recurrences: recurrenceRows.filter((row) => row.space_id == null).map(toRecurrence),
     overrides,
     declaredStatements: (statements.data ?? []).map(toDeclaredStatement),
-    spaces,
+    spaces: [...spaces, ...former],
   };
 }
 

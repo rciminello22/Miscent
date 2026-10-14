@@ -287,3 +287,21 @@ describe('§16 · filtros "Todos · Personales · uno por espacio"', () => {
     expect(spacesInMonth(facts, '2026-10')).toEqual([{ id: 'casa', name: 'Casa' }]);
   });
 });
+
+describe('SA-05 · un espacio del que saliste', () => {
+  const casa = spaceFacts({
+    expenses: [sharedExpense({ amount: 100_000, date: '2026-10-05', payerSlot: MARTINA })],
+  });
+  const rows = buildMovementList({
+    facts: personalFacts({ spaces: [membership({ facts: casa, mySlot: RENZO, leftOn: '2026-10-10' })] }),
+    ...options,
+  });
+
+  it('se dice que ya no sos miembro', () => {
+    expect(rows[0]?.context).toBe('Casa · ya no sos miembro · pagó Martina');
+  });
+
+  it('no se puede abrir: ya no hay acceso (SA-02)', () => {
+    expect(rows[0]?.formerSpace).toBe(true);
+  });
+});

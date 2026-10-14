@@ -187,6 +187,8 @@ export type ActiveInstallmentPlan = {
   remaining: Pesos;
   endsOn: Month;
   spaceName: string | null;
+  /** SA-05 · de un espacio del que el usuario ya salió. */
+  fromFormerMembership: boolean;
 };
 
 export function activeInstallmentPlans(
@@ -212,6 +214,7 @@ export function activeInstallmentPlans(
         remaining: isPending ? occurrence.myShare : 0,
         endsOn: occurrence.month,
         spaceName: occurrence.spaceName,
+        fromFormerMembership: occurrence.fromFormerMembership,
       });
       continue;
     }

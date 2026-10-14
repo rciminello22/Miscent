@@ -26,6 +26,7 @@ import {
 } from '@/ui/primitives';
 import { duration, stagger } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
+import { spaceContext } from '@/features/spaces/departureCopy';
 
 /**
  * §23 · Futuro. "Futuro es el corazón del producto."
@@ -291,7 +292,9 @@ export default function Futuro() {
 
                           <Row justify="space-between" align="baseline">
                             <Text variant="caption" tone="muted">
-                              {plan.spaceName != null ? `${plan.spaceName} · tu parte · ` : ''}
+                              {plan.spaceName != null
+                                ? `${spaceContext(plan.spaceName, plan.fromFormerMembership)} · tu parte · `
+                                : ''}
                               termina en {formatMonth(plan.endsOn, from)}
                             </Text>
                             <Money amount={plan.remaining} variant="small" tone="secondary" />

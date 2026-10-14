@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { keepDetail, pendingFixedLine, stoppedQuestion } from './departureCopy';
+import { keepDetail, pendingFixedLine, spaceContext, stoppedQuestion } from './departureCopy';
 
 describe('SA-04 · §27 · la pregunta sobre cada fijo detenido', () => {
   it('§27 · "El alquiler era compartido con Martina. ¿Lo seguís pagando vos?"', () => {
@@ -26,5 +26,12 @@ describe('Inicio · "Tus espacios"', () => {
 
   it('varios', () => {
     expect(pendingFixedLine(2)).toBe('Hay 2 fijos para revisar');
+  });
+});
+
+describe('SA-05 · §33 · el espacio de quien ya salió', () => {
+  it('"Casa · ya no sos miembro"', () => {
+    expect(spaceContext('Casa', true)).toBe('Casa · ya no sos miembro');
+    expect(spaceContext('Casa', false)).toBe('Casa');
   });
 });

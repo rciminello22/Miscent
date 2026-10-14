@@ -6,6 +6,7 @@ import { pendingReview } from '@domain/review';
 import { resolveShares, shareOf } from '@domain/split';
 import type { PaymentMethod, PersonalFacts } from '@domain/types';
 import { reviewTag } from '@/features/spaces/reviewCopy';
+import { spaceContext } from '@/features/spaces/departureCopy';
 
 /**
  * §16 · la lista de Movimientos.
@@ -49,6 +50,8 @@ export type MovementRow = {
   deletable: boolean;
   /** Opción B · "Lo cargó Martina · para revisar". `null` si no hay nada que revisar. */
   reviewTag: string | null;
+  /** SA-05 · de un espacio del que ya saliste: no se puede abrir (SA-02). */
+  formerSpace: boolean;
 };
 
 export type MovementFilter = 'all' | 'personal' | string;
@@ -105,6 +108,7 @@ export function buildMovementList(args: {
       deletable: true,
       // Lo propio nunca es para revisar.
       reviewTag: null,
+      formerSpace: false,
     });
   }
 
@@ -113,7 +117,9 @@ export function buildMovementList(args: {
   for (const membership of facts.spaces) {
     const { facts: spaceFacts, mySlot } = membership;
     const other = spaceFacts.space.members.find((member) => member.slot !== mySlot)!;
-    const spaceName = spaceFacts.space.name;
+    // SA-05 · "Casa · ya no sos miembro" si salió.
+    const spaceName = spaceContext(spaceFacts.space.name, membership.leftOn != null);
+    const formerSpace = membership.leftOn != null;
     // Opción B · lo que cargó el otro y todavía no revisé.
     const pending = pendingReview(spaceFacts, mySlot, membership.reviews);
     const tagFor = (sourceId: string) => {
@@ -161,6 +167,7 @@ export function buildMovementList(args: {
         note: null,
         deletable: false,
         reviewTag: tagFor(expense.id),
+        formerSpace,
       });
     }
 
@@ -187,6 +194,7 @@ export function buildMovementList(args: {
         note: 'no cambia tu radar',
         deletable: false,
         reviewTag: tagFor(payment.id),
+        formerSpace,
       });
     }
   }
