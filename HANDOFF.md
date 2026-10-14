@@ -1,7 +1,7 @@
 # Handoff · Radar del sueldo comprometido
 
 Contexto para retomar el proyecto en una sesión nueva.
-Última actualización: 14 de octubre de 2026 (noche) · working tree limpio · **0018 sin aplicar al remoto**.
+Última actualización: 14 de octubre de 2026 (noche) · working tree limpio · todo aplicado al remoto.
 
 ---
 
@@ -150,7 +150,7 @@ radar/
 | Área | Estado |
 |---|---|
 | Dominio (§29 completo) | ✅ Los 7 casos de §29.1 pasan exactos |
-| Supabase + RLS | ✅ 15 tablas, 18 migraciones · **78 asserts** (74/74 verificados; 0018 sin aplicar) |
+| Supabase + RLS | ✅ 15 tablas, 18 migraciones · **78/78 asserts** contra el remoto |
 | UI base | ✅ Tokens claro/oscuro, motion, 14 primitivas propias, teclado y footer fijo (§11) |
 | O1 · O2 · O3 | ✅ Completos, con T-07/Q-06 derivados del último cierre |
 | Acceso | ✅ Código de 8 dígitos + enlace · "Ya tengo cuenta" sin alta · invitada **sin email** (ver §10) |
@@ -192,11 +192,7 @@ cuotas"). El nivel 3 encontró **2 bugs reales**.
 
 ### ▶ Por dónde seguir (actualizado el 14/10, noche)
 
-> ⚠️ **La migración 0018 (former_memberships) está commiteada pero NO
-> aplicada al remoto** (espera el OK de Renzo). Hasta aplicarla, la app falla
-> al leer la cuenta personal: `fetchPersonalFacts` lee `former_memberships`.
-> Pasos: `supabase login` → `npm run db:push` → `npm run db:types` →
-> `npm run test:rls` (78 asserts). 0015–0017 ya están aplicadas (74/74).
+Las 18 migraciones están aplicadas al remoto · pgTAP **78/78** (14/10).
 
 **La V1 del MVP está completa contra la spec** (auditoría del 14/10 contra
 §5, §36, §33 y §38). Lo que sigue son las **auditorías de UX/UI**: el
