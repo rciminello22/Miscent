@@ -6,6 +6,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { CircleUser } from 'lucide-react-native';
 import { useSpaces } from '@/features/spaces/useSpaces';
 import { SpaceList } from '@/features/spaces/SpaceList';
+import { FormerSpaces } from '@/features/spaces/FormerSpaces';
 import { useSession } from '@/features/auth/SessionProvider';
 import {
   Button,
@@ -125,6 +126,9 @@ export default function Espacios() {
             </Pressable>
           </>
         )}
+
+        {/* P6 · el resumen fijo de los espacios de los que salió. */}
+        <FormerSpaces />
 
         {/* §33 U1 · "Tu plata personal" */}
         <Animated.View entering={FadeInDown.duration(duration.deliberate)}>

@@ -5,6 +5,7 @@ import { Plus } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSpaces } from '@/features/spaces/useSpaces';
 import { SpaceList } from '@/features/spaces/SpaceList';
+import { FormerSpaces } from '@/features/spaces/FormerSpaces';
 import { SpaceScreen } from '@/features/spaces/SpaceScreen';
 import {
   Button,
@@ -120,6 +121,9 @@ export default function Compartidos() {
             </Text>
           </>
         )}
+
+        {/* P6 · el resumen fijo de los espacios de los que salió. */}
+        <FormerSpaces />
       </Stack>
     </ScrollView>
   );

@@ -88,3 +88,16 @@ export function prepaidInstallmentsSentence(
 
   return `${balance.otherMemberName} adelantó ${formatPesos(prepaid, { sign: 'never' })} de cuotas que todavía no vencieron.`;
 }
+
+/**
+ * P6 · el saldo de un espacio del que el usuario salió, tal como estaba al
+ * salir. En pasado: es una foto. Lo que cambió después (las cuotas que
+ * siguen, SA-03) lo ve quien se quedó.
+ */
+export function departureBalanceSentence(balance: SharedBalance): string {
+  if (balance.settled) return 'Al salir, estaban a mano.';
+
+  return balance.amount > 0
+    ? `Al salir, ${balance.otherMemberName} te debía ${formatPesos(balance.amount, { sign: 'never' })}.`
+    : `Al salir, le debías ${formatPesos(balance.amount, { sign: 'never' })} a ${balance.otherMemberName}.`;
+}
