@@ -1,7 +1,10 @@
 import { View } from 'react-native';
 import { pendingStoppedFixed } from '@domain/departure';
 import type { SpaceSummary } from '@/data/repositories/spaces';
+import { paidByMeWithoutMethod } from '@domain/paidByMe';
+import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { pendingFixedLine } from './departureCopy';
+import { toCompleteLine } from './paidByMeCopy';
 import { Pressable, Row, SectionHeader, Skeleton, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 import { balanceSentence } from './balanceCopy';
@@ -44,6 +47,15 @@ function SpaceLine({ space }: { space: SpaceSummary }) {
   const { derived, isLoading } = useSpace(space.id);
   // SA-04 · la pista de por qué bajó el radar: la pregunta vive en el espacio.
   const pending = derived == null ? 0 : pendingStoppedFixed(derived.facts, derived.mySlot).length;
+  // §5 1º Should · lo que te cargaron como pagado por vos, sin medio.
+  const { facts: personalFacts, today } = usePersonalFacts();
+  const membership = personalFacts.spaces.find((item) => item.facts.space.id === space.id);
+  const toComplete =
+    membership == null ? 0 : paidByMeWithoutMethod(membership, today, { includeOwn: false }).length;
+  const hints = [
+    pending > 0 ? pendingFixedLine(pending) : null,
+    toComplete > 0 ? toCompleteLine(toComplete) : null,
+  ].filter((hint): hint is string => hint != null);
 
   return (
     <Pressable
@@ -51,7 +63,7 @@ function SpaceLine({ space }: { space: SpaceSummary }) {
       haptic="none"
       scaleOnPress={false}
       accessibilityRole="button"
-      accessibilityLabel={pending > 0 ? `${space.name}. ${pendingFixedLine(pending)}` : space.name}
+      accessibilityLabel={[space.name, ...hints].join('. ')}
       style={{ paddingVertical: theme.space['2'] }}
     >
       <Row justify="space-between" align="center" gap="3">
@@ -59,11 +71,11 @@ function SpaceLine({ space }: { space: SpaceSummary }) {
           <Text variant="bodyMedium" numberOfLines={1}>
             {space.name}
           </Text>
-          {pending > 0 && (
-            <Text variant="caption" tone="shared">
-              {pendingFixedLine(pending)}
+          {hints.map((hint) => (
+            <Text key={hint} variant="caption" tone="shared">
+              {hint}
             </Text>
-          )}
+          ))}
         </View>
         {isLoading ? (
           <Skeleton width={120} height={13} />

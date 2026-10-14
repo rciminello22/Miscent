@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { TextInput, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
@@ -174,13 +174,13 @@ export default function Deuda() {
       setRecentSpending(0);
       return;
     }
-    router.push('/onboarding/fijos');
+    // §11 paso 4 · antes de los fijos: los gastos de sus espacios que pagó.
+    router.push('/onboarding/pagados');
   }
 
-  if (card == null) {
-    router.replace('/onboarding/fijos');
-    return null;
-  }
+  // Sin tarjetas no hay nada que deber. Inline, nunca un replace durante el
+  // render: el router lo procesa tarde y hacía loop (HANDOFF §11).
+  if (card == null) return <Redirect href="/onboarding/pagados" />;
 
   return (
     <StepShell

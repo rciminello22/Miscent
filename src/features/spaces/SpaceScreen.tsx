@@ -11,6 +11,9 @@ import { formatDayMonth, formatInstallment, formatMonth, formatPesos } from '@/l
 import { prettyLabel } from '@/features/add/categories';
 import { useSession } from '@/features/auth/SessionProvider';
 import { StoppedFixedCard } from './StoppedFixedCard';
+import { PaidByMeSection } from './PaidByMeSection';
+import { paidByOtherTitle } from './paidByMeCopy';
+import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import {
   balanceSentence,
   paymentSentence,
@@ -128,6 +131,11 @@ export function SpaceScreen({
   const deletePayment = useDeleteMemberPayment(spaceId);
   const feedback = useFeedback();
   const { accountState } = useSession();
+  // Con el detalle privado de pago, que solo está en los hechos personales.
+  const { facts: personalFacts } = usePersonalFacts();
+  const myMembership = personalFacts.spaces.find(
+    (membership) => membership.facts.space.id === spaceId,
+  );
 
   // SA-04 · los fijos que detuvo una salida y que quien queda todavía no decidió.
   const stopped = useMemo(
@@ -308,6 +316,18 @@ export function SpaceScreen({
               onEnd={(recurrenceId) => resolve(recurrenceId, false)}
             />
           </Animated.View>
+        )}
+
+        {/* §5 1º Should · lo que el otro cargó como pagado por vos, sin medio:
+            hasta que se completa, no entra al resumen de tu tarjeta. */}
+        {accountState === 'personal' && myMembership != null && (
+          <PaidByMeSection
+            membership={myMembership}
+            methods={personalFacts.paymentMethods}
+            today={today}
+            includeOwn={false}
+            title={(count) => paidByOtherTitle(other.displayName, count)}
+          />
         )}
 
         {/* ── El saldo compartido ──────────────────────────────────────── */}
