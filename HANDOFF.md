@@ -1,7 +1,7 @@
 # Handoff · Radar del sueldo comprometido
 
 Contexto para retomar el proyecto en una sesión nueva.
-Última actualización: 14 de octubre de 2026 (tarde) · working tree limpio · **0015–0017 sin aplicar al remoto**.
+Última actualización: 14 de octubre de 2026 (noche) · working tree limpio · **0018 sin aplicar al remoto**.
 
 ---
 
@@ -150,7 +150,7 @@ radar/
 | Área | Estado |
 |---|---|
 | Dominio (§29 completo) | ✅ Los 7 casos de §29.1 pasan exactos |
-| Supabase + RLS | ✅ 14 tablas, 17 migraciones · **74 asserts** (66/66 verificados; 0015–0017 sin aplicar) |
+| Supabase + RLS | ✅ 15 tablas, 18 migraciones · **78 asserts** (74/74 verificados; 0018 sin aplicar) |
 | UI base | ✅ Tokens claro/oscuro, motion, 14 primitivas propias, teclado y footer fijo (§11) |
 | O1 · O2 · O3 | ✅ Completos, con T-07/Q-06 derivados del último cierre |
 | Acceso | ✅ Código de 8 dígitos + enlace · "Ya tengo cuenta" sin alta · invitada **sin email** (ver §10) |
@@ -190,57 +190,50 @@ cuotas"). El nivel 3 encontró **2 bugs reales**.
 
 ## 5. Qué falta
 
-### ▶ Por dónde seguir (actualizado el 14/10, tarde)
+### ▶ Por dónde seguir (actualizado el 14/10, noche)
 
-> ⚠️ **Las migraciones 0015, 0016 y 0017 están commiteadas pero NO aplicadas
-> al remoto** (esperan el OK de Renzo). Hasta aplicarlas, la app falla al leer
-> un espacio: el mapper exige `recurrences.past_terms`. Pasos: `supabase
-> login` → `npm run db:push` → `npm run db:types` (debería dar el mismo
-> archivo que el commiteado) → `npm run test:rls` (74 asserts).
+> ⚠️ **La migración 0018 (former_memberships) está commiteada pero NO
+> aplicada al remoto** (espera el OK de Renzo). Hasta aplicarla, la app falla
+> al leer la cuenta personal: `fetchPersonalFacts` lee `former_memberships`.
+> Pasos: `supabase login` → `npm run db:push` → `npm run db:types` →
+> `npm run test:rls` (78 asserts). 0015–0017 ya están aplicadas (74/74).
 
-**Hecho el 14/10** (ver `git log`): la revisión de lo que carga el otro
-(opción B, ya en la spec como **K10** en §37, y sus detalles no aprobados
-como **P21** en §38) · lo que el otro **elimina** también queda para revisar
-(0015) · **editar un fijo compartido** (§21, 0017) · "Lo editó Martina"
-(CA-27) · eliminar un fijo compartido con el saldo nuevo (CA-28).
+**La V1 del MVP está completa contra la spec** (auditoría del 14/10 contra
+§5, §36, §33 y §38). Lo que sigue son las **auditorías de UX/UI**: el
+contenido está; queda pulir flujos e interfaz.
 
-**Bug grave arreglado (`bb8d1e9`, 0016):** "Cambiar desde este mes"
-reescribía TODOS los meses pasados, aunque la pantalla decía que no. En un
-fijo compartido cambiaba el saldo por cada mes anterior. Ahora el fijo
-guarda sus tramos (`past_terms`).
+Hecho el 14/10 (ver `git log`), además de la revisión de lo que carga el
+otro (K10 en §37):
+- **CA-07 / Caso 18**: la invitada que elige "Personal" en Agregar, con
+  borrador que se guarda al terminar la activación.
+- **Los 8 Should de §5**: completar con qué se pagó · aviso de duplicado ·
+  compartir resumen como texto · exportar CSV (`expo-file-system` +
+  `expo-sharing`) · quitar el acceso · actividad reciente · totales por
+  categoría · categoría sugerida.
+- **P6** (resumen fijo del saldo al salir) y un **bug grave de SA-05/P8/
+  CA-41**: quien salía perdía el espacio entero en su cuenta personal (el
+  pasado del radar y las cuotas que siguen). Se arregló con una foto privada
+  del espacio que guarda el servidor al salir (0018).
+- **§33 U1** en el espacio de la invitada con un solo espacio (bienvenida
+  única, "Tu plata personal"; "Ahora no" ahora persiste).
+- **X-07 al revés**: pasar un gasto compartido a personal.
+- Bug de **"Cambiar desde este mes"**, que reescribía el pasado (0016).
 
-#### Qué falta para cerrar la V1 del MVP (auditoría del 14/10 contra §5 y §36)
+Las decisiones de diseño que tomé sin aprobación explícita están en la spec
+como **P21** y **P22** (§38), para vetarlas si hace falta.
 
-**Must (§5): los 20 están.** De los 50 criterios de §36, 37 tienen su ID en
-tests o código. De los 13 que no, 12 están cubiertos por otro nombre (SA-04,
-SA-06, D-01, I-02, P-04…). Falta uno:
+**Lo que queda y NO es código de pantallas:**
+- §35 métricas del piloto: elegir proveedor toca P11 (decisión de Renzo).
+- P9–P11 antes de publicar privacidad; P12 (legal) antes de salir del
+  círculo cercano.
+- Build propio (EAS), SMTP transaccional, links https de invitación.
 
-| # | Qué | Dónde en la spec |
-|---|---|---|
-| **1** | **CA-07 · Caso 18**: la invitada que en Agregar elige "Personal" ve la hoja "Tus gastos personales viven en tu cuenta personal…" con [Crear mi cuenta personal] · [Cargarlo en Casa] · [Cancelar]. Si crea la cuenta, el borrador se guarda como personal al terminar. Hoy el Agregar del espacio no ofrece "Personal" | §36 CA-07, §31 Caso 18 |
+**Ideas de la prueba real, fuera de la spec** (decidir en la auditoría):
+"Con esto, Martina te debe $X" en el aviso al guardar · comparar con el mes
+pasado · iniciales en vez de foto · unificar los campos de texto.
 
-**Should (§5), en su orden:** ✅ completar con qué se pagó · ❌ aviso de
-posible duplicado · ❌ compartir el resumen del espacio como texto · ❌
-exportar mis datos (CSV) · ✅ quitar el acceso · ❌ actividad reciente del
-espacio · ❌ totales del espacio por categoría · ❌ categoría sugerida.
-
-**§38 que el código ya resolvió y la spec no registra:** P6 (resumen fijo del
-saldo para el ex miembro, **decidido pero sin construir**), P7 (reinvitar,
-hecho), P8 (cuotas del que sale, hecho), P13 (categorías fijas), P18 (30
-días, 3), P20.
-
-**Para el piloto (no es código de pantallas):** §35 métricas (sin montos ni
-nombres, PR-04) · P9–P11 antes de publicar privacidad · build propio (EAS).
-
-**Lo que agregó la prueba real y no está en la spec:** "Con esto, Martina te
-debe $X" en el aviso al guardar · comparar con el mes pasado a la misma
-altura (llevar a §38) · iniciales en vez de foto · unificar los campos de
-texto (refactor).
-
-**Sin probar todavía en el iPhone:** SA-04 (salir de un espacio con un fijo
-compartido y volver con quien queda), varias cuotas por tarjeta y "Otro fijo"
-en O3, Deshacer en los avisos, y todo lo del 14/10 tarde: eliminar algo con
-la otra cuenta, editar un fijo compartido, "Cambiar desde este mes".
+**Sin probar todavía en el iPhone:** todo lo del 14/10 (ver la lista de
+arriba), SA-04, varias cuotas por tarjeta y "Otro fijo" en O3, Deshacer.
 
 ### Del Must
 **Completo.** CA-09 se cerró el 12/10. T-07, SY-02, la fecha editable, M3
