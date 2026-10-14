@@ -8,9 +8,9 @@
 -- `authenticated`, igual que un cliente de la app. No hay atajos: si una
 -- política está mal, el test lo ve.
 --
--- 60 asserts. Cubre: PR-01, PR-02, CA-05, CA-11, CA-12, CA-13, CA-22, CA-40,
+-- 66 asserts. Cubre: PR-01, PR-02, CA-05, CA-11, CA-12, CA-13, CA-22, CA-40,
 -- CA-47, CA-48, C-02, C-05, D-01, E-01, E-02, I-02, I-04, I-07, K1, K3, K4,
--- P5, P7, SA-02, SA-04, SA-06, SY-02, X-02, §26 quitar acceso, la asimetría de
+-- P5, P7, SA-02, SA-04, SA-06, SY-02, la revisión de lo que carga el otro, X-02, §26 quitar acceso, la asimetría de
 -- shared_payment_details y el usuario anónimo de O2 sin email.
 --
 -- Se corre de dos formas, y las dos funcionan sobre este mismo archivo:
@@ -26,7 +26,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
 
-select plan(60);
+select plan(66);
 
 -- ───────────────────────────────────────────────────────────────────────────
 -- Montaje: Renzo (con cuenta personal), Martina (invitada, Estado B) y Juan.
@@ -494,6 +494,55 @@ with created as (
   ) returning id
 )
 select tests.put('expensas_id', id::text) from created;
+
+-- ───────────────────────────────────────────────────────────────────────────
+-- Revisión de lo que carga el otro (opción B, 14/10). Martina todavía está
+-- en Casa: lo que carga Renzo, ella lo revisa.
+-- ───────────────────────────────────────────────────────────────────────────
+
+insert into tests.results(line) select is(
+  (select created_by_slot::int from recurrences where id = tests.get('alquiler_id')::uuid),
+  1,
+  'Revisión · el servidor registra quién cargó un fijo compartido'
+);
+
+select tests.put('revisado_id', gen_random_uuid()::text);
+select tests.authenticate_as('22222222-2222-2222-2222-222222222222');
+
+insert into tests.results(line) select lives_ok(
+  $$ select app_mark_reviewed(tests.get('casa_id')::uuid, array[tests.get('revisado_id')::uuid]) $$,
+  'Revisión · un miembro marca como revisado lo que cargó el otro'
+);
+
+insert into tests.results(line) select lives_ok(
+  $$ select app_mark_reviewed(tests.get('casa_id')::uuid, array[tests.get('revisado_id')::uuid]) $$,
+  'Revisión · volver a revisar lo mismo no falla (después de una edición del otro)'
+);
+
+insert into tests.results(line) select throws_ok(
+  $$ insert into record_reviews (space_id, source_id, slot)
+     values (tests.get('casa_id')::uuid, gen_random_uuid(), 1) $$,
+  '42501',
+  null,
+  'Revisión · nadie escribe revisiones directo: no puede marcar en nombre del otro'
+);
+
+select tests.authenticate_as('11111111-1111-1111-1111-111111111111');
+
+insert into tests.results(line) select is(
+  (select count(*)::int from record_reviews where space_id = tests.get('casa_id')::uuid),
+  0,
+  'Revisión / PR-02 · cada uno ve solo sus revisiones, no las del otro'
+);
+
+select tests.authenticate_as('33333333-3333-3333-3333-333333333333');
+
+insert into tests.results(line) select throws_ok(
+  $$ select app_mark_reviewed(tests.get('casa_id')::uuid, array[gen_random_uuid()]) $$,
+  '42501',
+  null,
+  'Revisión · alguien de afuera no revisa nada'
+);
 
 select tests.authenticate_as('22222222-2222-2222-2222-222222222222');
 select app_leave_space(tests.get('casa_id')::uuid);

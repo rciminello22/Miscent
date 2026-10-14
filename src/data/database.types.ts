@@ -333,6 +333,35 @@ export type Database = {
         }
         Relationships: []
       }
+      record_reviews: {
+        Row: {
+          reviewed_at: string
+          slot: number
+          source_id: string
+          space_id: string
+        }
+        Insert: {
+          reviewed_at?: string
+          slot: number
+          source_id: string
+          space_id: string
+        }
+        Update: {
+          reviewed_at?: string
+          slot?: number
+          source_id?: string
+          space_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "record_reviews_space_id_fkey"
+            columns: ["space_id"]
+            isOneToOne: false
+            referencedRelation: "spaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recurrence_overrides: {
         Row: {
           amount: number
@@ -364,6 +393,7 @@ export type Database = {
           amount: number
           category: Database["public"]["Enums"]["category"]
           created_at: string
+          created_by_slot: number | null
           day_of_month: number
           departure_resolution: string | null
           description: string | null
@@ -384,6 +414,7 @@ export type Database = {
           amount: number
           category: Database["public"]["Enums"]["category"]
           created_at?: string
+          created_by_slot?: number | null
           day_of_month: number
           departure_resolution?: string | null
           description?: string | null
@@ -404,6 +435,7 @@ export type Database = {
           amount?: number
           category?: Database["public"]["Enums"]["category"]
           created_at?: string
+          created_by_slot?: number | null
           day_of_month?: number
           departure_resolution?: string | null
           description?: string | null
@@ -651,6 +683,10 @@ export type Database = {
       app_has_personal_account: { Args: never; Returns: boolean }
       app_is_anonymous: { Args: never; Returns: boolean }
       app_leave_space: { Args: { target_space_id: string }; Returns: undefined }
+      app_mark_reviewed: {
+        Args: { source_ids: string[]; target_space_id: string }
+        Returns: undefined
+      }
       app_member_departs: {
         Args: { departing_slot: number; target_space_id: string }
         Returns: undefined
