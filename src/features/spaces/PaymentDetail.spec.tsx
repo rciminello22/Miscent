@@ -44,6 +44,22 @@ describe('PaymentDetail · §25', () => {
     expect(view.getByText(/no cambia lo que puso cada uno/i)).toBeTruthy();
   });
 
+  it('opción B · si lo registró el otro y no lo revisaste, "Está bien" lo marca', async () => {
+    const onReviewed = jest.fn();
+    const view = await renderWithTheme(
+      <PaymentDetail {...base} review={{ label: 'Lo cargó Martina · para revisar', onReviewed }} />,
+    );
+
+    expect(view.getByText('Lo cargó Martina · para revisar')).toBeTruthy();
+    await fireEvent.press(view.getByRole('button', { name: 'Está bien' }));
+    expect(onReviewed).toHaveBeenCalledTimes(1);
+  });
+
+  it('ya revisado, no aparece', async () => {
+    const view = await renderWithTheme(<PaymentDetail {...base} />);
+    expect(view.queryByRole('button', { name: 'Está bien' })).toBeNull();
+  });
+
   it('eliminar está adentro, no es lo primero que pasa al tocarlo', async () => {
     const onDelete = jest.fn();
     const view = await renderWithTheme(<PaymentDetail {...base} onDelete={onDelete} />);

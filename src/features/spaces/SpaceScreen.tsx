@@ -13,6 +13,7 @@ import { useSession } from '@/features/auth/SessionProvider';
 import { StoppedFixedCard } from './StoppedFixedCard';
 import { PaidByMeSection } from './PaidByMeSection';
 import { paidByOtherTitle } from './paidByMeCopy';
+import { markAllLabel, reviewTag, toReviewLine } from './reviewCopy';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import {
   balanceSentence,
@@ -23,6 +24,7 @@ import {
 } from '@/features/spaces/balanceCopy';
 import {
   useDeleteMemberPayment,
+  useMarkReviewed,
   useResolveStoppedRecurrence,
   useSpace,
 } from '@/features/spaces/useSpaces';
@@ -130,6 +132,36 @@ export function SpaceScreen({
 
   const deletePayment = useDeleteMemberPayment(spaceId);
   const feedback = useFeedback();
+
+  // Opción B · la marca va UNA vez por registro, en su ocurrencia más
+  // reciente de la lista: un fijo tiene una por mes, y marcarlas todas es ruido.
+  const taggedOccurrences = useMemo(() => {
+    const tagged = new Set<string>();
+    if (derived == null) return tagged;
+    const seen = new Set<string>();
+    for (const movement of movements) {
+      if (movement.kind !== 'occurrence') continue;
+      const { sourceId, id } = movement.occurrence;
+      if (!derived.pendingReview.has(sourceId) || seen.has(sourceId)) continue;
+      seen.add(sourceId);
+      tagged.add(id);
+    }
+    return tagged;
+  }, [derived, movements]);
+
+  const markReviewed = useMarkReviewed(spaceId);
+
+  function reviewIds(sourceIds: readonly string[], detail: string) {
+    markReviewed
+      .mutateAsync(sourceIds)
+      .then(() => feedback.updated(detail))
+      .catch((cause: unknown) => feedback.error('No pudimos marcarlo', cause));
+  }
+
+  function reviewAll() {
+    if (derived == null) return;
+    reviewIds([...derived.pendingReview], 'Listo, ya lo revisaste.');
+  }
   const { accountState } = useSession();
   // Con el detalle privado de pago, que solo está en los hechos personales.
   const { facts: personalFacts } = usePersonalFacts();
@@ -509,6 +541,20 @@ export function SpaceScreen({
         <Stack gap="4">
           <SectionHeader title={`Movimientos de ${derived.facts.space.name}`} />
 
+          {/* Opción B · lo que cargó el otro y no revisaste. Revisar no es
+              aprobar: ya cuenta, igual para los dos. */}
+          {derived.pendingReview.size > 0 && (
+            <Row justify="space-between" align="center" gap="3">
+              <ReviewTag label={toReviewLine(derived.pendingReview.size)} />
+              <Button
+                label={markAllLabel(derived.pendingReview.size)}
+                variant="ghost"
+                loading={markReviewed.isPending}
+                onPress={() => reviewAll()}
+              />
+            </Row>
+          )}
+
           {movements.length === 0 ? (
             <EmptyState
               title="Anoten acá lo que pagan para la casa."
@@ -534,6 +580,11 @@ export function SpaceScreen({
                       mySlot={derived.mySlot}
                       otherName={other.displayName}
                       myName={me.displayName}
+                      reviewTag={
+                        taggedOccurrences.has(movement.occurrence.id)
+                          ? reviewTag(other.displayName)
+                          : null
+                      }
                       onPress={
                         // Un fijo compartido se edita desde su propio fijo; un
                         // gasto, desde el detalle del gasto.
@@ -550,6 +601,11 @@ export function SpaceScreen({
                       sentence={paymentSentence(movement.payment, derived.mySlot, other.displayName)}
                       date={movement.payment.date}
                       amount={movement.payment.amount}
+                      reviewTag={
+                        derived.pendingReview.has(movement.payment.id)
+                          ? reviewTag(other.displayName)
+                          : null
+                      }
                       onPress={() => setSelectedPayment(movement.payment)}
                     />
                   )}
@@ -615,6 +671,17 @@ export function SpaceScreen({
             // La confirmación sale sobre la hoja abierta: cerrar un Modal y
             // abrir un Alert a la vez puede perder el Alert en iOS. Cancelar
             // vuelve al detalle; eliminar cierra la hoja.
+            review={
+              derived.pendingReview.has(selectedPayment.id)
+                ? {
+                    label: reviewTag(other.displayName),
+                    onReviewed: () => {
+                      setSelectedPayment(null);
+                      reviewIds([selectedPayment.id], 'Listo, ya lo revisaste.');
+                    },
+                  }
+                : undefined
+            }
             onDelete={() => confirmDeletePayment(selectedPayment)}
           />
         )}
@@ -680,11 +747,13 @@ function PaymentRow({
   sentence,
   date,
   amount,
+  reviewTag = null,
   onPress,
 }: {
   sentence: string;
   date: string;
   amount: number;
+  reviewTag?: string | null;
   onPress: () => void;
 }) {
   const theme = useTheme();
@@ -706,10 +775,26 @@ function PaymentRow({
           <Text variant="caption" tone="muted">
             {formatDayMonth(date)} · pago entre ustedes · no cambia lo que cada uno puso
           </Text>
+          {reviewTag != null && <ReviewTag label={reviewTag} />}
         </View>
         <Money amount={amount} variant="bodyMedium" tone="muted" />
       </Row>
     </Pressable>
+  );
+}
+
+/** Opción B · la marca de "para revisar": un punto y quién lo cargó. */
+function ReviewTag({ label }: { label: string }) {
+  const theme = useTheme();
+  return (
+    <Row gap="2" align="center">
+      <View
+        style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: theme.colors.shared }}
+      />
+      <Text variant="caption" tone="shared">
+        {label}
+      </Text>
+    </Row>
   );
 }
 
@@ -726,6 +811,7 @@ function SharedRow({
   otherName,
   myName,
   showMonth = false,
+  reviewTag = null,
   onPress,
 }: {
   occurrence: SpaceOccurrence;
@@ -733,6 +819,8 @@ function SharedRow({
   otherName: string;
   myName: string;
   showMonth?: boolean;
+  /** Opción B · "Lo cargó Martina · para revisar". */
+  reviewTag?: string | null;
   onPress?: () => void;
 }) {
   const theme = useTheme();
@@ -773,6 +861,8 @@ function SharedRow({
           <Text variant="caption" tone="shared">
             tu parte <Money amount={myShare} variant="caption" tone="shared" />
           </Text>
+
+          {reviewTag != null && <ReviewTag label={reviewTag} />}
         </View>
 
         <Money amount={occurrence.amount} variant="bodyMedium" />

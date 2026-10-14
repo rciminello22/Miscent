@@ -14,16 +14,28 @@ export function PaymentDetail({
   sentence,
   date,
   recordedBy,
+  review,
   onDelete,
 }: {
   sentence: string;
   date: IsoDate;
   recordedBy: { isMe: boolean; name: string };
+  /** Opción B · si lo registró el otro y todavía no se revisó. */
+  review?: { label: string; onReviewed: () => void };
   onDelete: () => void;
 }) {
   return (
     <Stack gap="5">
       <Text variant="title">{sentence}</Text>
+
+      {review != null && (
+        <Row justify="space-between" align="center" gap="3">
+          <Text variant="caption" tone="shared" style={{ flex: 1 }}>
+            {review.label}
+          </Text>
+          <Button label="Está bien" variant="secondary" onPress={review.onReviewed} />
+        </Row>
+      )}
 
       <Stack gap="3">
         <Row justify="space-between" align="baseline">

@@ -21,6 +21,7 @@ import type {
   PersonalMovement,
   Recurrence,
   RecurrenceOverride,
+  Review,
   SharedExpense,
   SharedPaymentDetail,
   Slot,
@@ -116,7 +117,13 @@ export function toSharedExpense(row: Row<'shared_expenses'>): SharedExpense {
     installments: toInstallmentPlan(row),
     createdBySlot: toSlot(row.created_by_slot),
     updatedBySlot: toSlot(row.updated_by_slot),
+    updatedAt: row.updated_at,
   };
+}
+
+/** Opción B · lo que revisó el usuario. La RLS devuelve solo las suyas. */
+export function toReview(row: Row<'record_reviews'>): Review {
+  return { sourceId: row.source_id, reviewedAt: row.reviewed_at };
 }
 
 export function toRecurrence(row: Row<'recurrences'>): Recurrence {
@@ -134,6 +141,7 @@ export function toRecurrence(row: Row<'recurrences'>): Recurrence {
     paymentMethodId: row.payment_method_id,
     payerSlot: row.payer_slot == null ? null : toSlot(row.payer_slot),
     stoppedByDepartureOn: row.stopped_by_departure_on,
+    createdBySlot: row.created_by_slot == null ? null : toSlot(row.created_by_slot),
     // El CHECK de la base garantiza que es uno de estos dos, o null.
     departureResolution:
       row.departure_resolution === 'moved' || row.departure_resolution === 'ended'

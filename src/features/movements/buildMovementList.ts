@@ -2,8 +2,10 @@ import { isSameMonth, type IsoDate, type Month } from '@domain/calendar';
 import { resolveCardPayment } from '@domain/cards';
 import { installmentAmounts } from '@domain/installments';
 import type { Pesos } from '@domain/money';
+import { pendingReview } from '@domain/review';
 import { resolveShares, shareOf } from '@domain/split';
 import type { PaymentMethod, PersonalFacts } from '@domain/types';
+import { reviewTag } from '@/features/spaces/reviewCopy';
 
 /**
  * §16 · la lista de Movimientos.
@@ -45,6 +47,8 @@ export type MovementRow = {
   note: string | null;
   /** Solo los hechos propios se pueden eliminar desde acá. */
   deletable: boolean;
+  /** Opción B · "Lo cargó Martina · para revisar". `null` si no hay nada que revisar. */
+  reviewTag: string | null;
 };
 
 export type MovementFilter = 'all' | 'personal' | string;
@@ -99,6 +103,8 @@ export function buildMovementList(args: {
       spaceId: null,
       note: null,
       deletable: true,
+      // Lo propio nunca es para revisar.
+      reviewTag: null,
     });
   }
 
@@ -108,6 +114,9 @@ export function buildMovementList(args: {
     const { facts: spaceFacts, mySlot } = membership;
     const other = spaceFacts.space.members.find((member) => member.slot !== mySlot)!;
     const spaceName = spaceFacts.space.name;
+    // Opción B · lo que cargó el otro y todavía no revisé.
+    const pending = pendingReview(spaceFacts, mySlot, membership.reviews);
+    const tagFor = (sourceId: string) => (pending.has(sourceId) ? reviewTag(other.displayName) : null);
 
     for (const expense of spaceFacts.expenses) {
       // §16 · el gasto aparece UNA vez, en su fecha de compra.
@@ -148,6 +157,7 @@ export function buildMovementList(args: {
         spaceId: spaceFacts.space.id,
         note: null,
         deletable: false,
+        reviewTag: tagFor(expense.id),
       });
     }
 
@@ -173,6 +183,7 @@ export function buildMovementList(args: {
         // P-04 · la nota que evita el malentendido.
         note: 'no cambia tu radar',
         deletable: false,
+        reviewTag: tagFor(payment.id),
       });
     }
   }

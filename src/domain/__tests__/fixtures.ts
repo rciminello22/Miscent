@@ -14,6 +14,7 @@ import type {
   Recurrence,
   RecurrenceOverride,
   SharedExpense,
+  Review,
   SharedPaymentDetail,
   Slot,
   Space,
@@ -128,6 +129,7 @@ export function sharedExpense(args: {
           }),
     createdBySlot: args.payerSlot,
     updatedBySlot: args.payerSlot,
+    updatedAt: `${args.date}T12:00:00+00:00`,
   };
 }
 
@@ -151,6 +153,7 @@ export function sharedRecurrence(args: {
     description: args.description ?? null,
     stoppedByDepartureOn: null,
     departureResolution: null,
+    createdBySlot: null,
     dayOfMonth: args.dayOfMonth,
     startMonth: args.startMonth,
     endMonth: args.endMonth ?? null,
@@ -181,6 +184,7 @@ export function personalRecurrence(args: {
     description: args.description ?? null,
     stoppedByDepartureOn: null,
     departureResolution: null,
+    createdBySlot: null,
     dayOfMonth: args.dayOfMonth,
     startMonth: args.startMonth,
     endMonth: args.endMonth ?? null,
@@ -259,12 +263,14 @@ export function membership(args: {
   mySlot: Slot;
   paymentDetails?: SharedPaymentDetail[];
   leftOn?: IsoDate | null;
+  reviews?: Review[];
 }): PersonalFacts['spaces'][number] {
   return {
     facts: args.facts,
     mySlot: args.mySlot,
     paymentDetails: args.paymentDetails ?? [],
     leftOn: args.leftOn ?? null,
+    reviews: args.reviews ?? [],
   };
 }
 

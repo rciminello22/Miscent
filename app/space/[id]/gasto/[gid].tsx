@@ -23,7 +23,8 @@ import { useSession } from '@/features/auth/SessionProvider';
 import { PaymentMethodField } from '@/features/add/PaymentMethodField';
 import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
-import { useSpace } from '@/features/spaces/useSpaces';
+import { useMarkReviewed, useSpace } from '@/features/spaces/useSpaces';
+import { reviewTag } from '@/features/spaces/reviewCopy';
 import { balanceSentence } from '@/features/spaces/balanceCopy';
 import { SplitPicker } from '@/features/spaces/SplitPicker';
 import { DeletedWhileEditing, type DeletedBy } from '@/features/spaces/DeletedWhileEditing';
@@ -78,6 +79,7 @@ export default function GastoCompartido() {
   const { session, accountState } = useSession();
   const feedback = useFeedback();
   const { derived, today } = useSpace(spaceId);
+  const markReviewed = useMarkReviewed(spaceId);
   const { facts: personalFacts } = usePersonalFacts();
 
   const live = derived?.facts.expenses.find((item) => item.id === expenseId);
@@ -395,6 +397,26 @@ export default function GastoCompartido() {
                 ? ` · lo editó ${expense.updatedBySlot === mySlot ? 'vos' : other.displayName}`
                 : ''}
             </Text>
+
+            {/* Opción B · revisar no es aprobar: ya cuenta, igual para los dos. */}
+            {derived.pendingReview.has(expense.id) && (
+              <Row justify="space-between" align="center" gap="3">
+                <Text variant="caption" tone="shared" style={{ flex: 1 }}>
+                  {reviewTag(other.displayName)}
+                </Text>
+                <Button
+                  label="Está bien"
+                  variant="secondary"
+                  loading={markReviewed.isPending}
+                  onPress={() =>
+                    markReviewed
+                      .mutateAsync([expense.id])
+                      .then(() => feedback.updated('Listo, ya lo revisaste.'))
+                      .catch((cause: unknown) => feedback.error('No pudimos marcarlo', cause))
+                  }
+                />
+              </Row>
+            )}
 
             {/* X-05 · el cronograma se ve, pero una cuota no se edita. */}
             {schedule.length > 0 && (

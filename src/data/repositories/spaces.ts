@@ -15,12 +15,13 @@ import type { Pesos } from '@domain/money';
 import type {
   Category,
   PaymentMethod,
+  Review,
   Slot,
   SpaceFacts,
   Split,
 } from '@domain/types';
 import { supabase } from '../supabase';
-import { installmentColumns, splitColumns, toSpaceFacts } from '../mappers';
+import { installmentColumns, splitColumns, toReview, toSpaceFacts } from '../mappers';
 import { ownActiveMemberships } from '../memberships';
 import { fetchOverrideRows, throwIfError } from './personal';
 import { cleanDescription } from './mutations';
@@ -78,14 +79,16 @@ export async function fetchMySpaces(): Promise<SpaceSummary[]> {
 
 export async function fetchSpaceFacts(
   spaceId: string,
-): Promise<{ facts: SpaceFacts; mySlot: Slot }> {
-  const [space, members, expenses, recurrences, payments, me] = await Promise.all([
+): Promise<{ facts: SpaceFacts; mySlot: Slot; reviews: Review[] }> {
+  const [space, members, expenses, recurrences, payments, me, reviews] = await Promise.all([
     supabase.from('spaces').select('*').eq('id', spaceId).single(),
     supabase.from('space_members').select('*').eq('space_id', spaceId).order('slot'),
     supabase.from('shared_expenses').select('*').eq('space_id', spaceId),
     supabase.from('recurrences').select('*').eq('space_id', spaceId),
     supabase.from('member_payments').select('*').eq('space_id', spaceId),
     supabase.rpc('app_my_slot', { target_space_id: spaceId }),
+    // Opción B · la RLS devuelve solo las revisiones propias.
+    supabase.from('record_reviews').select('*').eq('space_id', spaceId),
   ]);
 
   if (space.error != null || space.data == null) {
@@ -95,6 +98,7 @@ export async function fetchSpaceFacts(
   throwIfError(expenses.error, 'gastos compartidos');
   throwIfError(recurrences.error, 'fijos compartidos');
   throwIfError(payments.error, 'pagos entre miembros');
+  throwIfError(reviews.error, 'revisiones');
   // Nunca suponer el lugar: con el slot equivocado, el saldo sale invertido y
   // "tu parte" es la del otro (K9).
   if (me.error != null || me.data == null) throw new Error('No pudimos abrir este espacio.');
@@ -113,6 +117,7 @@ export async function fetchSpaceFacts(
       payments: payments.data ?? [],
     }),
     mySlot: me.data as Slot,
+    reviews: (reviews.data ?? []).map((row) => toReview(row)),
   };
 }
 
@@ -345,6 +350,19 @@ export async function resolveStoppedRecurrence(
     throw new Error('No pudimos guardar lo que decidiste.');
   }
   return data ?? null;
+}
+
+/**
+ * Opción B · "Está bien": marca como revisado lo que cargó el otro. Solo por
+ * la función del servidor: nadie marca en nombre del otro.
+ */
+export async function markReviewed(spaceId: string, sourceIds: readonly string[]): Promise<void> {
+  if (sourceIds.length === 0) return;
+  const { error } = await supabase.rpc('app_mark_reviewed', {
+    target_space_id: spaceId,
+    source_ids: [...sourceIds],
+  });
+  if (error != null) throw new Error('No pudimos marcarlo como revisado.');
 }
 
 export async function deleteMemberPayment(id: string): Promise<void> {

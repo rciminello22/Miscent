@@ -87,6 +87,7 @@ function factsFor(input: {
               description: null,
               stoppedByDepartureOn: null,
               departureResolution: null,
+              createdBySlot: null,
               dayOfMonth: 1,
               startMonth: '2026-01',
               endMonth: null,

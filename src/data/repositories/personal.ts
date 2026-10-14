@@ -16,6 +16,7 @@ import {
   toPersonalMovement,
   toRecurrence,
   toRecurrenceOverride,
+  toReview,
   toSharedPaymentDetail,
   toSpaceFacts,
 } from '../mappers';
@@ -64,16 +65,19 @@ async function fetchMembership(
   spaceId: string,
   mySlot: Slot,
 ): Promise<PersonalFacts['spaces'][number]> {
-  const [space, members, expenses, recurrences, payments, details, myMember] = await Promise.all([
-    supabase.from('spaces').select('*').eq('id', spaceId).single(),
-    supabase.from('space_members').select('*').eq('space_id', spaceId),
-    supabase.from('shared_expenses').select('*').eq('space_id', spaceId),
-    supabase.from('recurrences').select('*').eq('space_id', spaceId),
-    supabase.from('member_payments').select('*').eq('space_id', spaceId),
-    // PR-02 · RLS solo devuelve los detalles de pago del propio usuario.
-    supabase.from('shared_payment_details').select('*').eq('space_id', spaceId),
-    supabase.from('space_members').select('left_at').eq('space_id', spaceId).eq('slot', mySlot).single(),
-  ]);
+  const [space, members, expenses, recurrences, payments, details, myMember, reviews] =
+    await Promise.all([
+      supabase.from('spaces').select('*').eq('id', spaceId).single(),
+      supabase.from('space_members').select('*').eq('space_id', spaceId),
+      supabase.from('shared_expenses').select('*').eq('space_id', spaceId),
+      supabase.from('recurrences').select('*').eq('space_id', spaceId),
+      supabase.from('member_payments').select('*').eq('space_id', spaceId),
+      // PR-02 · RLS solo devuelve los detalles de pago del propio usuario.
+      supabase.from('shared_payment_details').select('*').eq('space_id', spaceId),
+      supabase.from('space_members').select('left_at').eq('space_id', spaceId).eq('slot', mySlot).single(),
+      // Opción B · y solo sus propias revisiones.
+      supabase.from('record_reviews').select('*').eq('space_id', spaceId),
+    ]);
 
   throwIfError(space.error, 'espacio');
   throwIfError(members.error, 'miembros');
@@ -84,6 +88,7 @@ async function fetchMembership(
   throwIfError(details.error, 'medios de pago de los gastos compartidos');
   // Sin left_at, SA-05 no sabe desde cuándo dejar de contar los fijos.
   throwIfError(myMember.error, 'espacios');
+  throwIfError(reviews.error, 'revisiones');
 
   const recurrenceRows = recurrences.data ?? [];
   const overrideRows = await fetchOverrideRows(recurrenceRows.map((row) => row.id));
@@ -101,6 +106,7 @@ async function fetchMembership(
     paymentDetails: (details.data ?? []).map(toSharedPaymentDetail),
     // SA-05 · si salió, sus cuotas compartidas siguen pero los fijos no.
     leftOn: myMember.data?.left_at?.slice(0, 10) ?? null,
+    reviews: (reviews.data ?? []).map(toReview),
   };
 }
 

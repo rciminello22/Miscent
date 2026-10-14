@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { monthOf } from '@domain/calendar';
 import { expandSpaceOccurrences, spaceHorizon } from '@domain/occurrences';
+import { pendingReview } from '@domain/review';
 import {
   calculateSharedBalance,
   calculateSpaceMonth,
@@ -18,6 +19,7 @@ import {
   deleteSharedExpense,
   fetchMySpaces,
   fetchSpaceFacts,
+  markReviewed,
   removeMemberAccess,
   renameSpace,
   resolveStoppedRecurrence,
@@ -55,7 +57,7 @@ export function useSpace(spaceId: string) {
 
   const derived = useMemo(() => {
     if (query.data == null) return null;
-    const { facts, mySlot } = query.data;
+    const { facts, mySlot, reviews } = query.data;
 
     const balance = calculateSharedBalance(facts, mySlot, today);
 
@@ -71,6 +73,8 @@ export function useSpace(spaceId: string) {
       pendingInstallments: pendingSharedInstallments(facts, mySlot, today),
       other: facts.space.members.find((member) => member.slot !== mySlot)!,
       me: facts.space.members.find((member) => member.slot === mySlot)!,
+      /** Opción B · los ids de lo que cargó el otro y todavía no revisé. */
+      pendingReview: pendingReview(facts, mySlot, reviews),
     };
   }, [query.data, today]);
 
@@ -130,6 +134,16 @@ export function useDeleteSharedExpense(spaceId: string) {
   return useMutation({
     mutationFn: (id: string) => deleteSharedExpense(id),
     onSuccess: () => void invalidate(),
+  });
+}
+
+/** Opción B · "Está bien" sobre uno o varios registros del otro. */
+export function useMarkReviewed(spaceId: string) {
+  const invalidate = useInvalidateSpace(spaceId);
+
+  return useMutation({
+    mutationFn: (sourceIds: readonly string[]) => markReviewed(spaceId, sourceIds),
+    onSuccess: () => invalidate(),
   });
 }
 

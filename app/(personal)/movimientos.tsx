@@ -256,6 +256,23 @@ function MovementItem({
               {row.note}
             </Text>
           )}
+
+          {/* Opción B · lo que cargó el otro y no revisaste: se revisa en el espacio. */}
+          {row.reviewTag != null && (
+            <Row gap="2" align="center">
+              <View
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: theme.colors.shared,
+                }}
+              />
+              <Text variant="caption" tone="shared">
+                {row.reviewTag}
+              </Text>
+            </Row>
+          )}
         </View>
 
         <View style={{ alignItems: 'flex-end', gap: 2 }}>

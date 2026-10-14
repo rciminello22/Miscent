@@ -5,6 +5,7 @@ import { paidByMeWithoutMethod } from '@domain/paidByMe';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { pendingFixedLine } from './departureCopy';
 import { toCompleteLine } from './paidByMeCopy';
+import { toReviewLine } from './reviewCopy';
 import { Pressable, Row, SectionHeader, Skeleton, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 import { balanceSentence } from './balanceCopy';
@@ -52,9 +53,12 @@ function SpaceLine({ space }: { space: SpaceSummary }) {
   const membership = personalFacts.spaces.find((item) => item.facts.space.id === space.id);
   const toComplete =
     membership == null ? 0 : paidByMeWithoutMethod(membership, today, { includeOwn: false }).length;
+  // Opción B · sutil: el detalle está en el espacio.
+  const toReview = derived?.pendingReview.size ?? 0;
   const hints = [
     pending > 0 ? pendingFixedLine(pending) : null,
     toComplete > 0 ? toCompleteLine(toComplete) : null,
+    toReview > 0 ? toReviewLine(toReview) : null,
   ].filter((hint): hint is string => hint != null);
 
   return (

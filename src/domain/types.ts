@@ -126,7 +126,15 @@ export type SharedExpense = {
   installments: InstallmentPlan | null;
   createdBySlot: Slot;
   updatedBySlot: Slot;
+  /** Cuándo cambió por última vez. Lo pone el servidor (revisión, opción B). */
+  updatedAt: Timestamp;
 };
+
+/** Un instante que pone el servidor (timestamptz), en ISO 8601. */
+export type Timestamp = string;
+
+/** Opción B · que el usuario revisó un registro del espacio, y cuándo. */
+export type Review = { sourceId: string; reviewedAt: Timestamp };
 
 /**
  * §7.4 · Detalle privado de pago: con qué pagó un miembro un gasto compartido.
@@ -165,6 +173,8 @@ export type Recurrence = {
   stoppedByDepartureOn: IsoDate | null;
   /** SA-04 · qué decidió quien quedó. `null` = falta decidir. */
   departureResolution: 'moved' | 'ended' | null;
+  /** Quién cargó un fijo compartido. `null` en los personales y en los de antes. */
+  createdBySlot: Slot | null;
 };
 
 /** F-03 · "Este mes fue distinto": ajuste de un mes de un recurrente. */
@@ -227,5 +237,7 @@ export type PersonalFacts = {
     paymentDetails: readonly SharedPaymentDetail[];
     /** SA-05 · si salió del espacio, desde cuándo. */
     leftOn: IsoDate | null;
+    /** Opción B · lo que revisó, de lo que cargó el otro. Solo las suyas. */
+    reviews: readonly Review[];
   }[];
 };

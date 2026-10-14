@@ -25,6 +25,48 @@ const options = {
   formatAmount: formatPesos,
 };
 
+describe('opción B · "para revisar" en Movimientos', () => {
+  const delSuper = {
+    ...sharedExpense({ id: 'super', amount: 100_000, date: '2026-10-05', payerSlot: MARTINA }),
+    createdBySlot: MARTINA,
+    updatedBySlot: MARTINA,
+  };
+
+  it('lo que cargó el otro y no revisé, se marca con su nombre', () => {
+    const rows = buildMovementList({
+      facts: personalFacts({
+        spaces: [membership({ facts: spaceFacts({ expenses: [delSuper] }), mySlot: RENZO })],
+      }),
+      ...options,
+    });
+    expect(rows[0]?.reviewTag).toBe('Lo cargó Martina · para revisar');
+  });
+
+  it('ya revisado, no', () => {
+    const rows = buildMovementList({
+      facts: personalFacts({
+        spaces: [
+          membership({
+            facts: spaceFacts({ expenses: [delSuper] }),
+            mySlot: RENZO,
+            reviews: [{ sourceId: 'super', reviewedAt: '2026-10-06T00:00:00+00:00' }],
+          }),
+        ],
+      }),
+      ...options,
+    });
+    expect(rows[0]?.reviewTag).toBeNull();
+  });
+
+  it('lo propio nunca', () => {
+    const rows = buildMovementList({
+      facts: personalFacts({ movements: [movement({ amount: 5_000, date: '2026-10-02' })] }),
+      ...options,
+    });
+    expect(rows[0]?.reviewTag).toBeNull();
+  });
+});
+
 describe('§16 · la lista de Movimientos', () => {
   it('K9 · de un gasto compartido, la cifra principal es TU PARTE y el total va aparte', () => {
     // Caso C de §29.1: super $100.000, pagó Renzo, 50/50.
