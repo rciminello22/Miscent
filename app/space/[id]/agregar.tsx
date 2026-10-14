@@ -30,6 +30,8 @@ import { rememberPersonalDraft } from '@/features/add/personalDraft';
 import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
 import { SplitPicker } from '@/features/spaces/SplitPicker';
 import { confirmIfDuplicate } from '@/features/spaces/confirmDuplicate';
+import { SuggestedCategory } from '@/features/add/SuggestedCategory';
+import { suggestCategory } from '@/features/add/suggestCategory';
 import {
   useCreateSharedExpense,
   useCreateSharedRecurrence,
@@ -134,6 +136,16 @@ export default function AgregarCompartido() {
       card: payerIsMe && isCard ? method : null,
     });
   }, [installmentCount, amount, payerIsMe, isCard, method, date]);
+
+  // Should 8 · lo que ya se cargó en este espacio y lo personal propio.
+  const suggestedCategory = useMemo(
+    () =>
+      suggestCategory(description, 'expense', [
+        ...(derived?.facts.expenses ?? []),
+        ...personalFacts.movements,
+      ]),
+    [description, derived?.facts.expenses, personalFacts.movements],
+  );
 
   /**
    * §17 · el efecto, que es lo que vuelve útil el registro.
@@ -430,6 +442,12 @@ export default function AgregarCompartido() {
                 style={[theme.typography.body, { color: theme.colors.text }]}
               />
             </View>
+            {/* Should 8 · sugiere, nunca elige sola. */}
+            <SuggestedCategory
+              suggestion={suggestedCategory}
+              current={category}
+              onUse={setCategory}
+            />
           </Field>
         </MoreOptions>
 

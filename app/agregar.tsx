@@ -40,6 +40,8 @@ import type { FeedbackAudience } from '@/features/shared/feedbackCopy';
 const PRIVATE: FeedbackAudience = { kind: 'private' };
 import { SplitPicker } from '@/features/spaces/SplitPicker';
 import { confirmIfDuplicate } from '@/features/spaces/confirmDuplicate';
+import { SuggestedCategory } from '@/features/add/SuggestedCategory';
+import { suggestCategory } from '@/features/add/suggestCategory';
 import {
   useCreateSharedExpense,
   useCreateSharedRecurrence,
@@ -180,6 +182,16 @@ export default function Agregar() {
     }
     return null;
   }, [kind, amount, plan, repeats, isCard, method, date, today]);
+
+  // Should 8 · lo que ya cargó (personal y en sus espacios) pesa más que la lista.
+  const suggestedCategory = useMemo(
+    () =>
+      suggestCategory(description, kind, [
+        ...facts.movements,
+        ...facts.spaces.flatMap((membership) => membership.facts.expenses),
+      ]),
+    [description, kind, facts.movements, facts.spaces],
+  );
 
   const dirty = amount > 0 || category != null || description.trim() !== '' || date !== today;
 
@@ -494,6 +506,12 @@ export default function Agregar() {
           {/* §17 campo 11 */}
           <Field label="Descripción (opcional)">
             <DescriptionInput value={description} onChange={setDescription} />
+            {/* Should 8 · sugiere, nunca elige sola. */}
+            <SuggestedCategory
+              suggestion={suggestedCategory}
+              current={category}
+              onUse={setCategory}
+            />
           </Field>
         </MoreOptions>
 
