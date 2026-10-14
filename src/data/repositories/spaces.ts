@@ -17,6 +17,7 @@ import type {
   DeletedRecord,
   PaymentMethod,
   Review,
+  SharedExpense,
   Slot,
   SpaceFacts,
   Split,
@@ -25,7 +26,7 @@ import { supabase } from '../supabase';
 import { installmentColumns, splitColumns, toDeletedRecord, toReview, toSpaceFacts } from '../mappers';
 import { ownActiveMemberships } from '../memberships';
 import { fetchOverrideRows, fetchRecentDeletions, throwIfError } from './personal';
-import { cleanDescription } from './mutations';
+import { cleanDescription, createPersonalMovement } from './mutations';
 
 export type SpaceSummary = {
   id: string;
@@ -386,4 +387,37 @@ export async function setInitialBalance(
     .eq('id', spaceId);
 
   if (error != null) throw new Error('No pudimos guardar el saldo inicial.');
+}
+
+/**
+ * X-07 · un gasto compartido pasa a ser personal (cargado en el espacio por
+ * error, §32). Primero se crea el personal y después se borra el compartido:
+ * si el borrado falla, se deshace el alta. Nunca quedan los dos, que contaría
+ * el gasto dos veces en el radar.
+ *
+ * Las cuotas conservan su cronograma (Q-04): el mes de la primera cuota es un
+ * hecho, no se recalcula.
+ */
+export async function moveSharedExpenseToPersonal(
+  userId: string,
+  expense: SharedExpense,
+  myPaymentMethod: PaymentMethod | null,
+): Promise<string> {
+  const id = await createPersonalMovement(userId, {
+    kind: 'expense',
+    amount: expense.amount,
+    date: expense.date,
+    category: expense.category,
+    description: expense.description,
+    paymentMethod: myPaymentMethod,
+    installmentCount: expense.installments?.count ?? null,
+    pinnedFirstMonth: expense.installments?.firstMonth ?? null,
+  });
+
+  const { error } = await supabase.from('shared_expenses').delete().eq('id', expense.id);
+  if (error != null) {
+    await supabase.from('personal_movements').delete().eq('id', id);
+    throw new Error('No pudimos pasarlo a tus gastos personales.');
+  }
+  return id;
 }

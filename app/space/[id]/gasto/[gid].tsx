@@ -18,7 +18,12 @@ import {
   SharedExpenseDeletedError,
   updateSharedExpense,
 } from '@/data/repositories/edits';
-import { createSharedExpense, deleteSharedExpense } from '@/data/repositories/spaces';
+import {
+  createSharedExpense,
+  deleteSharedExpense,
+  moveSharedExpenseToPersonal,
+} from '@/data/repositories/spaces';
+import { canMoveToPersonal } from '@domain/destination';
 import { useSession } from '@/features/auth/SessionProvider';
 import { PaymentMethodField } from '@/features/add/PaymentMethodField';
 import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
@@ -209,6 +214,27 @@ export default function GastoCompartido() {
     onError: (error: Error) => feedback.error('No pudimos eliminarlo', error),
   });
 
+  /** X-07 · al revés: de un espacio a personal. */
+  const moveToPersonal = useMutation({
+    mutationFn: () =>
+      moveSharedExpenseToPersonal(
+        session!.user.id,
+        expense!,
+        personalFacts.paymentMethods.find((item) => item.id === currentPaymentMethodId) ?? null,
+      ),
+    onSuccess: async () => {
+      await invalidate();
+      if (derived != null && balanceAfterDelete != null) {
+        feedback.saved({
+          audience: { kind: 'private' },
+          detail: `${derived.other.displayName} lo dejó de ver. ${balanceSentence(balanceAfterDelete)}.`,
+        });
+      }
+      goBack(router);
+    },
+    onError: (error: Error) => feedback.error('No pudimos pasarlo', error),
+  });
+
   const endNow = useMutation({
     mutationFn: () => endSharedInstallmentsNow(expense!, today, derived!.mySlot),
     onSuccess: async () => {
@@ -267,6 +293,25 @@ export default function GastoCompartido() {
       : deletion.data.deletedBySlot === mySlot
         ? 'me'
         : 'other';
+
+  /**
+   * X-07 · "con confirmación de audiencia": nombra a quién lo deja de ver y
+   * qué cambia, porque deja de ser compartido para los dos.
+   */
+  function confirmMoveToPersonal() {
+    const after =
+      balanceAfterDelete != null
+        ? ` El saldo pasa a: ${balanceSentence(balanceAfterDelete).toLowerCase()}.`
+        : '';
+    Alert.alert(
+      '¿Pasarlo a tus gastos personales?',
+      `${derived!.other.displayName} lo va a dejar de ver y deja de repartirse.${after} En tu radar cuenta entero, no solo tu parte.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Pasarlo a personal', onPress: () => moveToPersonal.mutate() },
+      ],
+    );
+  }
 
   function confirmDelete() {
     const after =
@@ -485,6 +530,17 @@ export default function GastoCompartido() {
                   setEditing(true);
                 }}
               />
+
+              {/* X-07 · solo quien lo cargó y lo pagó, con cuenta personal. */}
+              {accountState === 'personal' && canMoveToPersonal(expense, mySlot) && (
+                <Button
+                  label="Pasarlo a mis gastos personales"
+                  variant="ghost"
+                  fullWidth
+                  loading={moveToPersonal.isPending}
+                  onPress={confirmMoveToPersonal}
+                />
+              )}
 
               <Pressable onPress={confirmDelete} haptic="none" scaleOnPress={false}>
                 <Row gap="2" justify="center" align="center" style={{ paddingVertical: 12 }}>
