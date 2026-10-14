@@ -32,6 +32,7 @@ import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
 import { calculateSharedBalance } from '@domain/shared-balance';
 import type { DeletedRecord, MemberPayment } from '@domain/types';
 import { SpaceMenu } from '@/features/spaces/SpaceMenu';
+import { spaceSummaryText } from './shareSummary';
 import {
   AudienceBadge,
   Button,
@@ -268,6 +269,32 @@ export function SpaceScreen({
   }
 
   const { balance, month, other, me, settlement, pendingInstallments } = derived;
+  const nameOf = (slot: 1 | 2) => (slot === derived.mySlot ? me.displayName : other.displayName);
+
+  // Should 3 · lo mismo que se ve acá, escrito para leerse fuera de la app.
+  const summaryText = spaceSummaryText({
+    spaceName: derived.facts.space.name,
+    monthName: formatMonth(currentMonth, currentMonth),
+    myName: me.displayName,
+    otherName: other.displayName,
+    balance,
+    month: { total: month.total, mine: month.viewer, other: month.other },
+    expenses: derived.occurrences
+      .filter((item) => item.month === currentMonth && item.balanceDate <= today)
+      .sort((a, b) => (a.balanceDate < b.balanceDate ? 1 : -1))
+      .map((item) => ({
+        date: item.balanceDate,
+        label: prettyLabel(item.label),
+        amount: item.amount,
+        payerName: nameOf(item.payerSlot),
+      })),
+    payments: month.payments.map((payment) => ({
+      date: payment.date,
+      fromName: nameOf(payment.fromSlot),
+      toName: nameOf(payment.toSlot),
+      amount: payment.amount,
+    })),
+  });
   const toReviewCount = derived.pendingReview.size + derived.pendingDeletions.length;
 
   return (
@@ -677,6 +704,7 @@ export function SpaceScreen({
         otherHasAccess={other.status === 'active'}
         // §26 · solo quien creó el espacio, y solo si el otro está adentro.
         canRemoveOther={me.isCreator && other.status === 'active'}
+        summaryText={summaryText}
       />
 
       {/* §25 · tocar un pago lo muestra; eliminar queda adentro. */}

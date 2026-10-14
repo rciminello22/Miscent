@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Alert, TextInput, View } from 'react-native';
+import { Alert, Share, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LogOut, Pencil, UserPlus, UserX } from 'lucide-react-native';
+import { LogOut, Pencil, Share2, UserPlus, UserX } from 'lucide-react-native';
 import { Button, Divider, Pressable, Row, Sheet, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 import { useRemoveMemberAccess, useRenameSpace } from './useSpaces';
@@ -22,6 +22,7 @@ export function SpaceMenu({
   otherMemberName,
   otherHasAccess,
   canRemoveOther,
+  summaryText,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -31,6 +32,8 @@ export function SpaceMenu({
   otherHasAccess: boolean;
   /** §26 · solo quien creó el espacio, y solo si el otro tiene acceso. */
   canRemoveOther: boolean;
+  /** Should 3 · el resumen del espacio, ya escrito para leerse afuera. */
+  summaryText: string;
 }) {
   const theme = useTheme();
   const router = useRouter();
@@ -42,6 +45,17 @@ export function SpaceMenu({
    * puede quitar ese acceso." Confirmación en dos pasos, con lo que pasa
    * dicho antes: no es una forma de cobrarle a nadie (principio 13).
    */
+  /**
+   * Should 3 · la hoja de compartir sale con el menú abierto y el menú se
+   * cierra después: presentar algo mientras un Modal se cierra puede
+   * perderse en iOS (lo mismo que con los Alert).
+   */
+  function shareSummary() {
+    Share.share({ message: summaryText })
+      .catch(() => undefined)
+      .finally(onClose);
+  }
+
   function confirmRemove() {
     onClose();
     Alert.alert(
@@ -139,6 +153,13 @@ export function SpaceMenu({
             icon={<Pencil size={17} color={theme.colors.textSecondary} />}
             label="Renombrar"
             onPress={() => setEditing(true)}
+          />
+          <Divider />
+
+          <MenuRow
+            icon={<Share2 size={17} color={theme.colors.textSecondary} />}
+            label="Compartir resumen"
+            onPress={shareSummary}
           />
           <Divider />
 
