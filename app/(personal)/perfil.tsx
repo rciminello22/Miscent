@@ -3,7 +3,9 @@ import { CreditCard, Repeat } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { monthOf } from '@domain/calendar';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
+import { selectFixedExpenses } from '@/features/fixed/fixedExpenses';
 import { selectFixedIncomes } from '@/features/fixed/fixedIncomes';
+import { selectCards } from '@/features/profile/cards';
 import {
   AccountActions,
   DisplayNameCard,
@@ -35,11 +37,10 @@ export default function Perfil() {
   const router = useRouter();
   const { facts, today } = usePersonalFacts();
 
-  const cards = facts.paymentMethods.filter((method) => method.kind === 'card');
-  const fixed = facts.recurrences.filter(
-    (recurrence) => recurrence.kind === 'expense' && recurrence.spaceId == null,
-  );
-  // UX-01 · el mismo criterio que la lista que abre: el número y la lista coinciden.
+  // UX-01 · UX-21 · cada número sale de la MISMA función que la lista que abre:
+  // la cuenta y la lista no pueden discrepar.
+  const cards = selectCards(facts.paymentMethods);
+  const fixed = selectFixedExpenses(facts.recurrences, monthOf(today));
   const incomes = selectFixedIncomes(facts.recurrences, monthOf(today));
 
   return (
@@ -69,14 +70,14 @@ export default function Perfil() {
                 icon={<CreditCard size={16} color={theme.colors.textSecondary} />}
                 label="Tarjetas"
                 value={`${cards.length}`}
-                onPress={() => router.push('/onboarding/tarjetas')}
+                onPress={() => router.push('/tarjetas')}
               />
               <Divider />
               <SummaryRow
                 icon={<Repeat size={16} color={theme.colors.textSecondary} />}
                 label="Fijos"
                 value={`${fixed.length}`}
-                onPress={() => router.push('/onboarding/fijos')}
+                onPress={() => router.push('/fijo/gastos')}
               />
             </Stack>
           </Card>

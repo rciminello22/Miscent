@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CreditCard, Plus } from 'lucide-react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -16,6 +16,8 @@ import { Field } from '@/features/add/fields';
 import { DayNote, DayPicker } from '@/features/onboarding/DayPicker';
 import { StepShell } from '@/features/onboarding/StepShell';
 import { onboardingBranches, onboardingProgress } from '@/features/onboarding/onboardingProgress';
+import { cardScheduleLine } from '@/features/profile/cards';
+import { goBack } from '@/features/shared/navigation';
 import { Button, Card, Divider, Row, Stack, Text, TextField } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
@@ -42,11 +44,15 @@ export default function Tarjetas() {
   const queryClient = useQueryClient();
   const feedback = useFeedback();
   const { facts } = usePersonalFacts();
+  // UX-21 · desde Perfil > Tarjetas esta pantalla da de alta UNA tarjeta y vuelve:
+  // no es el paso 2 del wizard, así que no sigue a Deuda, Pagados y Fijos.
+  const { desde } = useLocalSearchParams<{ desde?: string }>();
+  const standalone = desde === 'perfil';
 
   const [name, setName] = useState('');
   const [closingDay, setClosingDay] = useState<number | null>(null);
   const [dueDay, setDueDay] = useState<number | null>(null);
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(standalone);
 
   const cards = facts.paymentMethods.filter((method) => method.kind === 'card');
   // UX-22 · la barra cuenta los pasos que de verdad se recorren: con la primera
@@ -69,6 +75,7 @@ export default function Tarjetas() {
       await queryClient.invalidateQueries({
         queryKey: queryKeys.personalFacts(session?.user.id ?? 'anon'),
       });
+      if (standalone) goBack(router);
     },
     onError: (error: Error) => feedback.error('No pudimos guardar la tarjeta', error),
   });
@@ -87,18 +94,30 @@ export default function Tarjetas() {
   return (
     <StepShell
       step={progress.step}
-      total={progress.total}
-      title="¿Usás tarjetas de crédito?"
+      total={standalone ? 0 : progress.total}
+      title={standalone ? 'Agregar una tarjeta' : '¿Usás tarjetas de crédito?'}
       description="Con el día de cierre y el de vencimiento, la app sabe en qué resumen cae cada compra."
       help="Solo el nombre y los días. Nunca el número de la tarjeta."
-      continueLabel={cards.length > 0 ? 'Continuar' : 'No uso tarjetas'}
-      onContinue={() =>
-        router.push(cards.length > 0 ? '/onboarding/deuda' : '/onboarding/fijos')
+      continueLabel={
+        standalone ? 'Guardar tarjeta' : cards.length > 0 ? 'Continuar' : 'No uso tarjetas'
       }
-      onSkip={cards.length > 0 ? undefined : () => router.push('/onboarding/fijos')}
+      continueDisabled={standalone && !canAdd}
+      saving={standalone && addCard.isPending}
+      onContinue={() => {
+        if (standalone) addCard.mutate();
+        else router.push(cards.length > 0 ? '/onboarding/deuda' : '/onboarding/fijos');
+      }}
+      onSkip={
+        standalone
+          ? () => goBack(router)
+          : cards.length > 0
+            ? undefined
+            : () => router.push('/onboarding/fijos')
+      }
+      skipLabel={standalone ? 'Cancelar' : undefined}
     >
       <Stack gap="5">
-        {cards.length > 0 && (
+        {!standalone && cards.length > 0 && (
           <Stack gap="3">
             {cards.map((card) => (
               <Animated.View key={card.id} layout={LinearTransition} entering={FadeInDown}>
@@ -108,9 +127,7 @@ export default function Tarjetas() {
                     <View style={{ flex: 1, gap: 2 }}>
                       <Text variant="bodyMedium">{card.name}</Text>
                       <Text variant="caption" tone="muted">
-                        {card.closingDay != null && card.dueDay != null
-                          ? `Cierra el ${card.closingDay}, vence el ${card.dueDay}`
-                          : 'Fechas aproximadas'}
+                        {cardScheduleLine(card)}
                       </Text>
                     </View>
                   </Row>
@@ -163,14 +180,17 @@ export default function Tarjetas() {
                   </>
                 )}
 
-                <Button
-                  label="Guardar tarjeta"
-                  fullWidth
-                  disabled={!canAdd}
-                  loading={addCard.isPending}
-                  haptic="success"
-                  onPress={() => void addCard.mutateAsync()}
-                />
+                {/* Suelta, el botón fijo de abajo ya es "Guardar tarjeta". */}
+                {!standalone && (
+                  <Button
+                    label="Guardar tarjeta"
+                    fullWidth
+                    disabled={!canAdd}
+                    loading={addCard.isPending}
+                    haptic="success"
+                    onPress={() => void addCard.mutateAsync()}
+                  />
+                )}
               </Stack>
             </Card>
           </Animated.View>

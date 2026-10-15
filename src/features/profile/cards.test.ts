@@ -1,0 +1,42 @@
+import { describe, it, expect } from 'vitest';
+import { debito, mastercard, visa } from '@domain/__tests__/fixtures';
+import type { PaymentMethod } from '@domain/types';
+import { cardScheduleLine, selectCards } from './cards';
+
+/**
+ * UX-21 · Perfil > Tarjetas: la lista y el número de la fila de Perfil salen
+ * de la misma función.
+ */
+describe('UX-21 · selectCards', () => {
+  it('deja solo las tarjetas de crédito: ni débito ni transferencia', () => {
+    expect(selectCards([debito, visa]).map((card) => card.id)).toEqual(['visa']);
+  });
+
+  it('las ordena por nombre, sin importar cómo vengan de la base', () => {
+    const result = selectCards([visa, mastercard]);
+    expect(result.map((card) => card.name)).toEqual(['Mastercard', 'Visa Galicia']);
+  });
+
+  it('no muta lo que recibe', () => {
+    const input = [visa, mastercard];
+    selectCards(input);
+    expect(input.map((card) => card.id)).toEqual(['visa', 'master']);
+  });
+
+  it('sin tarjetas, la lista está vacía', () => {
+    expect(selectCards([debito])).toEqual([]);
+  });
+});
+
+describe('cardScheduleLine · T-02', () => {
+  it('con los dos días, los dice', () => {
+    expect(cardScheduleLine(visa)).toBe('Cierra el 25, vence el 5');
+  });
+
+  it('con algún día en "No sé", la fecha es aproximada y nunca se inventa un día', () => {
+    const sinDias: PaymentMethod = { ...visa, closingDay: null, dueDay: null };
+    const soloCierre: PaymentMethod = { ...visa, dueDay: null };
+    expect(cardScheduleLine(sinDias)).toBe('Fechas aproximadas');
+    expect(cardScheduleLine(soloCierre)).toBe('Fechas aproximadas');
+  });
+});

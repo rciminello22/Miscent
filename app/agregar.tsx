@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Switch, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { goBack } from '@/features/shared/navigation';
 import { X } from 'lucide-react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
@@ -36,7 +36,11 @@ import { canSaveForm, saveBlockReason } from '@/features/add/saveBlockReason';
 import { SaveFooter } from '@/features/add/SaveFooter';
 import { PastDateField } from '@/features/add/DateField';
 import { MoreOptions } from '@/features/add/MoreOptions';
-import { lastUsedPaymentMethodId, moreOptionsSummary } from '@/features/add/addDefaults';
+import {
+  lastUsedPaymentMethodId,
+  moreOptionsSummary,
+  startsAsFixed,
+} from '@/features/add/addDefaults';
 import { PaymentMethodField } from '@/features/add/PaymentMethodField';
 import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
 import type { FeedbackAudience } from '@/features/shared/feedbackCopy';
@@ -118,7 +122,9 @@ export default function Agregar() {
     }
   }, [lastUsedMethodId]);
   const [installmentCount, setInstallmentCount] = useState<number | null>(null);
-  const [repeats, setRepeats] = useState(false);
+  // UX-21 · desde Perfil > Fijos, "Agregar un fijo" abre con "Se repite cada mes".
+  const { fijo } = useLocalSearchParams<{ fijo?: string }>();
+  const [repeats, setRepeats] = useState(startsAsFixed(fijo));
   // §17 campo 10 · hoy por defecto; nunca una fecha futura.
   const [date, setDate] = useState(today);
 
@@ -135,7 +141,7 @@ export default function Agregar() {
   const isShared = destination != null && space != null;
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(startsAsFixed(fijo));
 
   // C-05 · el medio de pago es un detalle privado de quien pagó: si pagó el
   // otro miembro, no hay medio propio que valga.

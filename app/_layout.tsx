@@ -122,6 +122,7 @@ function RouteGuard() {
       // Hojas de detalle: viven fuera de las pestanas (secciones 16 y 21).
       'movimiento',
       'fijo',
+      'tarjetas',
     ]);
 
     // O2 · una invitacion se abre ANTES de tener sesion: el enlace llega

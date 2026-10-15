@@ -1,5 +1,21 @@
 import { describe, it, expect } from 'vitest';
-import { lastUsedPaymentMethodId, moreOptionsSummary } from './addDefaults';
+import { lastUsedPaymentMethodId, moreOptionsSummary, startsAsFixed } from './addDefaults';
+
+/**
+ * UX-21 · Perfil > Fijos > "Agregar un fijo" abre Agregar con "Se repite cada
+ * mes" ya prendido (`?fijo=1`). Cualquier otro valor es un Agregar normal.
+ */
+describe('startsAsFixed', () => {
+  it('?fijo=1 arranca como fijo', () => {
+    expect(startsAsFixed('1')).toBe(true);
+  });
+
+  it('sin parámetro, o con otro valor, es un gasto común', () => {
+    expect(startsAsFixed(undefined)).toBe(false);
+    expect(startsAsFixed('0')).toBe(false);
+    expect(startsAsFixed('')).toBe(false);
+  });
+});
 
 /**
  * §17 campo 7 · "Medio de pago: Último usado". Con el formulario más liviano

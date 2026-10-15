@@ -32,6 +32,14 @@ export function lastUsedPaymentMethodId(
 }
 
 /**
+ * UX-21 · "Agregar un fijo" desde Perfil abre Agregar con `?fijo=1`: "Se repite
+ * cada mes" ya prendido y "Más opciones" abierto, que es donde está.
+ */
+export function startsAsFixed(param: string | undefined): boolean {
+  return param === '1';
+}
+
+/**
  * La fila colapsada de "Más opciones" dice lo que tiene elegido: "Hoy",
  * "Ayer · 6 cuotas", "3 oct · se repite cada mes · "Netflix"".
  */
