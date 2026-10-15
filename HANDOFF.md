@@ -1,7 +1,7 @@
 # Handoff · Radar del sueldo comprometido
 
 Contexto para retomar el proyecto en una sesión nueva.
-Última actualización: 14 de octubre de 2026 (noche) · working tree limpio · todo aplicado al remoto.
+Última actualización: 15 de octubre de 2026 · auditoría UX/UI aplicada (28 commits, sin push) · base remota sin cambios.
 
 ---
 
@@ -178,9 +178,9 @@ npm run verify:full  # + los de RLS
 
 | Nivel | Qué | Cuántos |
 |---|---|---|
-| 1 · Dominio y reglas puras (vitest) | Casos A–G, CA-*, casos de uso, identidad, navegación, Agregar | 298 |
+| 1 · Dominio y reglas puras (vitest) | Casos A–G, CA-*, casos de uso, identidad, navegación, Agregar, contraste WCAG de los tokens | 612 |
 | 2 · Autorización (pgTAP) | PR-01, PR-02, CA-11..13, CA-47, CA-48, SY-02, SA-06, D-01, P7, §26, anónimos, permisos de funciones | 46 |
-| 3 · Componentes (jest-expo) | El lenguaje **obligatorio** | 46 |
+| 3 · Componentes (jest-expo) | El lenguaje **obligatorio** | 132 |
 | 4 · Lint de lenguaje | **Automatiza CA-00** | en CI |
 
 El nivel 4 ya cazó **4 errores míos** ("te quedaría", "el saldo", "Te quedan N
@@ -190,16 +190,71 @@ cuotas"). El nivel 3 encontró **2 bugs reales**.
 
 ## 5. Qué falta
 
-### ▶ Por dónde seguir (actualizado el 14/10, noche)
+### ▶ Por dónde seguir (actualizado el 15/10)
 
 Las 18 migraciones están aplicadas al remoto · pgTAP **78/78** (14/10).
+La auditoría UX/UI no tocó la base.
 
-**La V1 del MVP está completa contra la spec** (auditoría del 14/10 contra
-§5, §36, §33 y §38). Lo que sigue son las **auditorías de UX/UI**: el
-contenido está; queda pulir flujos e interfaz.
+**La V1 del MVP está completa contra la spec**, y la **primera auditoría
+UX/UI ya está aplicada**: 28 commits, de `ee9a484` a `366dc59`. El informe
+completo está en engram (`audit/ux-2026-10-14`); las decisiones de Renzo,
+en `audit/ux-*`.
 
-Hecho el 14/10 (ver `git log`), además de la revisión de lo que carga el
-otro (K10 en §37):
+**Lo primero: probar en el iPhone lo de la auditoría** (claro y oscuro):
+1. Editar solo la descripción de una compra en cuotas desde la cuenta del
+   que NO pagó: el saldo y las cuotas no cambian de fecha (`shouldReplan`).
+2. Perfil → Ingresos, Fijos y Tarjetas: listas propias, sin caer en el
+   onboarding. Ingresos y fijos abren `/fijo/[id]`.
+3. Espacio (creador e invitado): saldo y acciones arriba, pendientes en
+   una fila (abierta si hay un fijo detenido), "Ver todos (N)".
+4. Aviso al guardar un compartido: "Con esto, Martina te debe $X" solo
+   con gasto puntual de hoy o antes; nada en cuotas, fijos o fecha futura.
+5. Error al guardar con el teclado abierto (modo avión): se cierra el
+   teclado y se ve el toast.
+6. Barra del radar (contraste, separadores, sin ingresos = gris vacío),
+   Futuro ("Este mes", Sin asignar negativo con la frase de N-08), detalle
+   del resumen estimado (nombre de tarjeta, total igual a la fila).
+7. Agregar: cuotas "Otra" (1, 2, 24, 40), audiencia junto a Guardar,
+   Guardar teal si el destino es un espacio, motivo de Guardar apagado.
+   Edición: fecha editable solo en un pago, "¿Descartar los cambios?".
+
+**Qué se hizo en la auditoría (por etapa):**
+- **1** · Ingresos fijos accesibles y sin duplicar (era P0: Perfil abría
+  el onboarding, que creaba otro sueldo) · contraste de `textMuted` y
+  `excess` · barra sin proporciones sin ingresos · el error cierra el
+  teclado.
+- **2** · `RadarBar` con contraste ≥3:1, separadores y `accessibilityValue`
+  · Sin asignar de Futuro con ayuda y N-08 (decisión de Renzo) · "Este mes"
+  en los pagos de Futuro, sin cambiar las 6 barras (decisión de Renzo) ·
+  detalle del resumen estimado (§23.2).
+- **3** · El resumen de tarjeta mostraba un **uuid** (`label: cardId`):
+  arreglado en el dominio · chevron en filas tocables y áreas de 44pt ·
+  token `danger` (`excess` queda solo para N-08) · `TextField` · errores
+  siempre por toast.
+- **4** · Cuotas "Otra" de 2 a 36 (sin valor de cuota ni primer mes: Renzo
+  eligió solo "Otra") · audiencia en el footer · motivo de Guardar · el
+  reparto no salta · edición con "Más opciones", fecha editable y descartar.
+- **5** · **Bug de integridad**: toda edición rearmaba el plan de cuotas, y
+  si editaba el que no pagó lo rearmaba sin la tarjeta del otro (movía el
+  saldo) · espacio reordenado · saldo en el aviso · progreso real del
+  onboarding · Perfil sin wizard.
+
+**Pendientes que dejó la auditoría (decidir):**
+- **Editar y eliminar tarjetas** no existe (`updatePaymentMethod` sin UI;
+  §22 pide recalcular con aviso y no eliminar con cuotas activas).
+- **El que no pagó cambia la cantidad de cuotas** de una compra con la
+  tarjeta del otro: se rearma con Q-03, porque no ve la tarjeta. Falta una
+  regla de producto.
+- **Deuda en subpasos** (O3 paso 4): no se hizo, por riesgo.
+- **Audiencia doble en Agregar**: junto al destino (§17) y en el footer.
+- Con tarjeta compartida, el aviso al guardar muestra el saldo en lugar de
+  "Se paga en noviembre".
+- Huecos de la spec: §17 campo 8 (valor de cuota, primer mes editable),
+  §16 (fijos de meses pasados en Movimientos).
+- Un ingreso que ya terminó no aparece en "Tus ingresos".
+
+Hecho el 14/10 antes de la auditoría (ver `git log`), además de la revisión
+de lo que carga el otro (K10 en §37):
 - **CA-07 / Caso 18**: la invitada que elige "Personal" en Agregar, con
   borrador que se guarda al terminar la activación.
 - **Los 8 Should de §5**: completar con qué se pagó · aviso de duplicado ·
@@ -224,11 +279,12 @@ como **P21** y **P22** (§38), para vetarlas si hace falta.
   círculo cercano.
 - Build propio (EAS), SMTP transaccional, links https de invitación.
 
-**Ideas de la prueba real, fuera de la spec** (decidir en la auditoría):
-"Con esto, Martina te debe $X" en el aviso al guardar · comparar con el mes
-pasado · iniciales en vez de foto · unificar los campos de texto.
+**Ideas de la prueba real**, resueltas en la auditoría: "Con esto, Martina
+te debe $X" (hecho, era §17) · unificar los campos de texto (hecho,
+`TextField`) · comparar con el mes pasado (descartado: compite con el radar
+y se pisa con P15) · iniciales en vez de foto (no aplica: no hay avatares).
 
-**Sin probar todavía en el iPhone:** todo lo del 14/10 (ver la lista de
+**Sin probar todavía en el iPhone:** todo lo del 14/10 y la auditoría (ver
 arriba), SA-04, varias cuotas por tarjeta y "Otro fijo" en O3, Deshacer.
 
 ### Del Must
@@ -361,6 +417,23 @@ datos, y cifrado/ubicación/uso para entrenar IA del proveedor. La base está en
   archivos dos veces (se come las comillas de los props).
 - Los scripts largos de Node van a un archivo en el scratchpad, no inline: las
   comillas anidadas rompen el parser.
+- **Una edición no reenvía columnas derivadas de datos que el editor no
+  ve.** `updateSharedExpense` rearmaba el plan de cuotas en cada guardado
+  y, si editaba el que no pagó, lo hacía sin la tarjeta del pagador (PR-02)
+  y movía las fechas de impacto (F2) y el saldo. Ahora `shouldReplan`
+  (`domain/installments.ts`) decide: solo rearma si cambian la cantidad, la
+  fecha, quién pagó o el medio del pagador.
+- **`npx expo lint` NO está configurado.** Correrlo instala eslint y
+  modifica `package.json`. El chequeo del proyecto es `npm run verify`.
+- **vitest no puede importar `src/ui/tokens.ts`** (hace `require` de los
+  .ttf). La paleta y los temas viven en `src/ui/colors.ts`, que `tokens.ts`
+  re-exporta; `src/ui/contrast.test.ts` mide WCAG sobre eso.
+- **El lint CA-00 mira strings sueltos**: un id interno `'pagados'` cuenta
+  como "Pagado". En O3 el paso se llama `'conQue'`.
+- **Guardián de Alert:** `tools/alerts-are-confirmations.test.ts` falla si un
+  `Alert.alert` no trae botones. Los errores van por toast.
+- **Los subagentes se saltean "editar solo con Edit"** (usaron sed, Python y
+  `cat >>`). Hay que prohibirlo explícitamente en cada prompt.
 - **Nunca un junction de `node_modules` dentro de un `git worktree`.** El
   14/10, `git worktree remove --force` entró al junction y borró parte del
   `node_modules` real (se arregló con `npm ci`). Para verificar commits
@@ -493,3 +566,11 @@ El mail trae un **código de 8 dígitos** y el enlace. Cualquiera de los dos sir
 | **"Tu parte"** | Nunca "te corresponde" en la UI: se leía como plata que te deben. "Parte" es el sinónimo del glosario §7.2 | todo `features/spaces` |
 | **El mes del espacio** | Cuenta hasta hoy, igual que el saldo. Lo que falta: "Se vienen este mes" | `calculateSpaceMonth` |
 | **Todo pago se ve** | Un pago entre miembros no cambia "puso" (P-04), pero aparece en el mes y en movimientos | `SpaceScreen` |
+| **Tocable vs informativo** (15/10) | Toda fila tocable lleva `RowChevron`; las informativas, ni chevron ni rol de botón. Links de texto con `TextLink`, íconos con `IconButton`: área efectiva ≥44pt (`ui/touch.ts`) | `src/ui/primitives` |
+| **Acciones secundarias** | "Cancelar", "Ahora no", "Saltear": `Button ghost`, nunca texto suelto | `Button` |
+| **Color con un solo sentido** | `danger` = errores y destructivo (`Button destructive`). `excess` (ámbar) = SOLO N-08 y la marca de exceso: sin alarma (§15). Nada se distingue solo por color (tilde en chips, borde en el mes elegido) | `colors.ts` |
+| **Campos de texto** | Siempre `TextField` (variante `shared` en lo compartido). Excepciones: `AmountInput`, el código de 8 dígitos y el monto de `SplitPicker` | `TextField` |
+| **Errores** | Por toast (`useFeedback().error`, cierra el teclado). `Alert` solo para confirmaciones | `Toast`, `useFeedback` |
+| **Audiencia al guardar** | La línea "Solo vos lo ves" / "Lo ven vos y X" va en `SaveFooter`, sobre Guardar; Guardar es teal si el destino es un espacio | `SaveFooter` |
+| **Gestión desde Perfil** | Listas propias (`/fijo/ingresos`, `/fijo/gastos`, `/tarjetas`); el alta reutiliza el formulario del onboarding con `?desde=perfil`, que guarda y vuelve. Perfil nunca entra al wizard | `app/fijo`, `app/tarjetas` |
+| **Pantalla del espacio** | Saldo → acciones → pendientes en una fila (abierta si hay fijo detenido) → mes → próximos meses en hoja → 10 movimientos y "Ver todos". Lo decide `planSpaceLayout` | `spaceLayout.ts` |
