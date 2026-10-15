@@ -7,29 +7,16 @@
 
 import type { Month } from '@domain/calendar';
 import type { Recurrence } from '@domain/types';
+import { selectPersonalFixed } from './fixedSelection';
 
 /**
  * Los ingresos recurrentes personales que siguen vigentes, ordenados por día de
- * cobro (a igual día, el de mayor monto primero).
- *
- * Los que terminaron antes del mes en curso (F-03 "Dejar de pagarlo desde…")
- * ya no cuentan en el radar y no se listan. Los que empiezan más adelante sí:
- * ya están cargados y hay que poder corregirlos. Un ingreso es siempre personal
- * (§17 campo 1), pero `spaceId` se mira igual: el espacio no es de esta lista.
+ * cobro (a igual día, el de mayor monto primero). Un ingreso es siempre
+ * personal (§17 campo 1).
  */
 export function selectFixedIncomes(
   recurrences: readonly Recurrence[],
   currentMonth: Month,
 ): Recurrence[] {
-  return recurrences
-    .filter(
-      (recurrence) =>
-        recurrence.kind === 'income' &&
-        recurrence.spaceId == null &&
-        (recurrence.endMonth == null || recurrence.endMonth >= currentMonth),
-    )
-    .sort(
-      (a, b) =>
-        a.dayOfMonth - b.dayOfMonth || b.amount - a.amount || (a.id < b.id ? -1 : 1),
-    );
+  return selectPersonalFixed('income', recurrences, currentMonth);
 }
