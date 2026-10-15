@@ -4,11 +4,12 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addMonths, monthOf, type Month } from '@domain/calendar';
 import { activeInstallmentPlans, calculateFuture } from '@domain/future';
-import { calculateUpcomingPayments, upcomingFrom } from '@domain/upcoming';
+import { calculateUpcomingPayments } from '@domain/upcoming';
 import { formatInstallment, formatMonth, formatPaymentWhen } from '@/lib/format';
 import { prettyLabel } from '@/features/add/categories';
 import { FutureMonthDetail } from '@/features/future/FutureMonthDetail';
-import { useRouter } from 'expo-router';
+import { futurePaymentsView, initialPaymentsMonth } from '@/features/future/paymentsMonth';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import {
   AudienceBadge,
@@ -49,21 +50,42 @@ export default function Futuro() {
   const router = useRouter();
   const { facts, expansion, today, isLoading, refetch } = usePersonalFacts();
 
+  // §23.1 · las barras siguen arrancando en el mes que viene.
   const from = addMonths(monthOf(today), 1);
-  const [selectedMonth, setSelectedMonth] = useState<Month>(from);
+  const currentMonth = monthOf(today);
+
+  // UX-07 · "Ver todos" de Inicio abre este mes (param `mes`); `n` cambia en cada
+  // toque para que volver a pedirlo vuelva a elegirlo aunque `mes` sea el mismo.
+  const { mes, n } = useLocalSearchParams<{ mes?: string; n?: string }>();
+  const [selectedMonth, setSelectedMonth] = useState<Month>(() =>
+    initialPaymentsMonth(mes, today),
+  );
+  // Un pedido nuevo de Inicio re-elige el mes (se ajusta durante el render, sin efecto).
+  const request = `${mes ?? ''}|${n ?? ''}`;
+  const [handledRequest, setHandledRequest] = useState(request);
+  if (request !== handledRequest) {
+    setHandledRequest(request);
+    if (mes != null) setSelectedMonth(initialPaymentsMonth(mes, today));
+  }
   const [refreshing, setRefreshing] = useState(false);
 
   const future = useMemo(() => calculateFuture(expansion, from, 6), [expansion, from]);
   const maxCommitted = Math.max(...future.months.map((month) => month.committed), 1);
   const hasCommitments = future.months.some((month) => month.committed > 0);
 
-  // §23.2 · "en Futuro, todos los del mes elegido".
-  const payments = useMemo(
-    () =>
-      upcomingFrom(calculateUpcomingPayments(expansion, today), today).filter(
-        (payment) => payment.month === selectedMonth,
-      ),
-    [expansion, today, selectedMonth],
+  // §23.2 · "en Futuro, todos los del mes elegido"; UX-07 · el mes en curso, desde hoy.
+  const allPayments = useMemo(
+    () => calculateUpcomingPayments(expansion, today),
+    [expansion, today],
+  );
+  const paymentsView = useMemo(
+    () => futurePaymentsView({ payments: allPayments, today, selectedMonth }),
+    [allPayments, today, selectedMonth],
+  );
+  const payments = paymentsView.payments;
+  const hasPaymentsThisMonth = useMemo(
+    () => futurePaymentsView({ payments: allPayments, today, selectedMonth: currentMonth }).payments.length > 0,
+    [allPayments, today, currentMonth],
   );
 
   // §23.3 · cada compra en cuotas activa, con lo que falta.
@@ -73,7 +95,10 @@ export default function Futuro() {
     (recurrence) => recurrence.kind === 'expense' && recurrence.spaceId == null,
   );
 
-  const selected = future.months.find((month) => month.month === selectedMonth);
+  // UX-07 · el desglose es de los meses futuros: con el mes en curso elegido no hay.
+  const selected = paymentsView.showMonthDetail
+    ? future.months.find((month) => month.month === selectedMonth)
+    : undefined;
 
   async function onRefresh() {
     setRefreshing(true);
@@ -113,7 +138,7 @@ export default function Futuro() {
               <Skeleton key={index} height={14} />
             ))}
           </Stack>
-        ) : !hasCommitments ? (
+        ) : !hasCommitments && !hasPaymentsThisMonth ? (
           <EmptyState
             title="No tenés nada comprometido todavía."
             description="Cargá tus fijos y cuotas."
@@ -126,6 +151,14 @@ export default function Futuro() {
                 <Text variant="title">Tus próximos 6 meses</Text>
 
                 <Stack gap="3">
+                  {/* UX-07 · el mes en curso: solo para la lista de pagos, no es una barra. */}
+                  <CurrentMonthChip
+                    label="Este mes"
+                    hint="pagos desde hoy"
+                    selected={paymentsView.isCurrentMonth}
+                    onPress={() => setSelectedMonth(currentMonth)}
+                  />
+
                   {future.months.map((month, index) => (
                     <Pressable
                       key={month.month}
@@ -142,6 +175,7 @@ export default function Futuro() {
                         maxCommitted={maxCommitted}
                         index={index}
                         highlighted={month.month === selectedMonth}
+                        selectable
                       />
                     </Pressable>
                   ))}
@@ -149,7 +183,7 @@ export default function Futuro() {
 
                 <Text variant="caption" tone="muted">
                   Tu parte de fijos, cuotas y tarjetas que se pagan cada mes. Tocá un mes
-                  para ver su detalle.
+                  para ver su detalle. Este mes solo muestra los pagos que faltan.
                 </Text>
               </Stack>
             </Animated.View>
@@ -180,9 +214,16 @@ export default function Futuro() {
             )}
 
             {/* ── §23.2 · Próximos pagos del mes elegido ───────────────── */}
-            {payments.length > 0 && (
+            {paymentsView.showBlock && (
               <Stack gap="4">
-                <SectionHeader title="Próximos pagos" />
+                {/* UX-24 · el bloque dice de qué mes es. */}
+                <SectionHeader title={paymentsView.title} />
+
+                {payments.length === 0 && (
+                  <Text variant="small" tone="secondary">
+                    No tenés más pagos este mes.
+                  </Text>
+                )}
 
                 <Stack gap="0">
                   {payments.map((payment, index) => (
@@ -245,8 +286,8 @@ export default function Futuro() {
                 </Stack>
 
                 <Text variant="caption" tone="muted">
-                  Son los pagos que hacés vos. Lo que paga otra persona, aunque te
-                  corresponda una parte, se ve en el espacio compartido.
+                  Son los pagos que hacés vos. Lo que paga otra persona, aunque tengas
+                  una parte, se ve en el espacio compartido.
                 </Text>
               </Stack>
             )}
@@ -288,7 +329,13 @@ export default function Futuro() {
                                 : ''}
                               termina en {formatMonth(plan.endsOn, from)}
                             </Text>
-                            <Money amount={plan.remaining} variant="small" tone="secondary" />
+                            {/* UX-24 · el número de la derecha dice qué es. */}
+                            <Row gap="1" align="baseline">
+                              <Text variant="caption" tone="muted">
+                                faltan
+                              </Text>
+                              <Money amount={plan.remaining} variant="small" tone="secondary" />
+                            </Row>
                           </Row>
                         </Stack>
                       </Card>
@@ -296,9 +343,6 @@ export default function Futuro() {
                   ))}
                 </Stack>
 
-                <Text variant="caption" tone="muted">
-                  A la derecha, tu parte de lo que falta.
-                </Text>
               </Stack>
             )}
 
@@ -346,5 +390,54 @@ export default function Futuro() {
         )}
       </Stack>
     </ScrollView>
+  );
+}
+
+/**
+ * UX-07 · "Este mes" arriba de las barras: elige el mes en curso para la lista
+ * de pagos. Mismo tratamiento que una barra elegida (borde y fondo, UX-24).
+ */
+function CurrentMonthChip({
+  label,
+  hint,
+  selected,
+  onPress,
+}: {
+  label: string;
+  hint: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      scaleOnPress={false}
+      haptic="none"
+      accessibilityRole="button"
+      accessibilityLabel={`${label}, ${hint}`}
+      accessibilityState={{ selected }}
+    >
+      <Row
+        justify="space-between"
+        align="center"
+        style={{
+          paddingHorizontal: theme.space['3'],
+          paddingVertical: theme.space['2'],
+          borderRadius: theme.radius.md,
+          borderWidth: 1.5,
+          borderColor: selected ? theme.colors.brand : theme.colors.border,
+          backgroundColor: selected ? theme.colors.surface : 'transparent',
+        }}
+      >
+        <Text variant="smallMedium" tone={selected ? 'default' : 'secondary'}>
+          {label}
+        </Text>
+        <Text variant="caption" tone="muted">
+          {hint}
+        </Text>
+      </Row>
+    </Pressable>
   );
 }

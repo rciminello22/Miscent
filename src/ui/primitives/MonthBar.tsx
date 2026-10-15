@@ -17,6 +17,12 @@ export type MonthBarProps = {
   /** Posición en la lista: las barras entran en cascada. */
   index?: number;
   highlighted?: boolean;
+  /**
+   * UX-24 · la barra se puede elegir (Futuro). Lo elegido se distingue por el
+   * borde y el fondo, no solo por el color de la barra. Sin esto (Inicio, onboarding)
+   * la fila no cambia de tamaño.
+   */
+  selectable?: boolean;
 };
 
 /**
@@ -37,6 +43,7 @@ export function MonthBar({
   maxCommitted,
   index = 0,
   highlighted = false,
+  selectable = false,
 }: MonthBarProps) {
   const theme = useTheme();
   const ratio = useSharedValue(0);
@@ -51,7 +58,19 @@ export function MonthBar({
   }));
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space['3'] }}>
+    <View
+      style={[
+        { flexDirection: 'row', alignItems: 'center', gap: theme.space['3'] },
+        selectable && {
+          paddingHorizontal: theme.space['3'],
+          paddingVertical: theme.space['2'],
+          borderRadius: theme.radius.md,
+          borderWidth: 1.5,
+          borderColor: highlighted ? theme.colors.brand : 'transparent',
+          backgroundColor: highlighted ? theme.colors.surface : 'transparent',
+        },
+      ]}
+    >
       <Text
         variant="smallMedium"
         tone={highlighted ? 'default' : 'secondary'}

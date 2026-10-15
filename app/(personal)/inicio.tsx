@@ -9,6 +9,7 @@ import { calculateRadar } from '@domain/radar';
 import { calculateFuture } from '@domain/future';
 import { calculateUpcomingPayments, upcomingForHome } from '@domain/upcoming';
 import { formatMonth, formatPaymentWhen } from '@/lib/format';
+import { CURRENT_MONTH_PARAM } from '@/features/future/paymentsMonth';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { WhereFrom, type BreakdownTarget } from '@/features/breakdown/WhereFrom';
 import { CardPurchasesThisMonth, RadarSummary } from '@/features/radar/RadarSummary';
@@ -147,7 +148,16 @@ export default function Inicio() {
                   <SectionHeader
                     title="Próximos pagos"
                     action={
-                      <Pressable onPress={() => router.push('/(personal)/futuro')} haptic="none">
+                      <Pressable
+                        // UX-07 · abre Futuro en el mes en curso, donde está la lista completa.
+                        onPress={() =>
+                          router.push({
+                            pathname: '/(personal)/futuro',
+                            params: { mes: CURRENT_MONTH_PARAM, n: String(Date.now()) },
+                          })
+                        }
+                        haptic="none"
+                      >
                         <Row gap="1">
                           <Text variant="small" tone="brand">
                             Ver todos
