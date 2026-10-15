@@ -4,8 +4,11 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addMonths, monthOf, type Month } from '@domain/calendar';
 import { activeInstallmentPlans, calculateFuture } from '@domain/future';
-import { calculateUpcomingPayments } from '@domain/upcoming';
-import { formatInstallment, formatMonth, formatPaymentWhen } from '@/lib/format';
+import { calculateUpcomingPayments, type UpcomingPayment } from '@domain/upcoming';
+import { formatInstallment, formatMonth } from '@/lib/format';
+import { StatementDetailSheet } from '@/features/upcoming/StatementDetailSheet';
+import { UpcomingPaymentRow } from '@/features/upcoming/UpcomingPaymentRow';
+import { canOpenPayment, paymentLabel } from '@/features/upcoming/statementDetail';
 import { prettyLabel } from '@/features/add/categories';
 import { FutureMonthDetail } from '@/features/future/FutureMonthDetail';
 import { futurePaymentsView, initialPaymentsMonth } from '@/features/future/paymentsMonth';
@@ -68,6 +71,8 @@ export default function Futuro() {
     if (mes != null) setSelectedMonth(initialPaymentsMonth(mes, today));
   }
   const [refreshing, setRefreshing] = useState(false);
+  // UX-08 · el resumen estimado abierto en la hoja de detalle.
+  const [openPayment, setOpenPayment] = useState<UpcomingPayment | null>(null);
 
   const future = useMemo(() => calculateFuture(expansion, from, 6), [expansion, from]);
   const maxCommitted = Math.max(...future.months.map((month) => month.committed), 1);
@@ -231,55 +236,14 @@ export default function Futuro() {
                       key={payment.id}
                       entering={FadeInDown.delay(stagger(index, 50)).duration(duration.base)}
                     >
-                      <Row
-                        gap="3"
-                        align="flex-start"
-                        style={{ paddingVertical: theme.space['3'] }}
-                      >
-                        <Text variant="small" tone="muted" tabular style={{ width: 58 }}>
-                          {formatPaymentWhen({ date: payment.date, month: payment.month })}
-                        </Text>
-
-                        <View style={{ flex: 1, gap: 2 }}>
-                          <Text variant="smallMedium">{payment.label}</Text>
-
-                          {/* N-10 · todo resumen va rotulado. */}
-                          {payment.isEstimate && (
-                            <Text variant="caption" tone="muted">
-                              Estimado según lo que registraste
-                            </Text>
-                          )}
-
-                          {/* §7.3 · la parte del otro, siempre aclarada. */}
-                          {payment.includesOtherShare > 0 && payment.otherMemberName != null && (
-                            <Text variant="caption" tone="shared">
-                              incluye{' '}
-                              <Money
-                                amount={payment.includesOtherShare}
-                                variant="caption"
-                                tone="shared"
-                              />{' '}
-                              de {payment.otherMemberName}
-                            </Text>
-                          )}
-
-                          {/* T-05 · el modo aproximado se declara. */}
-                          {payment.approximate && (
-                            <Text variant="caption" tone="muted">
-                              Fechas aproximadas
-                            </Text>
-                          )}
-
-                          {/* G-06 · "Ya pasó", nunca "Pagado". */}
-                          {payment.hasPassed && (
-                            <Text variant="caption" tone="muted">
-                              Ya pasó
-                            </Text>
-                          )}
-                        </View>
-
-                        <Money amount={payment.amount} variant="smallMedium" />
-                      </Row>
+                      {/* UX-08 · el resumen estimado se abre (§23.2, §4.10). */}
+                      <View style={{ paddingVertical: theme.space['3'] }}>
+                        <UpcomingPaymentRow
+                          payment={payment}
+                          label={paymentLabel(payment, facts.paymentMethods)}
+                          onPress={canOpenPayment(payment) ? () => setOpenPayment(payment) : undefined}
+                        />
+                      </View>
                       {index < payments.length - 1 && <Divider />}
                     </Animated.View>
                   ))}
@@ -389,6 +353,12 @@ export default function Futuro() {
           </>
         )}
       </Stack>
+
+      <StatementDetailSheet
+        payment={openPayment}
+        methods={facts.paymentMethods}
+        onClose={() => setOpenPayment(null)}
+      />
     </ScrollView>
   );
 }

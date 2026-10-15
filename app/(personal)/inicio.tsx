@@ -7,8 +7,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addMonths, monthOf } from '@domain/calendar';
 import { calculateRadar } from '@domain/radar';
 import { calculateFuture } from '@domain/future';
-import { calculateUpcomingPayments, upcomingForHome } from '@domain/upcoming';
-import { formatMonth, formatPaymentWhen } from '@/lib/format';
+import {
+  calculateUpcomingPayments,
+  upcomingForHome,
+  type UpcomingPayment,
+} from '@domain/upcoming';
+import { formatMonth } from '@/lib/format';
+import { StatementDetailSheet } from '@/features/upcoming/StatementDetailSheet';
+import { UpcomingPaymentRow } from '@/features/upcoming/UpcomingPaymentRow';
+import { canOpenPayment, paymentLabel } from '@/features/upcoming/statementDetail';
 import { CURRENT_MONTH_PARAM } from '@/features/future/paymentsMonth';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { WhereFrom, type BreakdownTarget } from '@/features/breakdown/WhereFrom';
@@ -54,6 +61,8 @@ export default function Inicio() {
   const [refreshing, setRefreshing] = useState(false);
   // M18 · cada cifra del radar se puede abrir y ver de qué está hecha.
   const [breakdown, setBreakdown] = useState<BreakdownTarget>(null);
+  // UX-08 · el resumen estimado abierto en la hoja de detalle.
+  const [openPayment, setOpenPayment] = useState<UpcomingPayment | null>(null);
 
   const month = monthOf(today);
 
@@ -174,42 +183,13 @@ export default function Inicio() {
                         key={payment.id}
                         entering={FadeInDown.delay(stagger(index, 60)).duration(duration.base)}
                       >
-                        <Row gap="3" align="flex-start">
-                          <Text
-                            variant="small"
-                            tone="muted"
-                            tabular
-                            style={{ width: 54 }}
-                          >
-                            {formatPaymentWhen({ date: payment.date, month: payment.month })}
-                          </Text>
-
-                          <View style={{ flex: 1, gap: 2 }}>
-                            <Text variant="bodyMedium">{payment.label}</Text>
-                            {/* N-10 · todo resumen va rotulado como estimado. */}
-                            {payment.isEstimate && (
-                              <Text variant="caption" tone="muted">
-                                Estimado según lo que registraste
-                              </Text>
-                            )}
-                            {/* §7.3 · la parte del otro, siempre aclarada. */}
-                            {payment.includesOtherShare > 0 && payment.otherMemberName != null && (
-                              <Text variant="caption" tone="shared">
-                                incluye{' '}
-                                <Money amount={payment.includesOtherShare} variant="caption" tone="shared" />{' '}
-                                de {payment.otherMemberName}
-                              </Text>
-                            )}
-                            {/* G-06 · "Ya pasó", nunca "Pagado". */}
-                            {payment.hasPassed && (
-                              <Text variant="caption" tone="muted">
-                                Ya pasó
-                              </Text>
-                            )}
-                          </View>
-
-                          <Money amount={payment.amount} variant="bodyMedium" />
-                        </Row>
+                        {/* UX-08 · el resumen estimado se abre (§23.2, §4.10). */}
+                        <UpcomingPaymentRow
+                          payment={payment}
+                          label={paymentLabel(payment, facts.paymentMethods)}
+                          size="body"
+                          onPress={canOpenPayment(payment) ? () => setOpenPayment(payment) : undefined}
+                        />
                       </Animated.View>
                     ))}
                   </Stack>
@@ -259,6 +239,12 @@ export default function Inicio() {
           </>
         )}
       </Stack>
+
+      <StatementDetailSheet
+        payment={openPayment}
+        methods={facts.paymentMethods}
+        onClose={() => setOpenPayment(null)}
+      />
 
       <WhereFrom
         target={breakdown}

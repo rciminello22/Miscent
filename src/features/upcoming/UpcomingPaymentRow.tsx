@@ -1,7 +1,10 @@
 import { View } from 'react-native';
+import { ChevronRight } from 'lucide-react-native';
 import type { UpcomingPayment } from '@domain/upcoming';
 import { formatPaymentWhen } from '@/lib/format';
-import { Money, Row, Text } from '@/ui/primitives';
+import { Money, Pressable, Row, Text } from '@/ui/primitives';
+import { useTheme } from '@/ui/theme';
+import { ESTIMATE_NOTE } from './statementDetail';
 
 /**
  * §23.2 · una fila de Próximos pagos.
@@ -22,7 +25,7 @@ import { Money, Row, Text } from '@/ui/primitives';
  */
 
 export const UPCOMING_COPY = {
-  estimate: 'Estimado según lo que registraste',
+  estimate: ESTIMATE_NOTE,
   approximate: 'Fechas aproximadas',
   /** G-06 · el estado correcto. "Pagado" está prohibido (CA-45). */
   past: 'Ya pasó',
@@ -33,18 +36,30 @@ export function UpcomingPaymentRow({
   payment,
   /** El nombre legible del medio de pago, que la pantalla resuelve. */
   label,
+  /**
+   * UX-08 · §4.10 · "cada número se puede abrir": si viene, la fila es un botón con
+   * chevron que abre el detalle. Sin esto es informativa.
+   */
+  onPress,
+  /** Inicio usa el cuerpo grande; Futuro, el chico. */
+  size = 'small',
 }: {
   payment: UpcomingPayment;
   label?: string;
+  onPress?: () => void;
+  size?: 'small' | 'body';
 }) {
-  return (
+  const theme = useTheme();
+  const body = size === 'body';
+
+  const row = (
     <Row gap="3" align="flex-start">
-      <Text variant="small" tone="muted" tabular style={{ width: 58 }}>
+      <Text variant="small" tone="muted" tabular style={{ width: body ? 54 : 58 }}>
         {formatPaymentWhen({ date: payment.date, month: payment.month })}
       </Text>
 
       <View style={{ flex: 1, gap: 2 }}>
-        <Text variant="smallMedium">{label ?? payment.label}</Text>
+        <Text variant={body ? 'bodyMedium' : 'smallMedium'}>{label ?? payment.label}</Text>
 
         {/* N-10 / CA-35 */}
         {payment.isEstimate && (
@@ -81,7 +96,28 @@ export function UpcomingPaymentRow({
         )}
       </View>
 
-      <Money amount={payment.amount} variant="smallMedium" />
+      <Money amount={payment.amount} variant={body ? 'bodyMedium' : 'smallMedium'} />
+
+      {onPress != null && (
+        // UX-11 · lo tocable lleva chevron.
+        <View style={{ height: body ? 23 : 20, justifyContent: 'center' }}>
+          <ChevronRight size={14} color={theme.colors.textMuted} />
+        </View>
+      )}
     </Row>
+  );
+
+  if (onPress == null) return row;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      scaleOnPress={false}
+      haptic="none"
+      accessibilityRole="button"
+      accessibilityHint="Ver de qué se compone este resumen"
+    >
+      {row}
+    </Pressable>
   );
 }
