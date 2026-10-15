@@ -34,7 +34,8 @@ import { balanceSentence } from '@/features/spaces/balanceCopy';
 import { SplitPicker } from '@/features/spaces/SplitPicker';
 import { DeletedWhileEditing, type DeletedBy } from '@/features/spaces/DeletedWhileEditing';
 import { confirmDiscardChanges } from '@/features/edit/confirmDiscard';
-import { hasUnsavedChanges, type EditFormValues } from '@/features/edit/editForm';
+import { DateEditField } from '@/features/edit/DateEditField';
+import { dateEditability, hasUnsavedChanges, type EditFormValues } from '@/features/edit/editForm';
 import { AmountInput } from '@/features/add/AmountInput';
 import { installmentCountIssue, isValidInstallmentCount } from '@/features/add/installmentCount';
 import { CategoryGrid } from '@/features/add/CategoryGrid';
@@ -114,6 +115,8 @@ export default function GastoCompartido() {
   );
   const [description, setDescription] = useState(expense?.description ?? '');
   const [paymentMethodId, setPaymentMethodId] = useState<string | null>(null);
+  // UX-18 · la fecha se edita solo si es de un solo pago (ver `dateEditability`).
+  const [date, setDate] = useState(expense?.date ?? today);
   /** UX-18 · el formulario tal como estaba al tocar Editar, para saber si hay cambios sin guardar. */
   const [initialForm, setInitialForm] = useState<EditFormValues | null>(null);
 
@@ -145,7 +148,7 @@ export default function GastoCompartido() {
 
       await updateSharedExpense(expense.id, {
         amount,
-        date: expense.date,
+        date,
         category,
         description: description.trim() === '' ? null : description.trim(),
         payerSlot: payerIsMe ? derived.mySlot : derived.other.slot,
@@ -187,7 +190,7 @@ export default function GastoCompartido() {
       await createSharedExpense({
         spaceId,
         amount,
-        date: snapshot.date,
+        date,
         category,
         description: description.trim() === '' ? null : description.trim(),
         payerSlot: payerIsMe ? derived.mySlot : derived.other.slot,
@@ -321,7 +324,7 @@ export default function GastoCompartido() {
 
   const currentForm: EditFormValues = {
     amount,
-    date: expense.date,
+    date,
     category,
     paymentMethodId,
     installmentCount,
@@ -547,6 +550,7 @@ export default function GastoCompartido() {
                   // C-05 · el medio con que lo pagó, para no perderlo al
                   // guardar: sin medio, el detalle de pago se borra.
                   setPaymentMethodId(currentPaymentMethodId);
+                  setDate(expense.date);
                   setInitialForm({
                     amount: expense.amount,
                     date: expense.date,
@@ -652,6 +656,16 @@ export default function GastoCompartido() {
                   onChange={setInstallmentCount}
                 />
               </Field>
+
+              {/* UX-18 · X-02 · editable salvo en una compra en cuotas (F2): el
+                  plan guarda el mes y el día de cada cuota, que salen de la
+                  tarjeta de quien pagó y el otro miembro no la ve (PR-02). */}
+              <DateEditField
+                value={date}
+                onChange={setDate}
+                today={today}
+                editability={dateEditability(expense)}
+              />
 
               <Field label="Descripción (opcional)">
                 <TextField

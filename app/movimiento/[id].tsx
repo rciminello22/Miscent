@@ -27,7 +27,8 @@ import {
   prettyLabel,
 } from '@/features/add/categories';
 import { confirmDiscardChanges } from '@/features/edit/confirmDiscard';
-import { hasUnsavedChanges, type EditFormValues } from '@/features/edit/editForm';
+import { DateEditField } from '@/features/edit/DateEditField';
+import { dateEditability, hasUnsavedChanges, type EditFormValues } from '@/features/edit/editForm';
 import { Field, InstallmentCountPicker } from '@/features/add/fields';
 import { installmentCountIssue, isValidInstallmentCount } from '@/features/add/installmentCount';
 import { PaymentMethodField } from '@/features/add/PaymentMethodField';
@@ -89,6 +90,8 @@ export default function MovimientoDetalle() {
     movement?.installments?.count ?? null,
   );
   const [description, setDescription] = useState(movement?.description ?? '');
+  // UX-18 · la fecha se edita solo si es de un solo pago (ver `dateEditability`).
+  const [date, setDate] = useState(movement?.date ?? today);
 
   const method = facts.paymentMethods.find((item) => item.id === paymentMethodId) ?? null;
 
@@ -103,7 +106,7 @@ export default function MovimientoDetalle() {
       if (movement == null || category == null) return;
       await updatePersonalMovement(movement.id, {
         amount,
-        date: movement.date,
+        date,
         category,
         description: description.trim() === '' ? null : description.trim(),
         paymentMethod: method,
@@ -179,7 +182,7 @@ export default function MovimientoDetalle() {
   };
   const currentForm: EditFormValues = {
     amount,
-    date: movement.date,
+    date,
     category,
     paymentMethodId,
     installmentCount,
@@ -192,6 +195,7 @@ export default function MovimientoDetalle() {
     setPaymentMethodId(initialForm.paymentMethodId);
     setInstallmentCount(initialForm.installmentCount);
     setDescription(initialForm.description);
+    setDate(initialForm.date);
     setEditing(false);
   }
 
@@ -400,6 +404,14 @@ export default function MovimientoDetalle() {
                   />
                 </Field>
               )}
+
+              {/* UX-18 · X-01 · editable salvo en una compra en cuotas (F2). */}
+              <DateEditField
+                value={date}
+                onChange={setDate}
+                today={today}
+                editability={dateEditability(movement)}
+              />
 
               <Field label="Descripción (opcional)">
                 <TextField

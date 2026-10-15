@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { hasUnsavedChanges, type EditFormValues } from './editForm';
+import type { InstallmentPlan } from '@domain/types';
+import { dateEditability, hasUnsavedChanges, type EditFormValues } from './editForm';
 
 /**
- * UX-18 · cuándo hay cambios sin guardar en la edición de un gasto. TS puro.
+ * UX-18 · qué se puede editar de un gasto ya cargado y cuándo hay cambios sin
+ * guardar. TS puro.
  */
 
 const BASE: EditFormValues = {
@@ -90,5 +92,24 @@ describe('hasUnsavedChanges · gasto compartido', () => {
         split: { mode: 'custom', shareSlot1: 8_000, shareSlot2: 4_000 },
       }),
     ).toBe(true);
+  });
+});
+
+describe('dateEditability · X-01, X-04 y F2', () => {
+  const plan: InstallmentPlan = { count: 6, firstMonth: '2026-11', impactDay: 5, approximate: false };
+
+  it('un gasto de un solo pago se puede mover de fecha', () => {
+    expect(dateEditability({ installments: null })).toEqual({ editable: true });
+  });
+
+  it('una compra en cuotas no: de su fecha salen el mes y el día de cada cuota', () => {
+    const result = dateEditability({ installments: plan });
+
+    expect(result.editable).toBe(false);
+    if (!result.editable) {
+      expect(result.reason).toBe(
+        'La fecha de una compra en cuotas no se cambia: de ella salen los meses de las cuotas.',
+      );
+    }
   });
 });

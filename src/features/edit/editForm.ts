@@ -1,6 +1,32 @@
 import type { IsoDate } from '@domain/calendar';
 import type { Pesos } from '@domain/money';
-import type { Category, Split } from '@domain/types';
+import type { Category, InstallmentPlan, Split } from '@domain/types';
+
+/**
+ * ¿Se puede cambiar la fecha de este gasto ya cargado?
+ *
+ * Un gasto de un solo pago, sí: lo único que se guarda es la fecha y todo lo
+ * demás (mes de la tarjeta, saldo del espacio, radar) se calcula en memoria
+ * desde ella (X-01, §7.4).
+ *
+ * Una compra en cuotas, no: el plan guarda el mes de la primera cuota y el
+ * día de impacto, que salen de la fecha Y de la tarjeta de quien pagó (F2).
+ * Mover la fecha obligaría a recalcularlos, y en un gasto compartido quien
+ * edita puede ser el otro miembro, que no ve esa tarjeta (PR-02): pisaría el
+ * plan de quien pagó con uno calculado sin ella. Para corregirla se elimina
+ * ("Fue un error") y se vuelve a cargar.
+ */
+export type DateEditability = { editable: true } | { editable: false; reason: string };
+
+export function dateEditability(original: {
+  installments: InstallmentPlan | null;
+}): DateEditability {
+  if (original.installments == null) return { editable: true };
+  return {
+    editable: false,
+    reason: 'La fecha de una compra en cuotas no se cambia: de ella salen los meses de las cuotas.',
+  };
+}
 
 /**
  * La edición de un gasto ya cargado (UX-18). TS puro.
