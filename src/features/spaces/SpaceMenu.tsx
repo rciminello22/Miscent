@@ -189,18 +189,20 @@ export function SpaceMenu({
           {canRemoveOther && (
             <>
               <MenuRow
-                icon={<UserX size={17} color={theme.colors.textSecondary} />}
+                icon={<UserX size={17} color={theme.colors.danger} />}
                 label={`Quitarle el acceso a ${otherMemberName}`}
+                tone="danger"
                 onPress={confirmRemove}
               />
               <Divider />
             </>
           )}
 
+          {/* UX-13 · lo destructivo va en danger, no en el ámbar de N-08. */}
           <MenuRow
-            icon={<LogOut size={17} color={theme.colors.excess} />}
+            icon={<LogOut size={17} color={theme.colors.danger} />}
             label="Salir del espacio"
-            tone="excess"
+            tone="danger"
             onPress={() => go(`/space/${spaceId}/salir`)}
           />
         </Stack>
@@ -218,7 +220,7 @@ function MenuRow({
   icon: React.ReactNode;
   label: string;
   onPress: () => void;
-  tone?: 'default' | 'excess';
+  tone?: 'default' | 'danger';
 }) {
   const theme = useTheme();
 
@@ -232,7 +234,7 @@ function MenuRow({
     >
       <Row gap="3" align="center">
         {icon}
-        <Text variant="body" tone={tone === 'excess' ? 'excess' : 'default'}>
+        <Text variant="body" tone={tone}>
           {label}
         </Text>
       </Row>

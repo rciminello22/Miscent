@@ -36,7 +36,8 @@ const SURFACES: Record<keyof typeof colorSchemes, (keyof ThemeColors)[]> = {
   dark: ['background', 'surface', 'surfaceRaised', 'surfaceSunken'],
 };
 
-const TEXT_TOKENS: (keyof ThemeColors)[] = ['textMuted', 'excess'];
+// UX-13 · `danger` también se pinta como TEXTO (errores y acciones destructivas).
+const TEXT_TOKENS: (keyof ThemeColors)[] = ['textMuted', 'excess', 'danger'];
 
 describe('UX-02 · contraste mínimo 4,5:1 del texto de ayuda', () => {
   it('la función de contraste es la de WCAG (negro sobre blanco = 21:1)', () => {
@@ -53,6 +54,61 @@ describe('UX-02 · contraste mínimo 4,5:1 del texto de ayuda', () => {
         });
       }
     }
+  }
+});
+
+/**
+ * UX-13 · `excess` tenía tres significados (N-08, errores, destructivo). Ahora
+ * `danger` es SOLO de errores y de lo destructivo, y `excess` queda para N-08 y la
+ * marca de exceso de la barra. Que sean tokens distintos es el punto.
+ */
+function hue(hex: string): number {
+  const n = parseInt(hex.replace('#', ''), 16);
+  const [r, g, b] = [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+  const max = Math.max(r, g, b);
+  const delta = max - Math.min(r, g, b);
+  if (delta === 0) return 0;
+  let h: number;
+  if (max === r) h = ((g - b) / delta) % 6;
+  else if (max === g) h = (b - r) / delta + 2;
+  else h = (r - g) / delta + 4;
+  return (h * 60 + 360) % 360;
+}
+
+describe('UX-13 · danger y excess son tokens distintos', () => {
+  for (const scheme of ['light', 'dark'] as const) {
+    const colors = colorSchemes[scheme];
+
+    it(`${scheme} · danger no es excess`, () => {
+      expect(colors.danger).not.toBe(colors.excess);
+    });
+
+    it(`${scheme} · danger es rojo (matiz < 20° o > 340°) y excess sigue siendo ámbar (30° a 50°)`, () => {
+      const dangerHue = hue(colors.danger);
+      expect(dangerHue < 20 || dangerHue > 340).toBe(true);
+
+      const excessHue = hue(colors.excess);
+      expect(excessHue).toBeGreaterThanOrEqual(30);
+      expect(excessHue).toBeLessThanOrEqual(50);
+    });
+
+    it(`${scheme} · danger se distingue del ámbar por el matiz, no solo por el brillo`, () => {
+      expect(Math.abs(hue(colors.excess) - hue(colors.danger))).toBeGreaterThanOrEqual(20);
+    });
+  }
+});
+
+describe('UX-13 · el aviso de error (Toast) tiene la superficie invertida', () => {
+  // La superficie del Toast es `text` del tema actual; su marca usa el `danger` del otro.
+  const pairs = [
+    ['light', 'dark'],
+    ['dark', 'light'],
+  ] as const;
+
+  for (const [scheme, other] of pairs) {
+    it(`${scheme} · el danger de ${other} se lee sobre el aviso (>= 4,5:1)`, () => {
+      expect(contrast(colorSchemes[other].danger, colorSchemes[scheme].text)).toBeGreaterThanOrEqual(AA);
+    });
   }
 });
 

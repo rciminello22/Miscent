@@ -81,7 +81,7 @@ export function SaveAccessCard() {
         )}
 
         {access.error != null && (
-          <Text variant="small" tone="excess">
+          <Text variant="small" tone="danger">
             {access.error}
           </Text>
         )}

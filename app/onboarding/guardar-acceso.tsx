@@ -72,7 +72,7 @@ export default function GuardarAcceso() {
             />
           </View>
           {access.error != null && (
-            <Text variant="small" tone="excess">
+            <Text variant="small" tone="danger">
               {access.error}
             </Text>
           )}
@@ -111,7 +111,7 @@ export default function GuardarAcceso() {
           />
         </View>
         {access.error != null && (
-          <Text variant="small" tone="excess">
+          <Text variant="small" tone="danger">
             {access.error}
           </Text>
         )}

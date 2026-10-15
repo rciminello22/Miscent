@@ -37,7 +37,6 @@ import {
   Divider,
   IconButton,
   Money,
-  Pressable,
   Row,
   Screen,
   SectionHeader,
@@ -327,14 +326,15 @@ export default function MovimientoDetalle() {
                 />
               )}
 
-              <Pressable onPress={confirmDelete} haptic="none" scaleOnPress={false}>
-                <Row gap="2" justify="center" align="center" style={{ paddingVertical: 12 }}>
-                  <Trash2 size={14} color={theme.colors.excess} />
-                  <Text variant="small" tone="excess">
-                    {movement.installments != null ? 'Eliminar o terminar' : 'Eliminar'}
-                  </Text>
-                </Row>
-              </Pressable>
+              {/* UX-13 · lo destructivo tiene lenguaje propio (danger), no el ámbar de N-08. */}
+              <Button
+                label={movement.installments != null ? 'Eliminar o terminar' : 'Eliminar'}
+                variant="destructive"
+                fullWidth
+                haptic="none"
+                icon={<Trash2 size={14} color={theme.colors.danger} />}
+                onPress={confirmDelete}
+              />
             </Stack>
           </>
         ) : (

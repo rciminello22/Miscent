@@ -2,7 +2,19 @@ import { Text as RNText, type TextProps as RNTextProps, type TextStyle } from 'r
 import { useTheme } from '../theme';
 import type { TypographyVariant } from '../tokens';
 
-type Tone = 'default' | 'secondary' | 'muted' | 'brand' | 'shared' | 'onBrand' | 'excess';
+/**
+ * `excess` es SOLO de N-08 (sin alarma); `danger` es SOLO de errores y de lo
+ * destructivo (UX-13).
+ */
+type Tone =
+  | 'default'
+  | 'secondary'
+  | 'muted'
+  | 'brand'
+  | 'shared'
+  | 'onBrand'
+  | 'excess'
+  | 'danger';
 
 export type TextProps = RNTextProps & {
   variant?: TypographyVariant;
@@ -33,6 +45,7 @@ export function Text({
     shared: theme.colors.shared,
     onBrand: theme.colors.textOnBrand,
     excess: theme.colors.excess,
+    danger: theme.colors.danger,
   }[tone];
 
   return (

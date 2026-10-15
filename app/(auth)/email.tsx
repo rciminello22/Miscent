@@ -141,7 +141,7 @@ export default function Email() {
 
           {error != null && (
             <Animated.View entering={FadeInDown.duration(duration.quick)}>
-              <Text variant="small" tone="excess">
+              <Text variant="small" tone="danger">
                 {error}
               </Text>
             </Animated.View>

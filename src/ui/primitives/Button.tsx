@@ -6,7 +6,11 @@ import { Text } from './Text';
 export type ButtonProps = {
   label: string;
   onPress?: () => void;
-  variant?: 'primary' | 'secondary' | 'ghost' | 'shared';
+  /**
+   * `destructive` (UX-13): lo que elimina o saca algo. Superficie con borde y
+   * texto `danger`: se distingue de una acción neutra sin gritar.
+   */
+  variant?: 'primary' | 'secondary' | 'ghost' | 'shared' | 'destructive';
   size?: 'md' | 'lg';
   disabled?: boolean;
   loading?: boolean;
@@ -37,6 +41,7 @@ export function Button({
     secondary: theme.colors.surface,
     ghost: 'transparent',
     shared: theme.colors.shared,
+    destructive: theme.colors.surface,
   }[variant];
 
   const textTone = {
@@ -44,7 +49,11 @@ export function Button({
     secondary: 'default' as const,
     ghost: 'brand' as const,
     shared: 'onBrand' as const,
+    destructive: 'danger' as const,
   }[variant];
+
+  const bordered = variant === 'secondary' || variant === 'destructive';
+  const borderColor = variant === 'destructive' ? theme.colors.danger : theme.colors.border;
 
   const height = size === 'lg' ? 54 : 46;
 
@@ -61,8 +70,8 @@ export function Button({
           borderRadius: theme.radius.md,
           paddingHorizontal: theme.space['5'],
           backgroundColor: background,
-          borderWidth: variant === 'secondary' ? 1 : 0,
-          borderColor: theme.colors.border,
+          borderWidth: bordered ? 1 : 0,
+          borderColor,
           alignItems: 'center',
           justifyContent: 'center',
           flexDirection: 'row',
@@ -76,7 +85,13 @@ export function Button({
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={variant === 'primary' || variant === 'shared' ? theme.colors.textOnBrand : theme.colors.brand}
+          color={
+            variant === 'primary' || variant === 'shared'
+              ? theme.colors.textOnBrand
+              : variant === 'destructive'
+                ? theme.colors.danger
+                : theme.colors.brand
+          }
         />
       ) : (
         <>

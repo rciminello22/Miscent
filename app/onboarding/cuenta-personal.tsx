@@ -86,7 +86,7 @@ export default function CuentaPersonal() {
           />
 
           {error != null && (
-            <Text variant="small" tone="excess">
+            <Text variant="small" tone="danger">
               {error}
             </Text>
           )}

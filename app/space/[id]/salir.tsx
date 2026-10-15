@@ -243,8 +243,10 @@ export default function Salir() {
                     Vas a dejar de ver {facts.space.name}. No se puede deshacer.
                   </Text>
                 </Card>
+                {/* UX-13 · la confirmación final es destructiva: danger, no el índigo de una acción neutra. */}
                 <Button
                   label="Salir del espacio"
+                  variant="destructive"
                   size="lg"
                   fullWidth
                   loading={leave.isPending}

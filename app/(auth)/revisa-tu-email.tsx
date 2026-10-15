@@ -139,7 +139,7 @@ export default function RevisaTuEmail() {
 
           {error != null && (
             <Animated.View entering={FadeIn.duration(duration.quick)}>
-              <Text variant="small" tone="excess">
+              <Text variant="small" tone="danger">
                 {error}
               </Text>
             </Animated.View>

@@ -38,11 +38,15 @@ export const palette = {
   teal300: '#7FD4CE',
   teal100: '#DDF3F1',
 
-  /* Para montos negativos y avisos. Ámbar, nunca rojo (§15). */
+  /* N-08 y la marca de exceso de la barra. Ámbar, nunca rojo (§15). */
   amber700: '#8A5A00',
   amber600: '#A86E00',
   amber500: '#C98A14',
   amber100: '#FCF0D8',
+
+  /* UX-13 · rojo apagado para errores y acciones destructivas. Nunca para N-08. */
+  red700: '#B3382F',
+  red400: '#E57373',
 } as const;
 
 type ThemeColors = {
@@ -76,6 +80,12 @@ type ThemeColors = {
   unassignedTrack: string;
   /** N-08 · el exceso sobre los ingresos registrados. Sin alarma. */
   excess: string;
+  /**
+   * UX-13 · SOLO errores y acciones destructivas (Eliminar, Salir, Quitar acceso).
+   * Rojo apagado, no de alarma; ≥4,5:1 como texto sobre todas las superficies.
+   * Nunca en N-08: "tus gastos superan tus ingresos" no es un error ni un peligro.
+   */
+  danger: string;
 
   /* Estados */
   skeleton: string;
@@ -111,6 +121,7 @@ const light: ThemeColors = {
   /* UX-02 · se usa como TEXTO (N-08, errores): amber500 daba 2,75:1. Como marca de
      la barra sigue leyéndose (4,5:1 contra el track). Sigue siendo ámbar, no rojo (§15). */
   excess: palette.amber700,
+  danger: palette.red700,
 
   skeleton: palette.ink100,
   overlay: 'rgba(20, 20, 24, 0.45)',
@@ -142,6 +153,7 @@ const dark: ThemeColors = {
   committed: palette.brand450,
   unassignedTrack: palette.ink800,
   excess: palette.amber500,
+  danger: palette.red400,
 
   skeleton: palette.ink800,
   overlay: 'rgba(0, 0, 0, 0.6)',

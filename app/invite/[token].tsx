@@ -215,7 +215,7 @@ export default function Invite() {
 
         <Stack gap="3">
           {entryError != null && (
-            <Text variant="small" tone="excess">
+            <Text variant="small" tone="danger">
               {entryError}
             </Text>
           )}

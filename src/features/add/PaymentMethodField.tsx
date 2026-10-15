@@ -50,7 +50,7 @@ export function PaymentMethodField({
     <>
       <PaymentMethodPicker options={options} value={value} onPress={(option) => void choose(option)} />
       {create.error != null && (
-        <Text variant="caption" tone="excess">
+        <Text variant="caption" tone="danger">
           {create.error.message}
         </Text>
       )}

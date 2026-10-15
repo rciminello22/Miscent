@@ -58,7 +58,7 @@ export function PaymentDetail({
         ustedes: no cambia lo que puso cada uno ni el radar de nadie.
       </Text>
 
-      <Button label="Eliminar este pago" variant="ghost" fullWidth onPress={onDelete} />
+      <Button label="Eliminar este pago" variant="destructive" fullWidth onPress={onDelete} />
     </Stack>
   );
 }

@@ -235,7 +235,7 @@ export default function Pago() {
                 </View>
 
                 {overpays && (
-                  <Text variant="caption" tone="excess" align="center">
+                  <Text variant="caption" tone="secondary" align="center">
                     El pago es mayor que lo que se deben, así que el saldo se da vuelta.
                   </Text>
                 )}

@@ -4,6 +4,7 @@ import { Keyboard, View } from 'react-native';
 import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { duration } from '../motion';
+import { colorSchemes } from '../colors';
 import { useTheme } from '../theme';
 import { MIN_TARGET, hitSlopFor } from '../touch';
 import { Pressable } from './Pressable';
@@ -83,6 +84,9 @@ function ToastView({ toast, onDismiss }: { toast: ToastInput; onDismiss: () => v
   // Superficie invertida: contrasta con cualquier pantalla, en claro y oscuro.
   const background = theme.colors.text;
   const foreground = theme.colors.background;
+  // UX-13 · el aviso de error marca su borde con `danger`. La superficie está invertida,
+  // así que va el `danger` del OTRO tema: el que se lee sobre ese fondo (≥4,5:1).
+  const errorMarker = colorSchemes[theme.scheme === 'dark' ? 'light' : 'dark'].danger;
 
   return (
     <Animated.View
@@ -105,7 +109,7 @@ function ToastView({ toast, onDismiss }: { toast: ToastInput; onDismiss: () => v
           backgroundColor: background,
           borderRadius: theme.radius.lg,
           borderLeftWidth: isError ? 4 : 0,
-          borderLeftColor: theme.colors.excess,
+          borderLeftColor: errorMarker,
           paddingVertical: theme.space['3'],
           paddingHorizontal: theme.space['4'],
           shadowColor: '#000',
