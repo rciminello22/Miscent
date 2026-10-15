@@ -26,6 +26,8 @@ import {
   INCOME_CATEGORIES,
   prettyLabel,
 } from '@/features/add/categories';
+import { confirmDiscardChanges } from '@/features/edit/confirmDiscard';
+import { hasUnsavedChanges, type EditFormValues } from '@/features/edit/editForm';
 import { Field, InstallmentCountPicker } from '@/features/add/fields';
 import { installmentCountIssue, isValidInstallmentCount } from '@/features/add/installmentCount';
 import { PaymentMethodField } from '@/features/add/PaymentMethodField';
@@ -166,6 +168,39 @@ export default function MovimientoDetalle() {
     installmentCount != null &&
     schedule.some((item) => item.month < monthOf(today));
 
+  // UX-18 · lo que había al tocar Editar contra lo que hay ahora.
+  const initialForm: EditFormValues = {
+    amount: movement.amount,
+    date: movement.date,
+    category: movement.category,
+    paymentMethodId: movement.paymentMethodId,
+    installmentCount: movement.installments?.count ?? null,
+    description: movement.description ?? '',
+  };
+  const currentForm: EditFormValues = {
+    amount,
+    date: movement.date,
+    category,
+    paymentMethodId,
+    installmentCount,
+    description,
+  };
+
+  function stopEditing() {
+    setAmount(initialForm.amount);
+    setCategory(initialForm.category);
+    setPaymentMethodId(initialForm.paymentMethodId);
+    setInstallmentCount(initialForm.installmentCount);
+    setDescription(initialForm.description);
+    setEditing(false);
+  }
+
+  /** "Cancelar" y la X: con cambios sin guardar, preguntan antes de tirarlos. */
+  function leaveEditing(then: () => void) {
+    if (hasUnsavedChanges(initialForm, currentForm)) confirmDiscardChanges(then);
+    else then();
+  }
+
   function confirmDelete() {
     // X-06 · dos intenciones distintas, dos opciones distintas.
     if (movement!.installments != null) {
@@ -216,14 +251,7 @@ export default function MovimientoDetalle() {
               variant="ghost"
               fullWidth
               haptic="none"
-              onPress={() => {
-                setAmount(movement.amount);
-                setCategory(movement.category);
-                setPaymentMethodId(movement.paymentMethodId);
-                setInstallmentCount(movement.installments?.count ?? null);
-                setDescription(movement.description ?? '');
-                setEditing(false);
-              }}
+              onPress={() => leaveEditing(stopEditing)}
             />
           </Stack>
         ) : undefined
@@ -236,7 +264,7 @@ export default function MovimientoDetalle() {
           </Text>
           <IconButton
             label="Cerrar"
-            onPress={() => goBack(router)}
+            onPress={() => (editing ? leaveEditing(() => goBack(router)) : goBack(router))}
             icon={<X size={18} color={theme.colors.textSecondary} />}
           />
         </Row>

@@ -33,6 +33,8 @@ import { reviewTag } from '@/features/spaces/reviewCopy';
 import { balanceSentence } from '@/features/spaces/balanceCopy';
 import { SplitPicker } from '@/features/spaces/SplitPicker';
 import { DeletedWhileEditing, type DeletedBy } from '@/features/spaces/DeletedWhileEditing';
+import { confirmDiscardChanges } from '@/features/edit/confirmDiscard';
+import { hasUnsavedChanges, type EditFormValues } from '@/features/edit/editForm';
 import { AmountInput } from '@/features/add/AmountInput';
 import { installmentCountIssue, isValidInstallmentCount } from '@/features/add/installmentCount';
 import { CategoryGrid } from '@/features/add/CategoryGrid';
@@ -112,6 +114,8 @@ export default function GastoCompartido() {
   );
   const [description, setDescription] = useState(expense?.description ?? '');
   const [paymentMethodId, setPaymentMethodId] = useState<string | null>(null);
+  /** UX-18 · el formulario tal como estaba al tocar Editar, para saber si hay cambios sin guardar. */
+  const [initialForm, setInitialForm] = useState<EditFormValues | null>(null);
 
   /** C-05 · el detalle privado de pago que ya tiene este gasto, si lo pagó él. */
   const currentPaymentMethodId =
@@ -315,6 +319,26 @@ export default function GastoCompartido() {
     );
   }
 
+  const currentForm: EditFormValues = {
+    amount,
+    date: expense.date,
+    category,
+    paymentMethodId,
+    installmentCount,
+    description,
+    payerIsMe,
+    split,
+  };
+
+  /** "Cancelar" y la X: con cambios sin guardar, preguntan antes de tirarlos. */
+  function leaveEditing(then: () => void) {
+    if (initialForm != null && hasUnsavedChanges(initialForm, currentForm)) {
+      confirmDiscardChanges(then);
+    } else {
+      then();
+    }
+  }
+
   function confirmDelete() {
     const after =
       balanceAfterDelete != null
@@ -374,7 +398,7 @@ export default function GastoCompartido() {
               variant="ghost"
               fullWidth
               haptic="none"
-              onPress={() => setEditing(false)}
+              onPress={() => leaveEditing(() => setEditing(false))}
             />
           </Stack>
         ) : undefined
@@ -387,7 +411,7 @@ export default function GastoCompartido() {
           </Text>
           <IconButton
             label="Cerrar"
-            onPress={() => goBack(router)}
+            onPress={() => (editing ? leaveEditing(() => goBack(router)) : goBack(router))}
             icon={<X size={18} color={theme.colors.textSecondary} />}
           />
         </Row>
@@ -523,6 +547,16 @@ export default function GastoCompartido() {
                   // C-05 · el medio con que lo pagó, para no perderlo al
                   // guardar: sin medio, el detalle de pago se borra.
                   setPaymentMethodId(currentPaymentMethodId);
+                  setInitialForm({
+                    amount: expense.amount,
+                    date: expense.date,
+                    category: expense.category,
+                    paymentMethodId: currentPaymentMethodId,
+                    installmentCount: expense.installments?.count ?? null,
+                    description: expense.description ?? '',
+                    payerIsMe: iPaid,
+                    split: expense.split,
+                  });
                   setEditing(true);
                 }}
               />
