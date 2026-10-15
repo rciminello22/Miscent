@@ -31,6 +31,7 @@ import {
 } from '@/features/add/fields';
 import { InstallmentPreview } from '@/features/add/InstallmentPreview';
 import { installmentCountIssue, isValidInstallmentCount } from '@/features/add/installmentCount';
+import { buildInstallmentPreview } from '@/features/add/installmentPreviewModel';
 import { PastDateField } from '@/features/add/DateField';
 import { MoreOptions } from '@/features/add/MoreOptions';
 import { lastUsedPaymentMethodId, moreOptionsSummary } from '@/features/add/addDefaults';
@@ -164,6 +165,22 @@ export default function Agregar() {
       card: isCard ? method : null,
     });
   }, [kind, installmentCount, isCard, method, date]);
+
+  // §17 campo 12 · null si no hay nada que mostrar (todas las cuotas ya pasaron).
+  const previewModel = useMemo(
+    () =>
+      plan == null || amount === 0
+        ? null
+        : buildInstallmentPreview({
+            expansion,
+            total: amount,
+            plan,
+            // K9 · en un espacio, al radar llega solo tu parte.
+            myShareRatio,
+            today,
+          }),
+    [plan, amount, expansion, myShareRatio, today],
+  );
 
   // UX-06 · una cantidad de cuotas fuera de 2 a 36 (el 1 de "Otra") no se guarda.
   const canSave =
@@ -510,19 +527,14 @@ export default function Agregar() {
         </MoreOptions>
 
         {/* §17 campo 12 · la vista previa. Nunca dice si alcanza. */}
-        {plan != null && amount > 0 && (
-          <InstallmentPreview
-            expansion={expansion}
-            total={amount}
-            plan={plan}
-            // K9 · en un espacio, al radar llega solo tu parte.
-            myShareRatio={myShareRatio}
-            today={today}
-          />
+        {plan != null && previewModel != null && (
+          <InstallmentPreview model={previewModel} plan={plan} myShareRatio={myShareRatio} />
         )}
 
-        {/* El efecto de lo que está por guardar. */}
-        {effect != null && (
+        {/* El efecto de lo que está por guardar. UX-15 · con vista previa de
+            cuotas, ella ya cuenta el rango: no se repite (el aviso al guardar
+            sí lo usa). */}
+        {effect != null && previewModel == null && (
           <Animated.View entering={FadeIn.duration(duration.quick)}>
             <Card tone="sunken">
               <Text variant="small" tone="secondary">

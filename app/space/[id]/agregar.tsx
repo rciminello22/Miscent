@@ -21,6 +21,7 @@ import {
 } from '@/features/add/fields';
 import { InstallmentPreview } from '@/features/add/InstallmentPreview';
 import { installmentCountIssue, isValidInstallmentCount } from '@/features/add/installmentCount';
+import { buildInstallmentPreview } from '@/features/add/installmentPreviewModel';
 import { PastDateField } from '@/features/add/DateField';
 import { MoreOptions } from '@/features/add/MoreOptions';
 import { lastUsedPaymentMethodId, moreOptionsSummary } from '@/features/add/addDefaults';
@@ -54,6 +55,9 @@ import {
 } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
+
+/** P2 · la deuda se genera cuota por cuota, nunca entera hoy. */
+const SALDO_POR_CUOTA = 'el saldo cambia con cada cuota, no hoy';
 
 /**
  * §17 + §18 · agregar un gasto compartido.
@@ -165,8 +169,7 @@ export default function AgregarCompartido() {
       parts.push(
         `${plan.count} cuotas, de ${formatMonth(plan.firstMonth, monthOf(today))} a ${formatMonth(last, monthOf(today))}`,
       );
-      // P2 · la deuda se genera cuota por cuota, nunca entera hoy.
-      parts.push('el saldo cambia con cada cuota, no hoy');
+      parts.push(SALDO_POR_CUOTA);
     } else if (repeats) {
       parts.push('se repite todos los meses');
     } else if (payerIsMe && isCard && method != null) {
@@ -199,6 +202,17 @@ export default function AgregarCompartido() {
   const otherShare = mySlot === 1 ? shares.slot2 : shares.slot1;
 
   // UX-06 · una cantidad de cuotas fuera de 2 a 36 (el 1 de "Otra") no se guarda.
+  // §17 campo 12 · K9 · solo con cuenta personal, y solo tu parte.
+  const myShareRatio = amount === 0 ? 1 : myShare / amount;
+  const previewModel =
+    plan != null && amount > 0 && accountState === 'personal'
+      ? buildInstallmentPreview({ expansion, total: amount, plan, myShareRatio, today })
+      : null;
+  const cardEffect =
+    previewModel != null && plan != null
+      ? `${SALDO_POR_CUOTA.charAt(0).toUpperCase()}${SALDO_POR_CUOTA.slice(1)}.`
+      : effect;
+
   const canSave =
     amount > 0 && category != null && installmentCountIssue(installmentCount) == null && !saving;
   const dirty =
@@ -432,14 +446,8 @@ export default function AgregarCompartido() {
         </MoreOptions>
 
         {/* §17 campo 12 · K9 · la vista previa cuenta solo tu parte. */}
-        {plan != null && accountState === 'personal' && (
-          <InstallmentPreview
-            expansion={expansion}
-            total={amount}
-            plan={plan}
-            myShareRatio={amount === 0 ? 1 : myShare / amount}
-            today={today}
-          />
+        {plan != null && previewModel != null && (
+          <InstallmentPreview model={previewModel} plan={plan} myShareRatio={myShareRatio} />
         )}
 
         {/* §17 · "Con esto, Martina te debe $20.000" */}
@@ -460,9 +468,11 @@ export default function AgregarCompartido() {
                   <Money amount={otherShare} variant="smallMedium" animate />
                 </Row>
 
-                {effect != null && (
+                {/* UX-15 · con vista previa de cuotas, ella ya cuenta el rango:
+                    acá queda solo lo que ella no dice, el efecto en el saldo. */}
+                {cardEffect != null && (
                   <Text variant="caption" tone="muted">
-                    {effect}
+                    {cardEffect}
                   </Text>
                 )}
               </Stack>

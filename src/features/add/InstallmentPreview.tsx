@@ -1,13 +1,10 @@
-import { useMemo } from 'react';
 import { View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { addMonths } from '@domain/calendar';
-import { calculateFuture, previewInstallments } from '@domain/future';
-import { installmentAmounts } from '@domain/installments';
 import type { InstallmentPlan } from '@domain/types';
-import type { PersonalExpansion } from '@domain/occurrences';
 import type { Pesos } from '@domain/money';
 import { formatMonth } from '@/lib/format';
+import type { InstallmentPreviewModel } from './installmentPreviewModel';
 import { Card, Money, Row, Stack, Text } from '@/ui/primitives';
 import { duration, stagger } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
@@ -28,45 +25,27 @@ import { useTheme } from '@/ui/theme';
  * orden, que es cómo se entiende el efecto de una compra en cuotas.
  */
 export function InstallmentPreview({
-  expansion,
-  total,
+  model,
   plan,
   /** K9 · si el gasto es compartido, solo la parte del usuario. */
   myShareRatio = 1,
-  today,
 }: {
-  expansion: PersonalExpansion;
-  total: Pesos;
+  /** Lo arma `buildInstallmentPreview`; quien la use ya sabe que hay algo que mostrar. */
+  model: InstallmentPreviewModel;
   plan: InstallmentPlan;
   myShareRatio?: number;
-  today: string;
 }) {
   const theme = useTheme();
 
-  const preview = useMemo(() => {
-    const from = addMonths(today.slice(0, 7), 1);
-    const before = calculateFuture(expansion, from, 6);
-    const firstInstallment = installmentAmounts(total, plan.count)[0] ?? 0;
-
-    return previewInstallments({
-      before,
-      myShare: Math.round(firstInstallment * myShareRatio),
-      firstMonth: plan.firstMonth,
-      count: plan.count,
-    });
-  }, [expansion, total, plan, myShareRatio, today]);
-
   const lastMonth = addMonths(plan.firstMonth, plan.count - 1);
-  const changed = preview.months.filter((month) => month.committedAfter !== month.committedBefore);
-
-  if (changed.length === 0) return null;
+  const changed = model.changed;
 
   return (
     <Animated.View entering={FadeInDown.duration(duration.base)}>
       <Card tone="brand">
         <Stack gap="4">
           <Text variant="smallMedium">
-            Suma <Money amount={preview.perMonth} variant="smallMedium" /> por mes durante{' '}
+            Suma <Money amount={model.perMonth} variant="smallMedium" /> por mes durante{' '}
             {plan.count} {plan.count === 1 ? 'mes' : 'meses'}
             {myShareRatio < 1 ? ' (tu parte)' : ''}.
           </Text>
