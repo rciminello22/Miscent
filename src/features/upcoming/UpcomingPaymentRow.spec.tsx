@@ -46,7 +46,7 @@ function cardStatementPayment(args: { today: string; purchaseDate: string }) {
   };
 
   const expansion = expandPersonalOccurrences(facts, { from: '2026-10', to: '2026-12' });
-  return calculateUpcomingPayments(expansion, args.today)[0]!;
+  return calculateUpcomingPayments(expansion, args.today, facts.paymentMethods)[0]!;
 }
 
 describe('§23.2 · UpcomingPaymentRow', () => {
@@ -57,7 +57,7 @@ describe('§23.2 · UpcomingPaymentRow', () => {
     expect(payment.isEstimate).toBe(true);
     expect(payment.date).toBe('2026-11-05');
 
-    const view = await renderWithTheme(<UpcomingPaymentRow payment={payment} label="Visa Galicia" />);
+    const view = await renderWithTheme(<UpcomingPaymentRow payment={payment} />);
 
     expect(view.getByText('Estimado según lo que registraste')).toBeTruthy();
     expect(view.getByText('5 nov')).toBeTruthy();

@@ -15,7 +15,6 @@
 
 import type { PersonalOccurrence } from '@domain/occurrences';
 import type { Pesos } from '@domain/money';
-import type { PaymentMethod } from '@domain/types';
 import type { UpcomingPayment } from '@domain/upcoming';
 import { formatDayMonth, formatInstallment, formatMonth } from '@/lib/format';
 
@@ -67,17 +66,6 @@ export function canOpenPayment(payment: UpcomingPayment): boolean {
   return payment.kind === 'card-statement';
 }
 
-/**
- * El rótulo de una fila de Próximos pagos. El dominio rotula el resumen con el
- * id de la tarjeta; el nombre sale de los medios de pago.
- */
-export function paymentLabel(payment: UpcomingPayment, methods: readonly PaymentMethod[]): string {
-  if (payment.kind !== 'card-statement') return payment.label;
-
-  const cardId = payment.items[0]?.cardId ?? payment.label;
-  return methods.find((method) => method.id === cardId)?.name ?? 'Tarjeta';
-}
-
 function groupOf(occurrence: PersonalOccurrence): DetailGroupKind {
   if (occurrence.installment != null) return 'installment';
   if (occurrence.isRecurrence) return 'fixed';
@@ -98,11 +86,9 @@ function toLine(occurrence: PersonalOccurrence): DetailLine {
   };
 }
 
-export function paymentDetail(
-  payment: UpcomingPayment,
-  methods: readonly PaymentMethod[],
-): PaymentDetail {
-  const card = paymentLabel(payment, methods);
+export function paymentDetail(payment: UpcomingPayment): PaymentDetail {
+  // El dominio ya rotula el resumen con el nombre de la tarjeta.
+  const card = payment.label;
   const when =
     payment.date != null
       ? `vence ${formatDayMonth(payment.date)}`

@@ -16,13 +16,17 @@
 import { compareDates, monthOf, type IsoDate, type Month } from './calendar';
 import type { Pesos } from './money';
 import type { PersonalExpansion, PersonalOccurrence } from './occurrences';
+import type { PaymentMethod } from './types';
 
 export type UpcomingPaymentKind = 'card-statement' | 'fixed' | 'installment' | 'declared-statement';
 
 export type UpcomingPayment = {
   id: string;
   kind: UpcomingPaymentKind;
+  /** El resumen de una tarjeta se llama como la tarjeta, nunca como su id. */
   label: string;
+  /** El id de la tarjeta de un `card-statement`; `null` en los demás pagos. */
+  cardId: string | null;
   /** El monto que el usuario va a pagar. */
   amount: Pesos;
   /** Parte de otro miembro incluida: "incluye $X de Martina". */
@@ -54,10 +58,15 @@ function sortByDate(a: UpcomingPayment, b: UpcomingPayment): number {
  *   - un resumen estimado por tarjeta y vencimiento
  *   - fijos y cuotas sin tarjeta, cada uno con su fecha
  *   - resúmenes pendientes declarados
+ *
+ * `paymentMethods` (los mismos hechos con los que se expandió) pone el nombre
+ * de la tarjeta en el rótulo del resumen. Es opcional para no tocar a quien
+ * solo necesita montos y fechas; sin la tarjeta, el rótulo es "Tarjeta".
  */
 export function calculateUpcomingPayments(
   expansion: PersonalExpansion,
   today: IsoDate,
+  paymentMethods: readonly PaymentMethod[] = [],
 ): UpcomingPayment[] {
   // N-09 · solo lo que paga el usuario. Lo que paga el otro miembro no entra
   // acá ni aunque el usuario tenga una parte (CA-50).
@@ -87,7 +96,8 @@ export function calculateUpcomingPayments(
     payments.push({
       id: `statement:${cardId}:${month}`,
       kind: 'card-statement',
-      label: cardId,
+      label: paymentMethods.find((method) => method.id === cardId)?.name ?? 'Tarjeta',
+      cardId,
       amount,
       includesOtherShare,
       otherMemberName: otherNames[0] ?? null,
@@ -114,6 +124,7 @@ export function calculateUpcomingPayments(
       id: occurrence.id,
       kind,
       label: occurrence.label,
+      cardId: null,
       amount: occurrence.total,
       includesOtherShare: occurrence.otherShare,
       otherMemberName: occurrence.otherMemberName,
@@ -134,6 +145,7 @@ export function calculateUpcomingPayments(
       id: occurrence.id,
       kind: 'declared-statement',
       label: occurrence.label,
+      cardId: null,
       amount: occurrence.total,
       includesOtherShare: 0,
       otherMemberName: null,

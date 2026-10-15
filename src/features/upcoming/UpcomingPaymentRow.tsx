@@ -34,8 +34,6 @@ export const UPCOMING_COPY = {
 
 export function UpcomingPaymentRow({
   payment,
-  /** El nombre legible del medio de pago, que la pantalla resuelve. */
-  label,
   /**
    * UX-08 · §4.10 · "cada número se puede abrir": si viene, la fila es un botón con
    * chevron que abre el detalle. Sin esto es informativa.
@@ -45,7 +43,6 @@ export function UpcomingPaymentRow({
   size = 'small',
 }: {
   payment: UpcomingPayment;
-  label?: string;
   onPress?: () => void;
   size?: 'small' | 'body';
 }) {
@@ -59,7 +56,7 @@ export function UpcomingPaymentRow({
       </Text>
 
       <View style={{ flex: 1, gap: 2 }}>
-        <Text variant={body ? 'bodyMedium' : 'smallMedium'}>{label ?? payment.label}</Text>
+        <Text variant={body ? 'bodyMedium' : 'smallMedium'}>{payment.label}</Text>
 
         {/* N-10 / CA-35 */}
         {payment.isEstimate && (

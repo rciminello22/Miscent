@@ -15,7 +15,7 @@ import {
 import { formatMonth } from '@/lib/format';
 import { StatementDetailSheet } from '@/features/upcoming/StatementDetailSheet';
 import { UpcomingPaymentRow } from '@/features/upcoming/UpcomingPaymentRow';
-import { canOpenPayment, paymentLabel } from '@/features/upcoming/statementDetail';
+import { canOpenPayment } from '@/features/upcoming/statementDetail';
 import { CURRENT_MONTH_PARAM } from '@/features/future/paymentsMonth';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { WhereFrom, type BreakdownTarget } from '@/features/breakdown/WhereFrom';
@@ -70,8 +70,8 @@ export default function Inicio() {
 
   // §15 · P18 · los 3 primeros pagos de los próximos 30 días.
   const upcoming = useMemo(
-    () => upcomingForHome(calculateUpcomingPayments(expansion, today), today),
-    [expansion, today],
+    () => upcomingForHome(calculateUpcomingPayments(expansion, today, facts.paymentMethods), today),
+    [expansion, today, facts.paymentMethods],
   );
 
   // §15 · 3 meses con comprometido y una barra proporcional.
@@ -186,7 +186,6 @@ export default function Inicio() {
                         {/* UX-08 · el resumen estimado se abre (§23.2, §4.10). */}
                         <UpcomingPaymentRow
                           payment={payment}
-                          label={paymentLabel(payment, facts.paymentMethods)}
                           size="body"
                           onPress={canOpenPayment(payment) ? () => setOpenPayment(payment) : undefined}
                         />
@@ -242,7 +241,6 @@ export default function Inicio() {
 
       <StatementDetailSheet
         payment={openPayment}
-        methods={facts.paymentMethods}
         onClose={() => setOpenPayment(null)}
       />
 

@@ -8,7 +8,7 @@ import { calculateUpcomingPayments, type UpcomingPayment } from '@domain/upcomin
 import { formatInstallment, formatMonth } from '@/lib/format';
 import { StatementDetailSheet } from '@/features/upcoming/StatementDetailSheet';
 import { UpcomingPaymentRow } from '@/features/upcoming/UpcomingPaymentRow';
-import { canOpenPayment, paymentLabel } from '@/features/upcoming/statementDetail';
+import { canOpenPayment } from '@/features/upcoming/statementDetail';
 import { prettyLabel } from '@/features/add/categories';
 import { FutureMonthDetail } from '@/features/future/FutureMonthDetail';
 import { futurePaymentsView, initialPaymentsMonth } from '@/features/future/paymentsMonth';
@@ -80,8 +80,8 @@ export default function Futuro() {
 
   // §23.2 · "en Futuro, todos los del mes elegido"; UX-07 · el mes en curso, desde hoy.
   const allPayments = useMemo(
-    () => calculateUpcomingPayments(expansion, today),
-    [expansion, today],
+    () => calculateUpcomingPayments(expansion, today, facts.paymentMethods),
+    [expansion, today, facts.paymentMethods],
   );
   const paymentsView = useMemo(
     () => futurePaymentsView({ payments: allPayments, today, selectedMonth }),
@@ -240,7 +240,6 @@ export default function Futuro() {
                       <View style={{ paddingVertical: theme.space['3'] }}>
                         <UpcomingPaymentRow
                           payment={payment}
-                          label={paymentLabel(payment, facts.paymentMethods)}
                           onPress={canOpenPayment(payment) ? () => setOpenPayment(payment) : undefined}
                         />
                       </View>
@@ -356,7 +355,6 @@ export default function Futuro() {
 
       <StatementDetailSheet
         payment={openPayment}
-        methods={facts.paymentMethods}
         onClose={() => setOpenPayment(null)}
       />
     </ScrollView>

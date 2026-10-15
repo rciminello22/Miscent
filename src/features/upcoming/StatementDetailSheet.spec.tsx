@@ -54,7 +54,7 @@ const FACTS: PersonalFacts = {
 
 function visaStatement(): UpcomingPayment {
   const expansion = expandPersonalOccurrences(FACTS, { from: '2026-10', to: '2026-12' });
-  return calculateUpcomingPayments(expansion, '2026-10-21').find(
+  return calculateUpcomingPayments(expansion, '2026-10-21', FACTS.paymentMethods).find(
     (payment) => payment.kind === 'card-statement' && payment.month === '2026-11',
   )!;
 }
@@ -65,7 +65,7 @@ describe('UX-08 · StatementDetailSheet', () => {
     expect(payment.amount).toBe(120_000);
 
     const view = await renderWithTheme(
-      <StatementDetailSheet payment={payment} methods={[VISA]} onClose={() => {}} />,
+      <StatementDetailSheet payment={payment} onClose={() => {}} />,
     );
 
     expect(view.getByText('Visa Galicia · vence 5 nov')).toBeTruthy();
@@ -80,7 +80,7 @@ describe('UX-08 · StatementDetailSheet', () => {
   it('el total es el de la fila', async () => {
     const payment = visaStatement();
     const view = await renderWithTheme(
-      <StatementDetailSheet payment={payment} methods={[VISA]} onClose={() => {}} />,
+      <StatementDetailSheet payment={payment} onClose={() => {}} />,
     );
 
     expect(view.getByText('Total')).toBeTruthy();
@@ -96,7 +96,7 @@ describe('UX-08 · StatementDetailSheet', () => {
       ),
     };
     const view = await renderWithTheme(
-      <StatementDetailSheet payment={payment} methods={[VISA]} onClose={() => {}} />,
+      <StatementDetailSheet payment={payment} onClose={() => {}} />,
     );
 
     expect(view.getAllByText(/incluye\s*\$35\.000\s*de Martina/).length).toBeGreaterThan(0);
@@ -105,7 +105,7 @@ describe('UX-08 · StatementDetailSheet', () => {
   it('T-05 · sin día conocido avisa "Fechas aproximadas"', async () => {
     const payment: UpcomingPayment = { ...visaStatement(), date: null, approximate: true };
     const view = await renderWithTheme(
-      <StatementDetailSheet payment={payment} methods={[VISA]} onClose={() => {}} />,
+      <StatementDetailSheet payment={payment} onClose={() => {}} />,
     );
 
     expect(view.getByText('Fechas aproximadas')).toBeTruthy();
@@ -114,7 +114,7 @@ describe('UX-08 · StatementDetailSheet', () => {
 
   it('sin pago elegido no muestra nada', async () => {
     const view = await renderWithTheme(
-      <StatementDetailSheet payment={null} methods={[VISA]} onClose={() => {}} />,
+      <StatementDetailSheet payment={null} onClose={() => {}} />,
     );
 
     expect(view.queryByText('Estimado según lo que registraste')).toBeNull();
@@ -122,7 +122,7 @@ describe('UX-08 · StatementDetailSheet', () => {
 
   it('CA-00 · ningún término prohibido en el detalle', async () => {
     const view = await renderWithTheme(
-      <StatementDetailSheet payment={visaStatement()} methods={[VISA]} onClose={() => {}} />,
+      <StatementDetailSheet payment={visaStatement()} onClose={() => {}} />,
     );
 
     for (const forbidden of [/disponible/i, /te qued/i, /\bsaldo\b/i, /\bpagado\b/i, /corresponde/i]) {
@@ -135,7 +135,7 @@ describe('UX-08 · UpcomingPaymentRow tocable', () => {
   it('con onPress es un botón y se puede tocar', async () => {
     const onPress = jest.fn();
     const view = await renderWithTheme(
-      <UpcomingPaymentRow payment={visaStatement()} label="Visa Galicia" onPress={onPress} />,
+      <UpcomingPaymentRow payment={visaStatement()} onPress={onPress} />,
     );
 
     const button = view.getByRole('button');
@@ -148,7 +148,7 @@ describe('UX-08 · UpcomingPaymentRow tocable', () => {
 
   it('sin onPress es informativa: no es un botón', async () => {
     const view = await renderWithTheme(
-      <UpcomingPaymentRow payment={visaStatement()} label="Visa Galicia" />,
+      <UpcomingPaymentRow payment={visaStatement()} />,
     );
 
     expect(view.queryByRole('button')).toBeNull();

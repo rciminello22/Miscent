@@ -1,5 +1,4 @@
 import { ScrollView, View } from 'react-native';
-import type { PaymentMethod } from '@domain/types';
 import type { UpcomingPayment } from '@domain/upcoming';
 import { prettyLabel } from '@/features/add/categories';
 import { Divider, Money, Row, Sheet, Stack, Text } from '@/ui/primitives';
@@ -16,19 +15,16 @@ import { paymentDetail, type DetailGroup, type DetailLine } from './statementDet
  * Es la lente "lo que vas a pagar" (§7.3): cada línea por su TOTAL pagado, y la
  * suma es la cifra de la fila. La lente "tu parte" no aparece acá.
  *
- * Presentacional: el container (Inicio, Futuro) elige el pago y los medios de
- * pago. El armado vive en `paymentDetail` (pura, con test).
+ * Presentacional: el container (Inicio, Futuro) elige el pago. El armado vive en `paymentDetail` (pura, con test).
  */
 export function StatementDetailSheet({
   payment,
-  methods,
   onClose,
 }: {
   payment: UpcomingPayment | null;
-  methods: readonly PaymentMethod[];
   onClose: () => void;
 }) {
-  const detail = payment != null ? paymentDetail(payment, methods) : null;
+  const detail = payment != null ? paymentDetail(payment) : null;
 
   return (
     <Sheet visible={detail != null} onClose={onClose} title={detail?.title ?? ''}>

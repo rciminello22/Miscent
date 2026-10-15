@@ -22,6 +22,7 @@ function payment(overrides: Partial<UpcomingPayment> & Pick<UpcomingPayment, 'id
   return {
     kind: 'fixed',
     label: overrides.id,
+    cardId: null,
     amount: 10_000,
     includesOtherShare: 0,
     otherMemberName: null,
