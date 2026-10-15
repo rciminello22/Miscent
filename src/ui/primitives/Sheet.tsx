@@ -5,7 +5,7 @@ import Animated, { FadeIn, SlideInDown, SlideOutDown } from 'react-native-reanim
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { duration } from '../motion';
 import { useTheme } from '../theme';
-import { Pressable } from './Pressable';
+import { IconButton } from './IconButton';
 import { Row } from './layout';
 import { Text } from './Text';
 
@@ -58,21 +58,13 @@ export function Sheet({
             <Text variant="heading" style={{ flex: 1 }}>
               {title}
             </Text>
-            <Pressable
+            {/* UX-12 · el dibujo mide 32; el área de toque llega a 44. */}
+            <IconButton
+              label="Cerrar"
+              size={32}
               onPress={onClose}
-              accessibilityRole="button"
-              accessibilityLabel="Cerrar"
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: theme.radius.pill,
-                backgroundColor: theme.colors.surfaceSunken,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <X size={16} color={theme.colors.textSecondary} />
-            </Pressable>
+              icon={<X size={16} color={theme.colors.textSecondary} />}
+            />
           </Row>
 
           <View>{children}</View>

@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ChevronRight, CreditCard, Repeat } from 'lucide-react-native';
+import { CreditCard, Repeat } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { monthOf } from '@domain/calendar';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
@@ -14,6 +14,7 @@ import {
   Divider,
   Pressable,
   Row,
+  RowChevron,
   Screen,
   SectionHeader,
   Stack,
@@ -119,7 +120,7 @@ function SummaryRow({
         <Text variant="bodyMedium" tone="secondary" tabular>
           {value}
         </Text>
-        <ChevronRight size={16} color={theme.colors.textMuted} />
+        <RowChevron />
       </Row>
     </Pressable>
   );

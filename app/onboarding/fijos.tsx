@@ -27,6 +27,7 @@ import { useToday } from '@/features/shared/useToday';
 import { Button, Card, Pressable, Row, Stack, Text } from '@/ui/primitives';
 import { duration, stagger } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
+import { LINK_HIT_SLOP, hitSlopFor } from '@/ui/touch';
 
 /**
  * O3 paso 5 · Gastos fijos: "sugerencias tildables".
@@ -216,6 +217,9 @@ export default function Fijos() {
                       onPress={() => setEditing(suggestion.key)}
                       haptic="none"
                       scaleOnPress={false}
+                      accessibilityRole="button"
+                      accessibilityHint="Cambiar el monto"
+                      hitSlop={LINK_HIT_SLOP}
                     >
                       <Text variant="smallMedium" tone="brand" tabular>
                         {formatPesos(draft.amount)}
@@ -356,7 +360,7 @@ function CustomFixedForm({
             haptic="none"
             accessibilityRole="button"
             accessibilityLabel="Quitar este fijo"
-            hitSlop={12}
+            hitSlop={hitSlopFor(18, 18)}
           >
             <X size={18} color={theme.colors.textSecondary} />
           </Pressable>

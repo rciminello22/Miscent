@@ -14,11 +14,12 @@ import {
   Button,
   Card,
   EmptyState,
-  Pressable,
+  IconButton,
   Row,
   Skeleton,
   Stack,
   Text,
+  TextLink,
 } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
@@ -101,13 +102,14 @@ export default function Espacios() {
             Tus espacios
           </Text>
           {/* §14 Estado B · el Perfil, sin barra de pestañas. */}
-          <Pressable
+          {/* UX-12 · el ícono mide 22; el área de toque llega a 44. */}
+          <IconButton
+            label="Perfil"
+            size={30}
+            filled={false}
             onPress={() => router.push('/(guest)/perfil')}
-            accessibilityRole="button"
-            accessibilityLabel="Perfil"
-          >
-            <CircleUser size={22} color={theme.colors.textSecondary} />
-          </Pressable>
+            icon={<CircleUser size={22} color={theme.colors.textSecondary} />}
+          />
         </Row>
 
         {isLoading ? (
@@ -122,11 +124,7 @@ export default function Espacios() {
         ) : (
           <>
             <SpaceList spaces={spaces ?? []} />
-            <Pressable onPress={explainSpaceCreation} haptic="none">
-              <Text variant="small" tone="brand">
-                Crear otro espacio
-              </Text>
-            </Pressable>
+            <TextLink label="Crear otro espacio" onPress={explainSpaceCreation} />
           </>
         )}
 
@@ -136,11 +134,10 @@ export default function Espacios() {
         {/* §33 U1 · "Tu plata personal" */}
         <Animated.View entering={FadeInDown.duration(duration.deliberate)}>
           {dismissed == null ? null : dismissed ? (
-            <Pressable onPress={() => router.push('/onboarding/cuenta-personal')} haptic="none">
-              <Text variant="small" tone="brand">
-                Crear mi cuenta personal
-              </Text>
-            </Pressable>
+            <TextLink
+              label="Crear mi cuenta personal"
+              onPress={() => router.push('/onboarding/cuenta-personal')}
+            />
           ) : (
             <Card tone="sunken">
               <Stack gap="4">
@@ -158,11 +155,13 @@ export default function Espacios() {
                     fullWidth
                     onPress={() => router.push('/onboarding/cuenta-personal')}
                   />
-                  <Pressable onPress={markDismissed} haptic="none">
-                    <Text variant="small" tone="muted" align="center">
-                      Ahora no
-                    </Text>
-                  </Pressable>
+                  <Button
+                    label="Ahora no"
+                    variant="ghost"
+                    fullWidth
+                    haptic="none"
+                    onPress={markDismissed}
+                  />
                 </Stack>
               </Stack>
             </Card>

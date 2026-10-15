@@ -8,6 +8,7 @@ import {
   RadarBar,
   RadarLegendDot,
   Row,
+  RowChevron,
   Stack,
   Text,
   Pressable,
@@ -59,6 +60,9 @@ export function RadarSummary({
   /** M18 · cada cifra se puede abrir y ver de qué está hecha. */
   onOpenBreakdown?: (target: 'spent' | 'committed' | 'unassigned') => void;
 }) {
+  const opener = (target: 'spent' | 'committed' | 'unassigned') =>
+    onOpenBreakdown != null ? () => onOpenBreakdown(target) : undefined;
+
   return (
     <Animated.View entering={FadeInDown.duration(duration.deliberate)}>
       <Stack gap="5">
@@ -86,14 +90,14 @@ export function RadarSummary({
             label={RADAR_COPY.spent.label}
             help={RADAR_COPY.spent.help}
             amount={radar.spent}
-            onPress={() => onOpenBreakdown?.('spent')}
+            onPress={opener('spent')}
           />
           <RadarRow
             dot="committed"
             label={RADAR_COPY.committed.label}
             help={RADAR_COPY.committed.help}
             amount={radar.committed}
-            onPress={() => onOpenBreakdown?.('committed')}
+            onPress={opener('committed')}
           />
 
           {/*
@@ -128,7 +132,7 @@ export function RadarSummary({
               label={RADAR_COPY.unassigned.label}
               help={RADAR_COPY.unassigned.help}
               amount={radar.unassigned}
-              onPress={() => onOpenBreakdown?.('unassigned')}
+              onPress={opener('unassigned')}
             />
           )}
         </Stack>
@@ -148,8 +152,36 @@ function RadarRow({
   label: string;
   help: string;
   amount: number;
-  onPress: () => void;
+  /** Sin esto la fila es informativa: ni rol de botón ni chevron (UX-11). */
+  onPress?: () => void;
 }) {
+  const row = (
+    <Row gap="3" align="flex-start">
+      <View style={{ marginTop: 6 }}>
+        <RadarLegendDot color={dot} />
+      </View>
+
+      <View style={{ flex: 1, gap: 1 }}>
+        <Row justify="space-between" align="baseline">
+          <Text variant="bodyMedium">{label}</Text>
+          <Money amount={amount} variant="bodyMedium" animate sign="never" />
+        </Row>
+        <Text variant="caption" tone="muted">
+          {help}
+        </Text>
+      </View>
+
+      {/* UX-11 · M18 · el chevron avisa que la cifra se abre: es la defensa de D1. */}
+      {onPress != null && (
+        <View style={{ marginTop: 3 }}>
+          <RowChevron />
+        </View>
+      )}
+    </Row>
+  );
+
+  if (onPress == null) return row;
+
   return (
     <Pressable
       onPress={onPress}
@@ -159,21 +191,7 @@ function RadarRow({
       accessibilityHint="Ver de dónde sale esta cifra"
       accessibilityLabel={label}
     >
-      <Row gap="3" align="flex-start">
-        <View style={{ marginTop: 6 }}>
-          <RadarLegendDot color={dot} />
-        </View>
-
-        <View style={{ flex: 1, gap: 1 }}>
-          <Row justify="space-between" align="baseline">
-            <Text variant="bodyMedium">{label}</Text>
-            <Money amount={amount} variant="bodyMedium" animate sign="never" />
-          </Row>
-          <Text variant="caption" tone="muted">
-            {help}
-          </Text>
-        </View>
-      </Row>
+      {row}
     </Pressable>
   );
 }

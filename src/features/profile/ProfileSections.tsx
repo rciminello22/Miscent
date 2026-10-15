@@ -18,6 +18,7 @@ import {
   Text,
 } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
+import { MIN_TARGET } from '@/ui/touch';
 
 /**
  * Las secciones que comparten los dos perfiles de §14:
@@ -100,7 +101,15 @@ export function DisplayNameCard() {
             </Row>
           </Stack>
         ) : (
-          <Pressable onPress={() => setEditingName(true)} haptic="none" scaleOnPress={false}>
+          // UX-12 · la fila entera es el botón: mide 44 aunque el nombre mida 24.
+          <Pressable
+            onPress={() => setEditingName(true)}
+            haptic="none"
+            scaleOnPress={false}
+            accessibilityRole="button"
+            accessibilityLabel={`Tu nombre visible, ${profile?.displayName ?? ''}. Cambiar`}
+            style={{ minHeight: MIN_TARGET, justifyContent: 'center' }}
+          >
             <Row justify="space-between" align="center">
               <Text variant="heading">{profile?.displayName ?? '—'}</Text>
               <Text variant="small" tone="brand">

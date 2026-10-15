@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { UpcomingPayment } from '@domain/upcoming';
 import {
+  futureMonthRoute,
   futurePaymentsView,
   initialPaymentsMonth,
   paymentsTitle,
@@ -114,5 +115,25 @@ describe('UX-07 · futurePaymentsView', () => {
   it('un mes futuro sin pagos oculta el bloque', () => {
     const view = futurePaymentsView({ payments: [], today: TODAY, selectedMonth: '2026-12' });
     expect(view.showBlock).toBe(false);
+  });
+});
+
+describe('§15 · futureMonthRoute · tocar una barra de Próximos meses', () => {
+  it('abre Futuro con ese mes elegido', () => {
+    expect(futureMonthRoute('2026-12', 1234)).toEqual({
+      pathname: '/(personal)/futuro',
+      params: { mes: '2026-12', n: '1234' },
+    });
+  });
+
+  it('el mes que viaja es el que Futuro elige al abrir (cada barra de Inicio es válida)', () => {
+    for (const month of ['2026-11', '2026-12', '2027-01']) {
+      const { params } = futureMonthRoute(month, 1);
+      expect(initialPaymentsMonth(params.mes, TODAY)).toBe(month);
+    }
+  });
+
+  it('`n` cambia en cada toque para que volver a pedir el mismo mes lo vuelva a elegir', () => {
+    expect(futureMonthRoute('2026-11', 1).params.n).not.toBe(futureMonthRoute('2026-11', 2).params.n);
   });
 });

@@ -96,21 +96,23 @@ export default function Bienvenida() {
           />
 
           {/* Quien vuelve entra directo: no elige nada ni se le crea nada. */}
-          <Pressable
-            onPress={() => router.push({ pathname: '/(auth)/email', params: { mode: 'login' } })}
+          {/* UX-12 · acciones secundarias de pantalla: botón ghost de 46pt, no texto de 20. */}
+          <Button
+            label="Ya tengo cuenta"
+            variant="ghost"
+            fullWidth
             haptic="none"
-          >
-            <Text variant="small" tone="brand" align="center">
-              Ya tengo cuenta
-            </Text>
-          </Pressable>
+            onPress={() => router.push({ pathname: '/(auth)/email', params: { mode: 'login' } })}
+          />
 
           {/* O1 paso 1 · "Tengo una invitación" lleva a O2, que necesita la invitación. */}
-          <Pressable onPress={() => router.push('/(auth)/invitacion')} haptic="none">
-            <Text variant="small" tone="brand" align="center">
-              Tengo una invitación
-            </Text>
-          </Pressable>
+          <Button
+            label="Tengo una invitación"
+            variant="ghost"
+            fullWidth
+            haptic="none"
+            onPress={() => router.push('/(auth)/invitacion')}
+          />
         </Stack>
       </Stack>
     </Screen>

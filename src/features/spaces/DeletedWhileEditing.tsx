@@ -1,4 +1,4 @@
-import { Pressable, Button, Card, Stack, Text } from '@/ui/primitives';
+import { Button, Card, Stack, Text } from '@/ui/primitives';
 
 /**
  * SY-02 · el gasto que se estaba editando ya no existe.
@@ -55,16 +55,7 @@ export function DeletedWhileEditing({
             loading={recreating}
             onPress={onRecreate}
           />
-          <Pressable
-            onPress={onDiscard}
-            haptic="none"
-            accessibilityRole="button"
-            accessibilityLabel="Descartar"
-          >
-            <Text variant="small" tone="muted" align="center">
-              Descartar
-            </Text>
-          </Pressable>
+          <Button label="Descartar" variant="ghost" fullWidth haptic="none" onPress={onDiscard} />
         </Stack>
       </Stack>
     </Card>

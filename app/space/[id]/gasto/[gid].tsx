@@ -46,6 +46,7 @@ import {
   Button,
   Card,
   Divider,
+  IconButton,
   Money,
   Pressable,
   Row,
@@ -365,11 +366,13 @@ export default function GastoCompartido() {
               loading={save.isPending}
               onPress={() => save.mutate()}
             />
-            <Pressable onPress={() => setEditing(false)} haptic="none">
-              <Text variant="small" tone="muted" align="center">
-                Cancelar
-              </Text>
-            </Pressable>
+            <Button
+              label="Cancelar"
+              variant="ghost"
+              fullWidth
+              haptic="none"
+              onPress={() => setEditing(false)}
+            />
           </Stack>
         ) : undefined
       }
@@ -379,21 +382,11 @@ export default function GastoCompartido() {
           <Text variant="heading" numberOfLines={1} style={{ flex: 1 }}>
             {prettyLabel(expense.description ?? expense.category)}
           </Text>
-          <Pressable
+          <IconButton
+            label="Cerrar"
             onPress={() => goBack(router)}
-            accessibilityRole="button"
-            accessibilityLabel="Cerrar"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: theme.radius.pill,
-              backgroundColor: theme.colors.surfaceSunken,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <X size={18} color={theme.colors.textSecondary} />
-          </Pressable>
+            icon={<X size={18} color={theme.colors.textSecondary} />}
+          />
         </Row>
 
         <AudienceBadge audience={{ kind: 'shared', otherMemberName: other.displayName }} />

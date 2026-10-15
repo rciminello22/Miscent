@@ -9,7 +9,7 @@ import {
 } from '@/features/profile/ProfileSections';
 import { SaveAccessCard } from '@/features/profile/SaveAccessCard';
 import { useSession } from '@/features/auth/SessionProvider';
-import { Button, Card, Pressable, Screen, Stack, Text } from '@/ui/primitives';
+import { Button, Card, IconButton, Screen, Stack, Text } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
 
@@ -31,14 +31,14 @@ export default function PerfilInvitado() {
   return (
     <Screen>
       <Stack gap="7">
-        <Pressable
+        <IconButton
+          label="Volver"
+          size={28}
+          filled={false}
           onPress={() => goBack(router)}
-          accessibilityRole="button"
-          accessibilityLabel="Volver"
-          style={{ padding: theme.space['1'], marginLeft: -theme.space['1'], alignSelf: 'flex-start' }}
-        >
-          <ArrowLeft size={20} color={theme.colors.textSecondary} />
-        </Pressable>
+          style={{ marginLeft: -theme.space['1'], alignSelf: 'flex-start' }}
+          icon={<ArrowLeft size={20} color={theme.colors.textSecondary} />}
+        />
 
         <Text variant="overline" tone="muted">
           Perfil

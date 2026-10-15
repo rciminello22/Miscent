@@ -17,8 +17,8 @@ import {
   Button,
   Card,
   Divider,
+  IconButton,
   Money,
-  Pressable,
   Row,
   Screen,
   SectionHeader,
@@ -107,21 +107,11 @@ export default function Salir() {
       <Stack gap="7">
         <Row justify="space-between" align="center">
           <Text variant="heading">Salir de {facts.space.name}</Text>
-          <Pressable
+          <IconButton
+            label="Cerrar"
             onPress={() => goBack(router)}
-            accessibilityRole="button"
-            accessibilityLabel="Cerrar"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: theme.radius.pill,
-              backgroundColor: theme.colors.surfaceSunken,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <X size={18} color={theme.colors.textSecondary} />
-          </Pressable>
+            icon={<X size={18} color={theme.colors.textSecondary} />}
+          />
         </Row>
 
         <Animated.View entering={FadeInDown.duration(duration.deliberate)}>
@@ -260,21 +250,25 @@ export default function Salir() {
                   loading={leave.isPending}
                   onPress={() => void leave.mutateAsync()}
                 />
-                <Pressable onPress={() => setConfirming(false)} haptic="none">
-                  <Text variant="small" tone="muted" align="center">
-                    Cancelar
-                  </Text>
-                </Pressable>
+                <Button
+                  label="Cancelar"
+                  variant="ghost"
+                  fullWidth
+                  haptic="none"
+                  onPress={() => setConfirming(false)}
+                />
               </Stack>
             </Animated.View>
           )}
 
           {!confirming && (
-            <Pressable onPress={() => goBack(router)} haptic="none">
-              <Text variant="small" tone="muted" align="center">
-                Mejor no
-              </Text>
-            </Pressable>
+            <Button
+              label="Mejor no"
+              variant="ghost"
+              fullWidth
+              haptic="none"
+              onPress={() => goBack(router)}
+            />
           )}
         </Stack>
       </Stack>

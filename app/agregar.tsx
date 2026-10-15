@@ -52,7 +52,7 @@ import {
   AudienceBadge,
   Button,
   Card,
-  Pressable,
+  IconButton,
   Row,
   Screen,
   Stack,
@@ -318,21 +318,11 @@ export default function Agregar() {
       <Stack gap="7">
         <Row justify="space-between" align="center">
           <Text variant="heading">Agregar</Text>
-          <Pressable
+          <IconButton
+            label="Cerrar"
             onPress={close}
-            accessibilityRole="button"
-            accessibilityLabel="Cerrar"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: theme.radius.pill,
-              backgroundColor: theme.colors.surfaceSunken,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <X size={18} color={theme.colors.textSecondary} />
-          </Pressable>
+            icon={<X size={18} color={theme.colors.textSecondary} />}
+          />
         </Row>
 
         {/* §17 campo 1 · los ingresos son siempre personales. */}

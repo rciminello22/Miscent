@@ -9,7 +9,17 @@ import { queryKeys } from '@/data/queryClient';
 import { movePersonalToSpace } from '@/data/repositories/edits';
 import { useSession } from '@/features/auth/SessionProvider';
 import { useSpaces } from '@/features/spaces/useSpaces';
-import { Card, Divider, Money, Pressable, Row, Sheet, Stack, Text } from '@/ui/primitives';
+import {
+  Card,
+  Divider,
+  Money,
+  Pressable,
+  Row,
+  RowChevron,
+  Sheet,
+  Stack,
+  Text,
+} from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 
 /**
@@ -136,6 +146,8 @@ export function MoveToSpace({
                         lo va a ver {space.otherMemberName}
                       </Text>
                     </View>
+                    {/* UX-11 · la fila elige el espacio. */}
+                    <RowChevron />
                   </Row>
                 </Pressable>
                 {index < (spaces ?? []).length - 1 && <Divider />}

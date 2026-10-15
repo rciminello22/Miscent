@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { StepShell } from '@/features/onboarding/StepShell';
 import { useSaveAccess } from '@/features/profile/useSaveAccess';
 import { goBack } from '@/features/shared/navigation';
-import { Pressable, Stack, Text } from '@/ui/primitives';
+import { Button, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 
 /**
@@ -115,11 +115,13 @@ export default function GuardarAcceso() {
             {access.error}
           </Text>
         )}
-        <Pressable onPress={access.backToEmail} haptic="none">
-          <Text variant="small" tone="brand" align="center">
-            Usar otro email
-          </Text>
-        </Pressable>
+        <Button
+          label="Usar otro email"
+          variant="ghost"
+          fullWidth
+          haptic="none"
+          onPress={access.backToEmail}
+        />
       </Stack>
     </StepShell>
   );

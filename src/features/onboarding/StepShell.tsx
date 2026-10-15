@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { Button, Pressable, Row, Screen, Stack, Text } from '@/ui/primitives';
+import { Button, Row, Screen, Stack, Text } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
 
@@ -65,11 +65,7 @@ export function StepShell({
           />
 
           {onSkip != null && (
-            <Pressable onPress={onSkip} haptic="none">
-              <Text variant="small" tone="muted" align="center">
-                {skipLabel}
-              </Text>
-            </Pressable>
+            <Button label={skipLabel} variant="ghost" fullWidth haptic="none" onPress={onSkip} />
           )}
         </Stack>
       }

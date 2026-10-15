@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChevronRight, UserRound } from 'lucide-react-native';
+import { UserRound } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addMonths, monthOf } from '@domain/calendar';
@@ -16,7 +16,7 @@ import { formatMonth } from '@/lib/format';
 import { StatementDetailSheet } from '@/features/upcoming/StatementDetailSheet';
 import { UpcomingPaymentRow } from '@/features/upcoming/UpcomingPaymentRow';
 import { canOpenPayment } from '@/features/upcoming/statementDetail';
-import { CURRENT_MONTH_PARAM } from '@/features/future/paymentsMonth';
+import { CURRENT_MONTH_PARAM, futureMonthRoute } from '@/features/future/paymentsMonth';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { WhereFrom, type BreakdownTarget } from '@/features/breakdown/WhereFrom';
 import { CardPurchasesThisMonth, RadarSummary } from '@/features/radar/RadarSummary';
@@ -24,6 +24,7 @@ import {
   AudienceBadge,
   EmptyState,
   ErrorState,
+  IconButton,
   Money,
   MonthBar,
   Pressable,
@@ -31,12 +32,15 @@ import {
   RadarLegendDot,
   RadarSkeleton,
   Row,
+  RowChevron,
   SectionHeader,
   Stack,
   Text,
+  TextLink,
 } from '@/ui/primitives';
 import { duration, stagger } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
+import { MIN_TARGET } from '@/ui/touch';
 import { SpacesOnHome } from '@/features/spaces/SpacesOnHome';
 
 /**
@@ -113,21 +117,12 @@ export default function Inicio() {
           <Row gap="3" align="center">
             <AudienceBadge audience={{ kind: 'private' }} />
             {/* §14 · Perfil es un ícono, no una sección. */}
-            <Pressable
+            <IconButton
+              label="Perfil"
+              size={32}
               onPress={() => router.push('/(personal)/perfil')}
-              accessibilityRole="button"
-              accessibilityLabel="Perfil"
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: theme.radius.pill,
-                backgroundColor: theme.colors.surfaceSunken,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <UserRound size={16} color={theme.colors.textSecondary} />
-            </Pressable>
+              icon={<UserRound size={16} color={theme.colors.textSecondary} />}
+            />
           </Row>
         </Row>
 
@@ -157,7 +152,9 @@ export default function Inicio() {
                   <SectionHeader
                     title="Próximos pagos"
                     action={
-                      <Pressable
+                      <TextLink
+                        label="Ver todos"
+                        chevron
                         // UX-07 · abre Futuro en el mes en curso, donde está la lista completa.
                         onPress={() =>
                           router.push({
@@ -165,15 +162,7 @@ export default function Inicio() {
                             params: { mes: CURRENT_MONTH_PARAM, n: String(Date.now()) },
                           })
                         }
-                        haptic="none"
-                      >
-                        <Row gap="1">
-                          <Text variant="small" tone="brand">
-                            Ver todos
-                          </Text>
-                          <ChevronRight size={14} color={theme.colors.brand} />
-                        </Row>
-                      </Pressable>
+                      />
                     }
                   />
 
@@ -203,26 +192,38 @@ export default function Inicio() {
                   <SectionHeader
                     title="Próximos meses"
                     action={
-                      <Pressable onPress={() => router.push('/(personal)/futuro')} haptic="none">
-                        <Row gap="1">
-                          <Text variant="small" tone="brand">
-                            Futuro
-                          </Text>
-                          <ChevronRight size={14} color={theme.colors.brand} />
-                        </Row>
-                      </Pressable>
+                      <TextLink
+                        label="Futuro"
+                        chevron
+                        onPress={() => router.push('/(personal)/futuro')}
+                      />
                     }
                   />
 
-                  <Stack gap="3">
+                  {/* §15 · "tocar → Futuro": cada barra abre Futuro con SU mes elegido. */}
+                  <Stack gap="1">
                     {nextMonths.map((item, index) => (
-                      <MonthBar
+                      <Pressable
                         key={item.month}
-                        month={item.month}
-                        committed={item.committed}
-                        maxCommitted={maxCommitted}
-                        index={index}
-                      />
+                        onPress={() => router.push(futureMonthRoute(item.month, Date.now()))}
+                        haptic="none"
+                        scaleOnPress={false}
+                        accessibilityRole="button"
+                        accessibilityHint="Ver este mes en Futuro"
+                        style={{ minHeight: MIN_TARGET, justifyContent: 'center' }}
+                      >
+                        <Row gap="2" align="center">
+                          <View style={{ flex: 1 }}>
+                            <MonthBar
+                              month={item.month}
+                              committed={item.committed}
+                              maxCommitted={maxCommitted}
+                              index={index}
+                            />
+                          </View>
+                          <RowChevron />
+                        </Row>
+                      </Pressable>
                     ))}
                   </Stack>
 

@@ -6,7 +6,7 @@ import { goBack } from '@/features/shared/navigation';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { FixedIncomesList } from '@/features/fixed/FixedIncomesList';
 import { selectFixedIncomes } from '@/features/fixed/fixedIncomes';
-import { AudienceBadge, Pressable, Row, Screen, Stack, Text } from '@/ui/primitives';
+import { AudienceBadge, IconButton, Row, Screen, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 
 /**
@@ -35,21 +35,11 @@ export default function Ingresos() {
       <Stack gap="7">
         <Row justify="space-between" align="center">
           <Text variant="heading">Tus ingresos</Text>
-          <Pressable
+          <IconButton
+            label="Cerrar"
             onPress={() => goBack(router)}
-            accessibilityRole="button"
-            accessibilityLabel="Cerrar"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: theme.radius.pill,
-              backgroundColor: theme.colors.surfaceSunken,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <X size={18} color={theme.colors.textSecondary} />
-          </Pressable>
+            icon={<X size={18} color={theme.colors.textSecondary} />}
+          />
         </Row>
 
         <AudienceBadge audience={{ kind: 'private' }} />

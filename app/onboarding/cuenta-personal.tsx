@@ -4,7 +4,7 @@ import { goBack } from '@/features/shared/navigation';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { supabase } from '@/data/supabase';
 import { useSession } from '@/features/auth/SessionProvider';
-import { Button, Card, Pressable, Screen, Stack, Text } from '@/ui/primitives';
+import { Button, Card, Screen, Stack, Text } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
 
 /**
@@ -91,11 +91,13 @@ export default function CuentaPersonal() {
             </Text>
           )}
 
-          <Pressable onPress={() => goBack(router)} haptic="none">
-            <Text variant="small" tone="muted" align="center">
-              Ahora no
-            </Text>
-          </Pressable>
+          <Button
+            label="Ahora no"
+            variant="ghost"
+            fullWidth
+            haptic="none"
+            onPress={() => goBack(router)}
+          />
         </Stack>
       </Stack>
     </Screen>

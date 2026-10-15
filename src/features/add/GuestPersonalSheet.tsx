@@ -1,4 +1,4 @@
-import { Button, Pressable, Sheet, Stack, Text } from '@/ui/primitives';
+import { Button, Sheet, Stack, Text } from '@/ui/primitives';
 
 /**
  * CA-07 · Caso 18 · una invitada (Estado B) toca "Personal" en Agregar.
@@ -44,11 +44,7 @@ export function GuestPersonalContent({
       <Stack gap="3">
         <Button label="Crear mi cuenta personal" size="lg" fullWidth onPress={onCreateAccount} />
         <Button label={`Cargarlo en ${spaceName}`} variant="secondary" fullWidth onPress={onLoadInSpace} />
-        <Pressable onPress={onCancel} haptic="none" accessibilityRole="button">
-          <Text variant="small" tone="muted" align="center">
-            Cancelar
-          </Text>
-        </Pressable>
+        <Button label="Cancelar" variant="ghost" fullWidth haptic="none" onPress={onCancel} />
       </Stack>
     </Stack>
   );

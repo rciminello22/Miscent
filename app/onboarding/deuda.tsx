@@ -30,6 +30,7 @@ import {
 import { Button, Card, Divider, Pressable, Row, Stack, Text } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
+import { hitSlopFor } from '@/ui/touch';
 
 /**
  * O3 paso 4 · M5 · "Lo que ya debe al activar la cuenta personal".
@@ -334,7 +335,7 @@ function PurchaseForm({
                 haptic="none"
                 accessibilityRole="button"
                 accessibilityLabel={`Quitar ${title ?? 'esta compra'}`}
-                hitSlop={12}
+                hitSlop={hitSlopFor(18, 18)}
               >
                 <X size={18} color={theme.colors.textSecondary} />
               </Pressable>

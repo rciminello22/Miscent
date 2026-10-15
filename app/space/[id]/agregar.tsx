@@ -43,8 +43,8 @@ import {
   AudienceBadge,
   Button,
   Card,
+  IconButton,
   Money,
-  Pressable,
   Row,
   Screen,
   Stack,
@@ -294,21 +294,11 @@ export default function AgregarCompartido() {
       <Stack gap="7">
         <Row justify="space-between" align="center">
           <Text variant="heading">Gasto de {derived.facts.space.name}</Text>
-          <Pressable
+          <IconButton
+            label="Cerrar"
             onPress={close}
-            accessibilityRole="button"
-            accessibilityLabel="Cerrar"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: theme.radius.pill,
-              backgroundColor: theme.colors.surfaceSunken,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <X size={18} color={theme.colors.textSecondary} />
-          </Pressable>
+            icon={<X size={18} color={theme.colors.textSecondary} />}
+          />
         </Row>
 
         {/* §12 · la audiencia, siempre visible. */}

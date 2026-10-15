@@ -1,9 +1,8 @@
 import { useOpenSpace } from './useOpenSpace';
-import { ChevronRight } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { View } from 'react-native';
 import type { SpaceSummary } from '@/data/repositories/spaces';
-import { Card, Pressable, Row, Skeleton, Stack, Text } from '@/ui/primitives';
+import { Card, Pressable, Row, RowChevron, Skeleton, Stack, Text } from '@/ui/primitives';
 import { duration, stagger } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
 import { useSpace } from './useSpaces';
@@ -79,7 +78,7 @@ function SpaceRow({ space }: { space: SpaceSummary }) {
             )}
           </View>
 
-          <ChevronRight size={16} color={theme.colors.textMuted} />
+          <RowChevron />
         </Row>
       </Card>
     </Pressable>

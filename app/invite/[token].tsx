@@ -14,7 +14,7 @@ import { forgetOnboardingIntent } from '@/features/auth/onboardingIntent';
 import { signInAsGuest } from '@/data/auth';
 import { useSession } from '@/features/auth/SessionProvider';
 import { parseInvitationToken } from '@/features/auth/invitationLink';
-import { Button, Card, Pressable, Screen, Stack, Text } from '@/ui/primitives';
+import { Button, Card, Screen, Stack, Text } from '@/ui/primitives';
 import { duration, stagger } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
 
@@ -220,14 +220,13 @@ export default function Invite() {
             </Text>
           )}
 
-          <Pressable
-            onPress={() => router.replace(session == null ? '/(auth)/bienvenida' : '/')}
+          <Button
+            label="Ahora no"
+            variant="ghost"
+            fullWidth
             haptic="none"
-          >
-            <Text variant="small" tone="muted" align="center">
-              Ahora no
-            </Text>
-          </Pressable>
+            onPress={() => router.replace(session == null ? '/(auth)/bienvenida' : '/')}
+          />
         </Stack>
       </Stack>
     </Screen>

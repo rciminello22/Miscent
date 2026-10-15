@@ -1,8 +1,17 @@
 import { View } from 'react-native';
-import { Banknote, CreditCard, Landmark, MoreHorizontal, Send, Wallet } from 'lucide-react-native';
+import {
+  Banknote,
+  Check,
+  CreditCard,
+  Landmark,
+  MoreHorizontal,
+  Send,
+  Wallet,
+} from 'lucide-react-native';
 import type { PaymentOption } from './paymentOptions';
-import { Pressable, Row, Text } from '@/ui/primitives';
+import { Pressable, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
+import { MIN_TARGET, hitSlopFor } from '@/ui/touch';
 
 /* ────────────────────────────────────────────────────────────────────────── */
 
@@ -34,6 +43,15 @@ export function Field({
 
 /* ────────────────────────────────────────────────────────────────────────── */
 
+/** El alto del chip: 8 + 20 de línea + 8 de padding + 2 de borde. */
+const CHIP_HEIGHT = 38;
+/** UX-12 · el chip se ve de 38 y se toca de 44: 3 más arriba y abajo. */
+const CHIP_HIT_SLOP = hitSlopFor(MIN_TARGET, CHIP_HEIGHT);
+
+/**
+ * Una opción excluyente. UX-11 · lo elegido no se distingue solo por el color:
+ * además lleva un tilde. `accessibilityState.selected` lo anuncia al lector.
+ */
 export function Chip({
   label,
   selected,
@@ -53,6 +71,7 @@ export function Chip({
       accessibilityRole="radio"
       accessibilityState={{ selected }}
       accessibilityLabel={label}
+      hitSlop={CHIP_HIT_SLOP}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -69,9 +88,14 @@ export function Chip({
       <Text variant="small" tone={selected ? 'onBrand' : 'secondary'}>
         {label}
       </Text>
+      {selected && <Check size={14} color={theme.colors.textOnBrand} testID="chip-selected" />}
     </Pressable>
   );
 }
+
+const SEGMENT_HEIGHT = 38;
+/** UX-12 · cabe en el padding de 3 del contenedor: el toque llega a 44 sin pisar nada. */
+const SEGMENT_HIT_SLOP = hitSlopFor(MIN_TARGET, SEGMENT_HEIGHT);
 
 /** Dos opciones excluyentes, al estilo de un segmentado. */
 export function Segmented<T extends string>({
@@ -103,9 +127,10 @@ export function Segmented<T extends string>({
             scaleOnPress={false}
             accessibilityRole="tab"
             accessibilityState={{ selected }}
+            hitSlop={SEGMENT_HIT_SLOP}
             style={{
               flex: 1,
-              height: 38,
+              height: SEGMENT_HEIGHT,
               alignItems: 'center',
               justifyContent: 'center',
               borderRadius: theme.radius.sm,
@@ -158,7 +183,10 @@ export function PaymentMethodPicker({
   const theme = useTheme();
 
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space['2'] }}>
+    <View
+      accessibilityRole="radiogroup"
+      style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space['2'] }}
+    >
       {options.map((option) => {
         const Icon = METHOD_ICONS[option.kind];
         const selected = option.methodId != null && option.methodId === value;
@@ -196,7 +224,15 @@ export function InstallmentCountPicker({
   const theme = useTheme();
 
   return (
-    <Row gap="2" style={{ flexWrap: 'wrap' }}>
+    <View
+      accessibilityRole="radiogroup"
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: theme.space['2'],
+      }}
+    >
       {INSTALLMENT_PRESETS.map((count) => (
         <Chip
           key={count}
@@ -210,6 +246,6 @@ export function InstallmentCountPicker({
           cuotas
         </Text>
       </View>
-    </Row>
+    </View>
   );
 }

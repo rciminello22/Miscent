@@ -1,8 +1,17 @@
 import { View } from 'react-native';
-import { ChevronRight } from 'lucide-react-native';
 import type { Recurrence } from '@domain/types';
 import { prettyLabel } from '@/features/add/categories';
-import { Button, Card, Divider, Money, Pressable, Row, Stack, Text } from '@/ui/primitives';
+import {
+  Button,
+  Card,
+  Divider,
+  Money,
+  Pressable,
+  Row,
+  RowChevron,
+  Stack,
+  Text,
+} from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 
 /**
@@ -64,7 +73,7 @@ export function FixedIncomesList({
                     </Text>
                   </View>
                   <Money amount={income.amount} variant="bodyMedium" />
-                  <ChevronRight size={16} color={theme.colors.textMuted} />
+                  <RowChevron />
                 </Row>
               </Pressable>
               {index < incomes.length - 1 && <Divider />}

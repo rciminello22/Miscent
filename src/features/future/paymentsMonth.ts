@@ -38,6 +38,18 @@ export function initialPaymentsMonth(param: string | undefined, today: IsoDate):
   return inRange ? param : next;
 }
 
+/**
+ * §15 · "Próximos meses … tocar → Futuro": cada barra abre Futuro con SU mes
+ * elegido. `n` cambia en cada toque para que volver a pedir el mismo mes lo
+ * vuelva a elegir (Futuro compara el pedido entero).
+ */
+export function futureMonthRoute(
+  month: Month,
+  now: number,
+): { pathname: '/(personal)/futuro'; params: { mes: Month; n: string } } {
+  return { pathname: '/(personal)/futuro', params: { mes: month, n: String(now) } };
+}
+
 /** UX-24 · "Pagos de octubre": el bloque dice de qué mes es. */
 export function paymentsTitle(month: Month, today: IsoDate): string {
   return `Pagos de ${formatMonth(month, monthOf(today))}`;

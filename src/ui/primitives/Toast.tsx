@@ -5,6 +5,7 @@ import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { duration } from '../motion';
 import { useTheme } from '../theme';
+import { MIN_TARGET, hitSlopFor } from '../touch';
 import { Pressable } from './Pressable';
 import { Text } from './Text';
 
@@ -136,6 +137,8 @@ function ToastView({ toast, onDismiss }: { toast: ToastInput; onDismiss: () => v
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={toast.action.label}
+            // UX-12 · 8 + 20 + 8 = 36 de alto: el toque llega a 44.
+            hitSlop={hitSlopFor(MIN_TARGET, 36)}
             haptic="light"
             onPress={() => {
               toast.action?.onPress();

@@ -6,7 +6,7 @@ import { goBack } from '@/features/shared/navigation';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { sendMagicLink, verifyEmailCode } from '@/data/auth';
 import { normalizeOtp, OTP_LENGTH } from '@/data/authErrors';
-import { Button, Pressable, Screen, Stack, Text } from '@/ui/primitives';
+import { Button, Screen, Stack, Text } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
 
@@ -156,11 +156,13 @@ export default function RevisaTuEmail() {
             onPress={() => void resend()}
           />
 
-          <Pressable onPress={() => goBack(router)} haptic="none">
-            <Text variant="small" tone="brand" align="center">
-              Usar otro email
-            </Text>
-          </Pressable>
+          <Button
+            label="Usar otro email"
+            variant="ghost"
+            fullWidth
+            haptic="none"
+            onPress={() => goBack(router)}
+          />
         </Stack>
       </Stack>
     </Screen>

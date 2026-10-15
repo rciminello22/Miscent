@@ -45,14 +45,17 @@ import {
   Divider,
   EmptyState,
   ErrorState,
+  IconButton,
   Money,
   Pressable,
   Row,
+  RowChevron,
   SectionHeader,
   Sheet,
   Skeleton,
   Stack,
   Text,
+  TextLink,
 } from '@/ui/primitives';
 import { PaymentDetail } from './PaymentDetail';
 import { duration, stagger } from '@/ui/motion';
@@ -331,23 +334,24 @@ export function SpaceScreen({
       <Stack gap="7">
         <Row justify="space-between" align="center">
           {leading.kind === 'profile' ? (
-            <Pressable
+            // UX-12 · el dibujo mide 30; el área de toque llega a 44.
+            <IconButton
+              label="Perfil"
+              size={30}
+              filled={false}
               onPress={() => router.push('/(guest)/perfil')}
-              accessibilityRole="button"
-              accessibilityLabel="Perfil"
-              style={{ padding: theme.space['1'], marginLeft: -theme.space['1'] }}
-            >
-              <CircleUser size={22} color={theme.colors.textSecondary} />
-            </Pressable>
+              style={{ marginLeft: -theme.space['1'] }}
+              icon={<CircleUser size={22} color={theme.colors.textSecondary} />}
+            />
           ) : (
-            <Pressable
+            <IconButton
+              label="Volver"
+              size={28}
+              filled={false}
               onPress={leading.onPress}
-              accessibilityRole="button"
-              accessibilityLabel="Volver"
-              style={{ padding: theme.space['1'], marginLeft: -theme.space['1'] }}
-            >
-              <ArrowLeft size={20} color={theme.colors.textSecondary} />
-            </Pressable>
+              style={{ marginLeft: -theme.space['1'] }}
+              icon={<ArrowLeft size={20} color={theme.colors.textSecondary} />}
+            />
           )}
 
           <Row gap="3" align="center">
@@ -357,21 +361,12 @@ export function SpaceScreen({
             />
 
             {/* §24 · Renombrar · Invitar · Salir */}
-            <Pressable
+            <IconButton
+              label="Opciones del espacio"
+              size={32}
               onPress={() => setMenuOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel="Opciones del espacio"
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: theme.radius.pill,
-                backgroundColor: theme.colors.surfaceSunken,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <MoreHorizontal size={16} color={theme.colors.textSecondary} />
-            </Pressable>
+              icon={<MoreHorizontal size={16} color={theme.colors.textSecondary} />}
+            />
           </Row>
         </Row>
 
@@ -431,14 +426,11 @@ export function SpaceScreen({
                 <Text variant="small" tone="muted">
                   {other.displayName} todavía no entró
                 </Text>
-                <Pressable
+                <TextLink
+                  label="Invitar"
+                  variant="smallMedium"
                   onPress={() => router.push(`/space/${spaceId}/invitar`)}
-                  haptic="none"
-                >
-                  <Text variant="smallMedium" tone="brand">
-                    Invitar
-                  </Text>
-                </Pressable>
+                />
               </Row>
             )}
             {/* P7 · el lugar de un ex miembro se puede volver a invitar. */}
@@ -447,14 +439,11 @@ export function SpaceScreen({
                 <Text variant="small" tone="muted">
                   {other.displayName} · ex miembro
                 </Text>
-                <Pressable
+                <TextLink
+                  label="Invitar de nuevo"
+                  variant="smallMedium"
                   onPress={() => router.push(`/space/${spaceId}/invitar`)}
-                  haptic="none"
-                >
-                  <Text variant="smallMedium" tone="brand">
-                    Invitar de nuevo
-                  </Text>
-                </Pressable>
+                />
               </Row>
             )}
 
@@ -905,6 +894,10 @@ function PaymentRow({
           {reviewTag != null && <ReviewTag label={reviewTag} />}
         </View>
         <Money amount={amount} variant="bodyMedium" tone="muted" />
+        {/* UX-11 · el pago se abre. */}
+        <View style={{ marginTop: 3 }}>
+          <RowChevron />
+        </View>
       </Row>
     </Pressable>
   );
@@ -957,11 +950,7 @@ function DeletedRow({
               {formatPesos(item.amount)}
             </Text>
           )}
-          <Pressable onPress={onReviewed} haptic="none" accessibilityRole="button">
-            <Text variant="smallMedium" tone="brand">
-              Está bien
-            </Text>
-          </Pressable>
+          <TextLink label="Está bien" variant="smallMedium" onPress={onReviewed} />
         </View>
       </Row>
     </View>
@@ -1012,16 +1001,8 @@ function SharedRow({
   const iPaid = occurrence.payerSlot === mySlot;
   const myShare = mySlot === 1 ? occurrence.shares.slot1 : occurrence.shares.slot2;
 
-  return (
-    <Pressable
-      onPress={onPress}
-      haptic="none"
-      scaleOnPress={false}
-      accessibilityRole={onPress != null ? 'button' : undefined}
-      accessibilityLabel={prettyLabel(occurrence.label)}
-      style={{ paddingVertical: theme.space['3'] }}
-    >
-      <Row gap="3" align="flex-start">
+  const row = (
+    <Row gap="3" align="flex-start">
         <View style={{ flex: 1, gap: 3 }}>
           <Text variant="bodyMedium" numberOfLines={1}>
             {prettyLabel(occurrence.label)}
@@ -1051,7 +1032,32 @@ function SharedRow({
         </View>
 
         <Money amount={occurrence.amount} variant="bodyMedium" />
+
+        {/* UX-11 · solo la fila que abre algo lleva chevron. */}
+        {onPress != null && (
+          <View style={{ marginTop: 3 }}>
+            <RowChevron />
+          </View>
+        )}
       </Row>
+  );
+
+  // UX-11 · "Próximos meses" del espacio no abre nada: fila informativa, sin
+  // rol de botón ni chevron. La misma fila en Movimientos sí se abre.
+  if (onPress == null) {
+    return <View style={{ paddingVertical: theme.space['3'] }}>{row}</View>;
+  }
+
+  return (
+    <Pressable
+      onPress={onPress}
+      haptic="none"
+      scaleOnPress={false}
+      accessibilityRole="button"
+      accessibilityLabel={prettyLabel(occurrence.label)}
+      style={{ paddingVertical: theme.space['3'] }}
+    >
+      {row}
     </Pressable>
   );
 }

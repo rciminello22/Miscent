@@ -16,12 +16,13 @@ import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
 import {
   Button,
   Card,
+  IconButton,
   Money,
-  Pressable,
   Row,
   Screen,
   Stack,
   Text,
+  TextLink,
 } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
@@ -165,21 +166,11 @@ export default function Pago() {
       <Stack gap="7">
         <Row justify="space-between" align="center">
           <Text variant="heading">Registrar pago</Text>
-          <Pressable
+          <IconButton
+            label="Cerrar"
             onPress={() => goBack(router)}
-            accessibilityRole="button"
-            accessibilityLabel="Cerrar"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: theme.radius.pill,
-              backgroundColor: theme.colors.surfaceSunken,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <X size={18} color={theme.colors.textSecondary} />
-          </Pressable>
+            icon={<X size={18} color={theme.colors.textSecondary} />}
+          />
         </Row>
 
         <Card tone="shared">
@@ -203,11 +194,10 @@ export default function Pago() {
         </Field>
 
         {proposed > 0 && amount !== proposed && (
-          <Pressable onPress={() => setAmount(proposed)} haptic="none">
-            <Text variant="small" tone="brand">
-              Usar {formatPesos(proposed)}, que deja todo a mano
-            </Text>
-          </Pressable>
+          <TextLink
+            label={`Usar ${formatPesos(proposed)}, que deja todo a mano`}
+            onPress={() => setAmount(proposed)}
+          />
         )}
 
         <Field label="¿Cuándo?">

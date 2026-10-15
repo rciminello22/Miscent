@@ -1,5 +1,5 @@
 import type { Category } from '@domain/types';
-import { Pressable, Row, Text } from '@/ui/primitives';
+import { Row, Text, TextLink } from '@/ui/primitives';
 import { prettyLabel } from './categories';
 
 /**
@@ -25,16 +25,12 @@ export function SuggestedCategory({
       <Text variant="caption" tone="muted">
         ¿Es {prettyLabel(suggestion)}?
       </Text>
-      <Pressable
-        onPress={() => onUse(suggestion)}
-        haptic="light"
-        accessibilityRole="button"
+      <TextLink
+        label="Usar"
+        variant="smallMedium"
         accessibilityLabel={`Usar la categoría ${prettyLabel(suggestion)}`}
-      >
-        <Text variant="smallMedium" tone="brand">
-          Usar
-        </Text>
-      </Pressable>
+        onPress={() => onUse(suggestion)}
+      />
     </Row>
   );
 }

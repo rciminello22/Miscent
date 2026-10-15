@@ -22,9 +22,11 @@ import {
   AudienceIcon,
   Divider,
   EmptyState,
+  IconButton,
   Money,
   Pressable,
   Row,
+  RowChevron,
   Skeleton,
   Stack,
   Text,
@@ -120,23 +122,22 @@ export default function Movimientos() {
       <Stack gap="6">
         {/* §16 · selector de mes, con el actual por defecto. */}
         <Row justify="space-between" align="center">
-          <Pressable
+          {/* UX-12 · el dibujo mide 36; el área de toque llega a 44. */}
+          <IconButton
+            label="Mes anterior"
+            filled={false}
             onPress={() => setMonth(addMonths(month, -1))}
-            accessibilityLabel="Mes anterior"
-            style={{ padding: theme.space['2'] }}
-          >
-            <ChevronLeft size={20} color={theme.colors.textSecondary} />
-          </Pressable>
+            icon={<ChevronLeft size={20} color={theme.colors.textSecondary} />}
+          />
 
           <Text variant="heading">{formatMonth(month, monthOf(today))}</Text>
 
-          <Pressable
+          <IconButton
+            label="Mes siguiente"
+            filled={false}
             onPress={() => setMonth(addMonths(month, 1))}
-            accessibilityLabel="Mes siguiente"
-            style={{ padding: theme.space['2'] }}
-          >
-            <ChevronRight size={20} color={theme.colors.textSecondary} />
-          </Pressable>
+            icon={<ChevronRight size={20} color={theme.colors.textSecondary} />}
+          />
         </Row>
 
         {/* §16 · "Filtros: Todos · Personales · uno por espacio". */}
@@ -226,6 +227,9 @@ function MovementItem({
   const theme = useTheme();
   const isPayment = row.kind === 'member-payment';
   const isIncome = row.kind === 'personal-income';
+  // SA-02 · de un espacio del que saliste no hay detalle: la fila es informativa
+  // y no lleva chevron ni rol de botón (UX-11).
+  const opensDetail = !row.formerSpace;
 
   return (
     <Pressable
@@ -233,6 +237,7 @@ function MovementItem({
       onLongPress={onLongPress}
       haptic="none"
       scaleOnPress={false}
+      accessibilityRole={opensDetail ? 'button' : undefined}
       accessibilityLabel={prettyLabel(row.label)}
       style={{ paddingVertical: theme.space['4'] }}
     >
@@ -290,6 +295,13 @@ function MovementItem({
             </Text>
           )}
         </View>
+
+        {/* UX-11 · la fila abre el detalle. */}
+        {opensDetail && (
+          <View style={{ marginTop: 3 }}>
+            <RowChevron />
+          </View>
+        )}
       </Row>
     </Pressable>
   );

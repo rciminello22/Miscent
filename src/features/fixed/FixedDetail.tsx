@@ -29,6 +29,7 @@ import {
   Button,
   Card,
   Divider,
+  IconButton,
   Money,
   Pressable,
   Row,
@@ -36,6 +37,7 @@ import {
   SectionHeader,
   Stack,
   Text,
+  TextLink,
 } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
@@ -223,11 +225,13 @@ export function FixedDetail({
               loading={apply.isPending}
               onPress={() => apply.mutate()}
             />
-            <Pressable onPress={() => setMode('view')} haptic="none">
-              <Text variant="small" tone="muted" align="center">
-                Cancelar
-              </Text>
-            </Pressable>
+            <Button
+              label="Cancelar"
+              variant="ghost"
+              fullWidth
+              haptic="none"
+              onPress={() => setMode('view')}
+            />
           </Stack>
         ) : undefined
       }
@@ -237,21 +241,11 @@ export function FixedDetail({
           <Text variant="heading" numberOfLines={1} style={{ flex: 1 }}>
             {recurrence.description ?? prettyLabel(recurrence.category)}
           </Text>
-          <Pressable
+          <IconButton
+            label="Cerrar"
             onPress={() => goBack(router)}
-            accessibilityRole="button"
-            accessibilityLabel="Cerrar"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: theme.radius.pill,
-              backgroundColor: theme.colors.surfaceSunken,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <X size={18} color={theme.colors.textSecondary} />
-          </Pressable>
+            icon={<X size={18} color={theme.colors.textSecondary} />}
+          />
         </Row>
 
         <AudienceBadge audience={audience} />
@@ -314,14 +308,11 @@ export function FixedDetail({
                         </Text>
                         <Row gap="3" align="center">
                           <Money amount={override.amount} variant="smallMedium" />
-                          <Pressable
+                          <TextLink
+                            label="Quitar"
+                            variant="caption"
                             onPress={() => removeOverride.mutate(override.month)}
-                            haptic="none"
-                          >
-                            <Text variant="caption" tone="brand">
-                              Quitar
-                            </Text>
-                          </Pressable>
+                          />
                         </Row>
                       </Row>
                       {index < overrides.length - 1 && <Divider />}

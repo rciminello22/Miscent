@@ -8,7 +8,7 @@ import { Segmented } from '@/features/add/fields';
 import { StepShell } from '@/features/onboarding/StepShell';
 import { useCreateSpace } from '@/features/spaces/useSpaces';
 import { useSession } from '@/features/auth/SessionProvider';
-import { Button, Pressable, Screen, Stack, Text } from '@/ui/primitives';
+import { Button, Screen, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 
 /**
@@ -80,11 +80,13 @@ export default function NuevoEspacio() {
               fullWidth
               onPress={() => router.replace('/onboarding/cuenta-personal')}
             />
-            <Pressable onPress={() => goBack(router)} haptic="none">
-              <Text variant="small" tone="muted" align="center">
-                Ahora no
-              </Text>
-            </Pressable>
+            <Button
+              label="Ahora no"
+              variant="ghost"
+              fullWidth
+              haptic="none"
+              onPress={() => goBack(router)}
+            />
           </Stack>
         }
       >

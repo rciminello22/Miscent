@@ -24,6 +24,7 @@ import {
   MonthBar,
   Pressable,
   Row,
+  RowChevron,
   SectionHeader,
   Skeleton,
   Stack,
@@ -31,7 +32,11 @@ import {
 } from '@/ui/primitives';
 import { duration, stagger } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
+import { MIN_TARGET, hitSlopFor } from '@/ui/touch';
 import { spaceContext } from '@/features/spaces/departureCopy';
+
+/** UX-12 · 8 + 20 + 8 + borde de 1,5 × 2: ~39pt de alto, se toca con 44. */
+const SELECTABLE_HIT_SLOP = hitSlopFor(MIN_TARGET, 39);
 
 /**
  * §23 · Futuro. "Futuro es el corazón del producto."
@@ -173,6 +178,8 @@ export default function Futuro() {
                       accessibilityRole="button"
                       accessibilityLabel={formatMonth(month.month, from)}
                       accessibilityState={{ selected: month.month === selectedMonth }}
+                      // UX-12 · la barra elegible mide ~39; el toque llega a 44.
+                      hitSlop={SELECTABLE_HIT_SLOP}
                     >
                       <MonthBar
                         month={month.month}
@@ -341,6 +348,10 @@ export default function Futuro() {
                           </Text>
                         </View>
                         <Money amount={recurrence.amount} variant="smallMedium" />
+                        {/* UX-11 · la fila abre el fijo (F-03). */}
+                        <View style={{ alignSelf: 'center' }}>
+                          <RowChevron />
+                        </View>
                       </Row>
                       </Pressable>
                       {index < fixed.length - 1 && <Divider />}
@@ -386,6 +397,7 @@ function CurrentMonthChip({
       accessibilityRole="button"
       accessibilityLabel={`${label}, ${hint}`}
       accessibilityState={{ selected }}
+      hitSlop={SELECTABLE_HIT_SLOP}
     >
       <Row
         justify="space-between"

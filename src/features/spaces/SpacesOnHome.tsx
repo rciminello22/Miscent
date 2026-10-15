@@ -6,8 +6,9 @@ import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { pendingFixedLine } from './departureCopy';
 import { toCompleteLine } from './paidByMeCopy';
 import { toReviewLine } from './reviewCopy';
-import { Pressable, Row, SectionHeader, Skeleton, Stack, Text } from '@/ui/primitives';
+import { Pressable, Row, RowChevron, SectionHeader, Skeleton, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
+import { MIN_TARGET } from '@/ui/touch';
 import { balanceSentence } from './balanceCopy';
 import { useOpenSpace } from './useOpenSpace';
 import { useSpace, useSpaces } from './useSpaces';
@@ -68,7 +69,7 @@ function SpaceLine({ space }: { space: SpaceSummary }) {
       scaleOnPress={false}
       accessibilityRole="button"
       accessibilityLabel={[space.name, ...hints].join('. ')}
-      style={{ paddingVertical: theme.space['2'] }}
+      style={{ paddingVertical: theme.space['2'], minHeight: MIN_TARGET, justifyContent: 'center' }}
     >
       <Row justify="space-between" align="center" gap="3">
         <View style={{ flexShrink: 1 }}>
@@ -88,6 +89,8 @@ function SpaceLine({ space }: { space: SpaceSummary }) {
             {balanceSentence(derived.balance)}
           </Text>
         ) : null}
+        {/* UX-11 · la fila abre el espacio. */}
+        <RowChevron />
       </Row>
     </Pressable>
   );

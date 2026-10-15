@@ -251,6 +251,25 @@ describe('§15 · RadarSummary', () => {
       expect(row.props.accessibilityHint).toBe('Ver de dónde sale esta cifra');
     }
   });
+
+  it('UX-11 · M18 · cada cifra se ve tocable: lleva chevron (defensa de Sin asignar)', async () => {
+    const radar = radarFor({ income: 1_200_000, spentCash: 250_000, fixed: 550_000 });
+
+    const view = await renderWithTheme(
+      <RadarSummary radar={radar} month={MONTH} onOpenBreakdown={jest.fn()} />,
+    );
+
+    const chevrons = view.queryAllByTestId('chevron', { includeHiddenElements: true });
+    expect(chevrons).toHaveLength(3);
+  });
+
+  it('UX-11 · sin dónde abrir el detalle, la fila no promete nada: no hay chevron', async () => {
+    const radar = radarFor({ income: 1_200_000, spentCash: 250_000, fixed: 550_000 });
+
+    const view = await renderWithTheme(<RadarSummary radar={radar} month={MONTH} />);
+
+    expect(view.queryAllByTestId('chevron', { includeHiddenElements: true })).toHaveLength(0);
+  });
 });
 
 describe('§15 · "Con tarjeta este mes"', () => {

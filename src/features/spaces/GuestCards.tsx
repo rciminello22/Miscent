@@ -1,4 +1,4 @@
-import { Button, Card, Pressable, Stack, Text } from '@/ui/primitives';
+import { Button, Card, Stack, Text, TextLink } from '@/ui/primitives';
 
 /**
  * §33 U1 · la pantalla principal del invitado: "que entienda en segundos que
@@ -26,11 +26,7 @@ export function GuestWelcome({
           Acá anotan lo que pagan entre los dos y la app hace las cuentas. Lo que cargues acá
           lo ven vos y {otherName}.
         </Text>
-        <Pressable onPress={onDismiss} haptic="none" accessibilityRole="button">
-          <Text variant="smallMedium" tone="brand">
-            Entendido
-          </Text>
-        </Pressable>
+        <TextLink label="Entendido" variant="smallMedium" onPress={onDismiss} />
       </Stack>
     </Card>
   );
@@ -56,11 +52,7 @@ export function PersonalMoneyCard({
 }) {
   if (reduced) {
     return (
-      <Pressable onPress={onCreate} haptic="none" accessibilityRole="button">
-        <Text variant="small" tone="brand">
-          Crear mi cuenta personal
-        </Text>
-      </Pressable>
+      <TextLink label="Crear mi cuenta personal" onPress={onCreate} />
     );
   }
 
@@ -76,11 +68,7 @@ export function PersonalMoneyCard({
         </Stack>
         <Stack gap="2">
           <Button label="Crear mi cuenta personal" fullWidth onPress={onCreate} />
-          <Pressable onPress={onNotNow} haptic="none" accessibilityRole="button">
-            <Text variant="small" tone="muted" align="center">
-              Ahora no
-            </Text>
-          </Pressable>
+          <Button label="Ahora no" variant="ghost" fullWidth haptic="none" onPress={onNotNow} />
         </Stack>
       </Stack>
     </Card>

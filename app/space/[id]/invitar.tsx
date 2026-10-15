@@ -20,7 +20,7 @@ import {
   Button,
   Card,
   Divider,
-  Pressable,
+  IconButton,
   Row,
   Screen,
   Stack,
@@ -114,21 +114,11 @@ export default function Invitar() {
       <Stack gap="7">
         <Row justify="space-between" align="center">
           <Text variant="heading">Invitar a {other.displayName}</Text>
-          <Pressable
+          <IconButton
+            label="Cerrar"
             onPress={() => goBack(router)}
-            accessibilityRole="button"
-            accessibilityLabel="Cerrar"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: theme.radius.pill,
-              backgroundColor: theme.colors.surfaceSunken,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <X size={18} color={theme.colors.textSecondary} />
-          </Pressable>
+            icon={<X size={18} color={theme.colors.textSecondary} />}
+          />
         </Row>
 
         {/* §33 U4 · qué va a ver y qué no. Antes de invitar, no después. */}
@@ -217,24 +207,26 @@ export default function Invitar() {
                 </Stack>
               </Card>
 
-              <Pressable onPress={confirmRegenerate} haptic="none">
-                <Row gap="2" justify="center" align="center">
-                  <RefreshCw size={13} color={theme.colors.brand} />
-                  <Text variant="small" tone="brand">
-                    Generar otro enlace
-                  </Text>
-                </Row>
-              </Pressable>
+              <Button
+                label="Generar otro enlace"
+                variant="ghost"
+                fullWidth
+                haptic="none"
+                icon={<RefreshCw size={13} color={theme.colors.brand} />}
+                onPress={confirmRegenerate}
+              />
             </Stack>
           </Animated.View>
         )}
 
         {hasActive && (
-          <Pressable onPress={() => void revoke.mutateAsync()} haptic="none">
-            <Text variant="small" tone="muted" align="center">
-              Cancelar la invitación
-            </Text>
-          </Pressable>
+          <Button
+            label="Cancelar la invitación"
+            variant="ghost"
+            fullWidth
+            haptic="none"
+            onPress={() => void revoke.mutateAsync()}
+          />
         )}
 
         {/* §34 · la app no contacta a nadie. */}
