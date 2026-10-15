@@ -24,6 +24,8 @@ export const palette = {
   brand700: '#3B3BA8',
   brand600: '#4A4AC4',
   brand500: '#5B5BE0',
+  /* UX-03 · el tono medio de los segmentos: >=3:1 contra los tracks de las barras. */
+  brand450: '#6C6CE8',
   brand400: '#7C7CEB',
   brand300: '#A5A5F4',
   brand200: '#CFCFFA',
@@ -101,8 +103,10 @@ const light: ThemeColors = {
   shared: palette.teal600,
   sharedSoft: palette.teal100,
 
-  spent: palette.brand600,
-  committed: palette.brand300,
+  /* UX-03 · segmentos >=3:1 contra el track (ink200): Gastado el más intenso, Comprometido
+     un tono medio. Entre ellos va la separación de 2px de RadarBar. */
+  spent: palette.brand700,
+  committed: palette.brand450,
   unassignedTrack: palette.ink200,
   /* UX-02 · se usa como TEXTO (N-08, errores): amber500 daba 2,75:1. Como marca de
      la barra sigue leyéndose (4,5:1 contra el track). Sigue siendo ámbar, no rojo (§15). */
@@ -133,8 +137,9 @@ const dark: ThemeColors = {
   shared: palette.teal500,
   sharedSoft: palette.ink800,
 
-  spent: palette.brand400,
-  committed: palette.brand700,
+  /* UX-03 · en oscuro lo más intenso es lo más claro: >=3:1 contra el track (ink800). */
+  spent: palette.brand300,
+  committed: palette.brand450,
   unassignedTrack: palette.ink800,
   excess: palette.amber500,
 

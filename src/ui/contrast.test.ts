@@ -55,3 +55,49 @@ describe('UX-02 · contraste mínimo 4,5:1 del texto de ayuda', () => {
     }
   }
 });
+
+/**
+ * UX-03 · WCAG 1.4.11 (objetos gráficos): 3:1 contra lo que tienen al lado.
+ *
+ * Comprometido contra el track vacío daba ~1,7:1 y Gastado contra Comprometido
+ * ~3:1: "con destino" y "sin destino", la distinción central del radar, casi
+ * se fundían. Dos segmentos del mismo matiz no pueden estar a 3:1 entre sí Y
+ * a 3:1 del track, así que se distinguen por tono (esta prueba pide una
+ * diferencia mínima) más 2px de separación del color del fondo (RadarBar).
+ */
+const GRAPHIC = 3;
+/** Diferencia mínima de tono entre segmentos contiguos; la separación hace el resto. */
+const SEGMENT_TONE_GAP = 1.8;
+
+describe('UX-03 · contraste de los segmentos del radar (>= 3:1 contra el track)', () => {
+  for (const scheme of ['light', 'dark'] as const) {
+    const colors = colorSchemes[scheme];
+
+    for (const segment of ['spent', 'committed'] as const) {
+      it(`${scheme} · ${segment} contra el track vacío`, () => {
+        expect(contrast(colors[segment], colors.unassignedTrack)).toBeGreaterThanOrEqual(GRAPHIC);
+      });
+    }
+
+    it(`${scheme} · Gastado y Comprometido se distinguen por tono`, () => {
+      expect(contrast(colors.spent, colors.committed)).toBeGreaterThanOrEqual(SEGMENT_TONE_GAP);
+    });
+
+    it(`${scheme} · la marca de exceso se ve contra la separación (surface)`, () => {
+      expect(contrast(colors.excess, colors.surface)).toBeGreaterThanOrEqual(GRAPHIC);
+    });
+  }
+});
+
+describe('UX-03 · contraste de las barras por mes (MonthBar, >= 3:1 contra su track)', () => {
+  for (const scheme of ['light', 'dark'] as const) {
+    const colors = colorSchemes[scheme];
+
+    // MonthBar pinta `committed` y, resaltada, `spent`, sobre `surfaceSunken`.
+    for (const segment of ['spent', 'committed'] as const) {
+      it(`${scheme} · ${segment} contra surfaceSunken`, () => {
+        expect(contrast(colors[segment], colors.surfaceSunken)).toBeGreaterThanOrEqual(GRAPHIC);
+      });
+    }
+  }
+});

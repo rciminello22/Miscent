@@ -3,7 +3,8 @@ import { View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import type { Pesos } from '@domain/money';
 import { barTransition } from '../motion';
-import { radarBarRatios } from './radarBarRatios';
+import { radarBarValueText } from './radarBarCopy';
+import { radarBarRatios, radarBarSeparators } from './radarBarRatios';
 import { useTheme } from '../theme';
 
 export type RadarBarProps = {
@@ -11,8 +12,16 @@ export type RadarBarProps = {
   spent: Pesos;
   committed: Pesos;
   height?: number;
+  /** Color de la separación entre segmentos: el de la superficie sobre la que está la barra. */
+  separatorColor?: string;
   style?: StyleProp<ViewStyle>;
 };
+
+/** UX-03 · separación entre segmentos y marca de exceso, en px. */
+const SEPARATOR_WIDTH = 2;
+const MARK_WIDTH = 6;
+const MARK_HALO = 2;
+const MARK_OVERHANG = 3;
 
 /**
  * La barra del radar (§15).
@@ -35,7 +44,8 @@ export function RadarBar({
   registeredIncome,
   spent,
   committed,
-  height = 12,
+  height = 14,
+  separatorColor,
   style,
 }: RadarBarProps) {
   const theme = useTheme();
@@ -69,50 +79,76 @@ export function RadarBar({
     left: `${incomeMarkRatio.value * 100}%`,
   }));
 
+  const separators = radarBarSeparators(ratios);
+  const gap = (
+    <View style={{ width: SEPARATOR_WIDTH, backgroundColor: separatorColor ?? theme.colors.surface }} />
+  );
+
   return (
+    // El contenedor no recorta: la marca de exceso sobresale de la barra (UX-03).
     <View
-      style={[
-        {
-          height,
+      style={[{ height }, style]}
+      accessibilityRole="progressbar"
+      accessibilityLabel="Destino de tus ingresos registrados"
+      accessibilityValue={{
+        text: radarBarValueText({ registeredIncome, spent, committed }),
+      }}
+    >
+      <View
+        style={{
+          flex: 1,
           borderRadius: height / 2,
           backgroundColor: theme.colors.unassignedTrack,
           overflow: 'hidden',
           flexDirection: 'row',
-        },
-        style,
-      ]}
-      accessibilityRole="progressbar"
-      accessibilityLabel="Destino de tus ingresos registrados"
-    >
-      {ratios != null && (
-        <>
-          <Animated.View
-            testID="radar-bar-spent"
-            style={[{ backgroundColor: theme.colors.spent }, spentStyle]}
-          />
-          <Animated.View
-            testID="radar-bar-committed"
-            style={[{ backgroundColor: theme.colors.committed }, committedStyle]}
-          />
-          {/* El resto del flex queda vacío: eso es Sin asignar. */}
-          <View style={{ flexGrow: ratios.unassigned }} />
-        </>
-      )}
+        }}
+      >
+        {ratios != null && (
+          <>
+            <Animated.View
+              testID="radar-bar-spent"
+              style={[{ backgroundColor: theme.colors.spent }, spentStyle]}
+            />
+            {separators.spentCommitted && gap}
+            <Animated.View
+              testID="radar-bar-committed"
+              style={[{ backgroundColor: theme.colors.committed }, committedStyle]}
+            />
+            {separators.assignedUnassigned && gap}
+            {/* El resto del flex queda vacío: eso es Sin asignar. */}
+            <View style={{ flexGrow: ratios.unassigned }} />
+          </>
+        )}
+      </View>
 
       {ratios?.exceeds === true && (
+        /* N-08 · la marca: un halo del color del fondo para que el ámbar se vea
+           contra cualquier segmento, y sobresale 3px por arriba y por abajo. */
         <Animated.View
           testID="radar-bar-excess"
           style={[
             {
               position: 'absolute',
-              top: 0,
-              bottom: 0,
-              width: 2,
-              backgroundColor: theme.colors.excess,
+              top: -MARK_OVERHANG,
+              bottom: -MARK_OVERHANG,
+              width: MARK_WIDTH,
+              marginLeft: -MARK_WIDTH / 2,
+              borderRadius: MARK_WIDTH / 2,
+              backgroundColor: separatorColor ?? theme.colors.surface,
+              alignItems: 'center',
             },
             markStyle,
           ]}
-        />
+        >
+          <View
+            style={{
+              flex: 1,
+              width: MARK_WIDTH - 2 * MARK_HALO,
+              borderRadius: 1,
+              backgroundColor: theme.colors.excess,
+            }}
+          />
+        </Animated.View>
       )}
     </View>
   );
@@ -133,21 +169,23 @@ export function RadarLegend({ children }: { children: React.ReactNode }) {
 
 export function RadarLegendDot({ color }: { color: 'spent' | 'committed' | 'unassigned' }) {
   const theme = useTheme();
+  // UX-03 · Sin asignar es lo VACÍO: un anillo hueco con borde de textMuted (>=4,5:1
+  // contra el fondo), no un relleno del color del track, que se perdía.
   const backgroundColor = {
     spent: theme.colors.spent,
     committed: theme.colors.committed,
-    unassigned: theme.colors.unassignedTrack,
+    unassigned: 'transparent',
   }[color];
 
   return (
     <View
       style={{
-        width: 8,
-        height: 8,
-        borderRadius: 4,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
         backgroundColor,
-        borderWidth: color === 'unassigned' ? 1 : 0,
-        borderColor: theme.colors.borderStrong,
+        borderWidth: color === 'unassigned' ? 1.5 : 0,
+        borderColor: theme.colors.textMuted,
       }}
     />
   );

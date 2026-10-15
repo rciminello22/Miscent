@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { radarBarRatios } from './radarBarRatios';
+import { radarBarRatios, radarBarSeparators } from './radarBarRatios';
 
 /**
  * UX-04 · §15 · CA-03 · las proporciones de la barra del radar.
@@ -46,5 +46,38 @@ describe('radarBarRatios', () => {
       incomeMark: 1,
       exceeds: false,
     });
+  });
+});
+
+/**
+ * UX-03 · 2px de separación del color del fondo SOLO entre segmentos que
+ * existen: un segmento de ancho 0 no debe dejar una raya suelta.
+ */
+describe('UX-03 · radarBarSeparators', () => {
+  const sep = (spent: number, committed: number, income = 1_000) =>
+    radarBarSeparators(radarBarRatios({ registeredIncome: income, spent, committed }));
+
+  it('sin proporciones (sin ingresos) no hay separadores', () => {
+    expect(radarBarSeparators(null)).toEqual({ spentCommitted: false, assignedUnassigned: false });
+  });
+
+  it('con los tres segmentos hay dos separadores', () => {
+    expect(sep(300, 200)).toEqual({ spentCommitted: true, assignedUnassigned: true });
+  });
+
+  it('sin Comprometido solo separa lo gastado del track', () => {
+    expect(sep(300, 0)).toEqual({ spentCommitted: false, assignedUnassigned: true });
+  });
+
+  it('sin Gastado solo separa lo comprometido del track', () => {
+    expect(sep(0, 200)).toEqual({ spentCommitted: false, assignedUnassigned: true });
+  });
+
+  it('con exceso no queda track: solo separa Gastado de Comprometido', () => {
+    expect(sep(600, 900)).toEqual({ spentCommitted: true, assignedUnassigned: false });
+  });
+
+  it('con nada asignado todo es track y no hay separadores', () => {
+    expect(sep(0, 0)).toEqual({ spentCommitted: false, assignedUnassigned: false });
   });
 });

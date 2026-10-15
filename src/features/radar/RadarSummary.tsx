@@ -160,7 +160,7 @@ function RadarRow({
       accessibilityLabel={label}
     >
       <Row gap="3" align="flex-start">
-        <View style={{ marginTop: 7 }}>
+        <View style={{ marginTop: 6 }}>
           <RadarLegendDot color={dot} />
         </View>
 

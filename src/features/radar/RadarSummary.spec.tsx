@@ -208,6 +208,16 @@ describe('§15 · RadarSummary', () => {
     expect(view.getByTestId('radar-bar-excess')).toBeTruthy();
   });
 
+  it('UX-03 · la barra tiene valor accesible con las cifras en palabras, sin porcentajes', async () => {
+    const radar = radarFor({ income: 1_200_000, spentCash: 250_000, fixed: 550_000 });
+    const view = await renderWithTheme(<RadarSummary radar={radar} month={MONTH} />);
+
+    const bar = view.getByLabelText('Destino de tus ingresos registrados');
+    expect(bar.props.accessibilityValue).toEqual({
+      text: 'Gastado $250.000, Comprometido $550.000, de $1.200.000 registrados',
+    });
+  });
+
   it('CA-02 / N-08 · con los compromisos por encima de los ingresos, la frase exacta', async () => {
     const radar = radarFor({ income: 500_000, spentCash: 535_000 });
 

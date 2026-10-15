@@ -43,3 +43,18 @@ export function radarBarRatios(input: {
     exceeds: assigned > registeredIncome,
   };
 }
+
+/**
+ * UX-03 · dónde va la separación entre segmentos. Solo entre segmentos con
+ * ancho: un separador junto a uno vacío dibujaría una raya suelta.
+ */
+export function radarBarSeparators(ratios: RadarBarRatios | null): {
+  spentCommitted: boolean;
+  assignedUnassigned: boolean;
+} {
+  if (ratios == null) return { spentCommitted: false, assignedUnassigned: false };
+  return {
+    spentCommitted: ratios.spent > 0 && ratios.committed > 0,
+    assignedUnassigned: ratios.spent + ratios.committed > 0 && ratios.unassigned > 0,
+  };
+}
