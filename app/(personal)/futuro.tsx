@@ -7,6 +7,7 @@ import { activeInstallmentPlans, calculateFuture } from '@domain/future';
 import { calculateUpcomingPayments, upcomingFrom } from '@domain/upcoming';
 import { formatInstallment, formatMonth, formatPaymentWhen } from '@/lib/format';
 import { prettyLabel } from '@/features/add/categories';
+import { FutureMonthDetail } from '@/features/future/FutureMonthDetail';
 import { useRouter } from 'expo-router';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import {
@@ -169,23 +170,13 @@ export default function Futuro() {
 
             {/* ── El mes elegido ───────────────────────────────────────── */}
             {selected != null && (
-              <Stack gap="4">
-                <SectionHeader title={formatMonth(selected.month, from)} />
-                <Card>
-                  <Stack gap="3">
-                    <DetailRow label="Comprometido" amount={selected.committed} />
-                    <DetailRow label="Ingreso previsto" amount={selected.expectedIncome} />
-                    <Divider />
-                    {selected.unassigned != null ? (
-                      <DetailRow label="Sin asignar" amount={selected.unassigned} emphasis />
-                    ) : (
-                      <Text variant="small" tone="secondary">
-                        Sin ingreso registrado
-                      </Text>
-                    )}
-                  </Stack>
-                </Card>
-              </Stack>
+              // UX-10 · la ayuda de Sin asignar y el negativo (N-08) viven en el componente.
+              <FutureMonthDetail
+                title={formatMonth(selected.month, from)}
+                committed={selected.committed}
+                expectedIncome={selected.expectedIncome}
+                unassigned={selected.unassigned}
+              />
             )}
 
             {/* ── §23.2 · Próximos pagos del mes elegido ───────────────── */}
@@ -355,24 +346,5 @@ export default function Futuro() {
         )}
       </Stack>
     </ScrollView>
-  );
-}
-
-function DetailRow({
-  label,
-  amount,
-  emphasis = false,
-}: {
-  label: string;
-  amount: number;
-  emphasis?: boolean;
-}) {
-  return (
-    <Row justify="space-between" align="baseline">
-      <Text variant={emphasis ? 'bodyMedium' : 'body'} tone={emphasis ? 'default' : 'secondary'}>
-        {label}
-      </Text>
-      <Money amount={amount} variant={emphasis ? 'heading' : 'bodyMedium'} animate />
-    </Row>
   );
 }
