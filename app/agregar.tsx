@@ -30,6 +30,7 @@ import {
   Segmented,
 } from '@/features/add/fields';
 import { InstallmentPreview } from '@/features/add/InstallmentPreview';
+import { installmentCountIssue, isValidInstallmentCount } from '@/features/add/installmentCount';
 import { PastDateField } from '@/features/add/DateField';
 import { MoreOptions } from '@/features/add/MoreOptions';
 import { lastUsedPaymentMethodId, moreOptionsSummary } from '@/features/add/addDefaults';
@@ -156,7 +157,7 @@ export default function Agregar() {
   }, [facts.movements, kind]);
 
   const plan = useMemo(() => {
-    if (kind === 'income' || installmentCount == null || installmentCount < 2) return null;
+    if (kind === 'income' || !isValidInstallmentCount(installmentCount)) return null;
     return planInstallments({
       purchaseDate: date,
       count: installmentCount,
@@ -164,7 +165,9 @@ export default function Agregar() {
     });
   }, [kind, installmentCount, isCard, method, date]);
 
-  const canSave = amount > 0 && category != null && !saving;
+  // UX-06 · una cantidad de cuotas fuera de 2 a 36 (el 1 de "Otra") no se guarda.
+  const canSave =
+    amount > 0 && category != null && installmentCountIssue(installmentCount) == null && !saving;
 
   /** §17 · los mensajes de efecto, que es lo que vuelve útil cada registro. */
   const effect = useMemo(() => {
@@ -457,14 +460,8 @@ export default function Agregar() {
         >
           {/* §17 campo 8 */}
           {kind === 'expense' && !repeats && (
-            <Field
-              label="En cuotas"
-              hint={
-                installmentCount === 1
-                  ? 'Para una sola cuota, desactivá En cuotas.'
-                  : undefined
-              }
-            >
+            <Field label="En cuotas">
+              {/* El picker muestra solo el aviso de "Cuotas menores a 2" (§17). */}
               <InstallmentCountPicker value={installmentCount} onChange={setInstallmentCount} />
             </Field>
           )}

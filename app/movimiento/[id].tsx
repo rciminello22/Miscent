@@ -27,6 +27,7 @@ import {
   prettyLabel,
 } from '@/features/add/categories';
 import { Field, InstallmentCountPicker } from '@/features/add/fields';
+import { installmentCountIssue, isValidInstallmentCount } from '@/features/add/installmentCount';
 import { PaymentMethodField } from '@/features/add/PaymentMethodField';
 import { useFeedback } from '@/features/shared/useFeedback';
 import { MoveToSpace } from '@/features/movements/MoveToSpace';
@@ -204,7 +205,9 @@ export default function MovimientoDetalle() {
               size="lg"
               fullWidth
               haptic="success"
-              disabled={amount <= 0 || category == null}
+              disabled={
+                amount <= 0 || category == null || installmentCountIssue(installmentCount) != null
+              }
               loading={save.isPending}
               onPress={() => save.mutate()}
             />
@@ -381,7 +384,7 @@ export default function MovimientoDetalle() {
               </Field>
 
               {/* X-04 · el aviso de que se regeneran las cuotas. */}
-              {installmentCount != null && installmentCount >= 2 && (
+              {isValidInstallmentCount(installmentCount) && (
                 <Card tone="sunken">
                   <Text variant="small" tone="secondary">
                     Al guardar, las cuotas se regeneran con estos datos.

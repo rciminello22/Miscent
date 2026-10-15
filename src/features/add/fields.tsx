@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { View } from 'react-native';
 import {
   Banknote,
@@ -8,8 +9,15 @@ import {
   Send,
   Wallet,
 } from 'lucide-react-native';
+import {
+  INSTALLMENT_MAX,
+  INSTALLMENT_MIN,
+  installmentCountIssue,
+  installmentCountMessage,
+  parseInstallmentCount,
+} from './installmentCount';
 import type { PaymentOption } from './paymentOptions';
-import { Pressable, Text } from '@/ui/primitives';
+import { Pressable, Text, TextField } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 import { MIN_TARGET, hitSlopFor } from '@/ui/touch';
 
@@ -211,9 +219,20 @@ export function PaymentMethodPicker({
 
 /* ────────────────────────────────────────────────────────────────────────── */
 
-/** §17 campo 8 · "Cantidad (3, 6, 9, 12, 18, otra)". */
+/** §17 campo 8 · "Cantidad (3, 6, 9, 12, 18, otra)": estos son los chips; "Otra" va aparte. */
 export const INSTALLMENT_PRESETS = [3, 6, 9, 12, 18] as const;
 
+const isPreset = (count: number | null) =>
+  count != null && (INSTALLMENT_PRESETS as readonly number[]).includes(count);
+
+/**
+ * UX-06 · los chips más "Otra", que abre un campo numérico de 2 a 36.
+ *
+ * El campo deja escribir cualquier número, también 1 o 50: la validación
+ * (`installmentCountIssue`) la muestra acá mismo, con el texto de §17, y
+ * quien usa el picker bloquea Guardar con la misma función. Así "Para una sola
+ * cuota, desactivá En cuotas" es alcanzable.
+ */
 export function InstallmentCountPicker({
   value,
   onChange,
@@ -222,30 +241,76 @@ export function InstallmentCountPicker({
   onChange: (next: number | null) => void;
 }) {
   const theme = useTheme();
+  // "Otra" abierta: arranca así si ya hay una cantidad que no es de los chips.
+  const [otherOpen, setOtherOpen] = useState(value != null && !isPreset(value));
+  const [text, setText] = useState(value != null && !isPreset(value) ? `${value}` : '');
+
+  const issue = otherOpen ? installmentCountIssue(value) : null;
 
   return (
-    <View
-      accessibilityRole="radiogroup"
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: theme.space['2'],
-      }}
-    >
-      {INSTALLMENT_PRESETS.map((count) => (
+    <View style={{ gap: theme.space['3'] }}>
+      <View
+        accessibilityRole="radiogroup"
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: theme.space['2'],
+        }}
+      >
+        {INSTALLMENT_PRESETS.map((count) => (
+          <Chip
+            key={count}
+            label={`${count}`}
+            selected={!otherOpen && value === count}
+            onPress={() => {
+              setOtherOpen(false);
+              setText('');
+              onChange(!otherOpen && value === count ? null : count);
+            }}
+          />
+        ))}
         <Chip
-          key={count}
-          label={`${count}`}
-          selected={value === count}
-          onPress={() => onChange(value === count ? null : count)}
+          label="Otra"
+          selected={otherOpen}
+          onPress={() => {
+            if (otherOpen) {
+              setOtherOpen(false);
+              setText('');
+              onChange(null);
+              return;
+            }
+            // Abrir "Otra" suelta el chip que hubiera: la cantidad la dice el campo.
+            setOtherOpen(true);
+            setText('');
+            onChange(null);
+          }}
         />
-      ))}
-      <View style={{ justifyContent: 'center' }}>
-        <Text variant="caption" tone="muted">
-          cuotas
-        </Text>
+        <View style={{ justifyContent: 'center' }}>
+          <Text variant="caption" tone="muted">
+            cuotas
+          </Text>
+        </View>
       </View>
+
+      {otherOpen && (
+        <View style={{ width: 160 }}>
+          <TextField
+            value={text}
+            onChangeText={(next) => {
+              const count = parseInstallmentCount(next);
+              setText(count == null ? '' : `${count}`);
+              onChange(count);
+            }}
+            keyboardType="number-pad"
+            maxLength={2}
+            autoFocus
+            placeholder={`${INSTALLMENT_MIN} a ${INSTALLMENT_MAX}`}
+            accessibilityLabel="Cantidad de cuotas"
+            error={issue == null ? null : installmentCountMessage(issue)}
+          />
+        </View>
+      )}
     </View>
   );
 }

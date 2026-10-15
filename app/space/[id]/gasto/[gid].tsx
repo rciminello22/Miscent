@@ -34,6 +34,7 @@ import { balanceSentence } from '@/features/spaces/balanceCopy';
 import { SplitPicker } from '@/features/spaces/SplitPicker';
 import { DeletedWhileEditing, type DeletedBy } from '@/features/spaces/DeletedWhileEditing';
 import { AmountInput } from '@/features/add/AmountInput';
+import { installmentCountIssue, isValidInstallmentCount } from '@/features/add/installmentCount';
 import { CategoryGrid } from '@/features/add/CategoryGrid';
 import { EXPENSE_CATEGORIES, prettyLabel } from '@/features/add/categories';
 import {
@@ -362,7 +363,9 @@ export default function GastoCompartido() {
               size="lg"
               fullWidth
               haptic="success"
-              disabled={amount <= 0 || category == null}
+              disabled={
+                amount <= 0 || category == null || installmentCountIssue(installmentCount) != null
+              }
               loading={save.isPending}
               onPress={() => save.mutate()}
             />
@@ -632,7 +635,7 @@ export default function GastoCompartido() {
                   <Text variant="small" tone="secondary">
                     Al guardar, {other.displayName} va a ver los cambios y lo que se deben se
                     recalcula.
-                    {installmentCount != null && installmentCount >= 2
+                    {isValidInstallmentCount(installmentCount)
                       ? ' Las cuotas se regeneran con estos datos.'
                       : ''}
                   </Text>

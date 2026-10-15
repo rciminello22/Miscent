@@ -20,6 +20,7 @@ import {
   Segmented,
 } from '@/features/add/fields';
 import { InstallmentPreview } from '@/features/add/InstallmentPreview';
+import { installmentCountIssue, isValidInstallmentCount } from '@/features/add/installmentCount';
 import { PastDateField } from '@/features/add/DateField';
 import { MoreOptions } from '@/features/add/MoreOptions';
 import { lastUsedPaymentMethodId, moreOptionsSummary } from '@/features/add/addDefaults';
@@ -129,7 +130,7 @@ export default function AgregarCompartido() {
   );
 
   const plan = useMemo(() => {
-    if (installmentCount == null || installmentCount < 2 || amount === 0) return null;
+    if (!isValidInstallmentCount(installmentCount) || amount === 0) return null;
     return planInstallments({
       purchaseDate: date,
       count: installmentCount,
@@ -197,7 +198,9 @@ export default function AgregarCompartido() {
   const myShare = mySlot === 1 ? shares.slot1 : shares.slot2;
   const otherShare = mySlot === 1 ? shares.slot2 : shares.slot1;
 
-  const canSave = amount > 0 && category != null && !saving;
+  // UX-06 · una cantidad de cuotas fuera de 2 a 36 (el 1 de "Otra") no se guarda.
+  const canSave =
+    amount > 0 && category != null && installmentCountIssue(installmentCount) == null && !saving;
   const dirty =
     amount > 0 || category != null || description.trim() !== '' || date !== today;
 
