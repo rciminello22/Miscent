@@ -2,6 +2,7 @@ export { Text, type TextProps } from './Text';
 export { Money, type MoneyProps } from './Money';
 export { Pressable, type PressableProps } from './Pressable';
 export { Button, type ButtonProps } from './Button';
+export { TextField, type TextFieldProps } from './TextField';
 export { IconButton } from './IconButton';
 export { TextLink } from './TextLink';
 export { RowChevron } from './RowChevron';
