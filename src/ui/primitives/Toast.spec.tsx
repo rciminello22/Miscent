@@ -1,4 +1,4 @@
-import { Pressable, Text } from 'react-native';
+import { Keyboard, Pressable, Text } from 'react-native';
 import { act, fireEvent } from '@testing-library/react-native';
 import { renderWithTheme } from '@/test/render';
 import { ToastProvider, useToast, type ToastInput } from './Toast';
@@ -90,5 +90,30 @@ describe('Toast', () => {
     await fireEvent.press(view.getByRole('button', { name: 'Mostrar' }));
 
     expect(view.getByRole('alert')).toBeTruthy();
+  });
+
+  describe('UX-09 · el teclado no tapa un error', () => {
+    // El toast se ancla abajo; con el teclado numérico abierto quedaría detrás.
+    it('un error cierra el teclado para que el aviso se vea', async () => {
+      const dismiss = jest.spyOn(Keyboard, 'dismiss').mockImplementation(() => {});
+      const view = await renderTrigger({
+        input: { title: 'No pudimos guardarlo', tone: 'error' },
+      });
+
+      await fireEvent.press(view.getByRole('button', { name: 'Mostrar' }));
+
+      expect(dismiss).toHaveBeenCalledTimes(1);
+      dismiss.mockRestore();
+    });
+
+    it('un aviso normal NO toca el teclado: se muestra al navegar a otra pantalla', async () => {
+      const dismiss = jest.spyOn(Keyboard, 'dismiss').mockImplementation(() => {});
+      const view = await renderTrigger({ input: { title: 'Guardado · Solo vos lo ves' } });
+
+      await fireEvent.press(view.getByRole('button', { name: 'Mostrar' }));
+
+      expect(dismiss).not.toHaveBeenCalled();
+      dismiss.mockRestore();
+    });
   });
 });

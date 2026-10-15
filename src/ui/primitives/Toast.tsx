@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { View } from 'react-native';
+import { Keyboard, View } from 'react-native';
 import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { duration } from '../motion';
@@ -40,6 +40,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const nextId = useRef(0);
 
   const show = useCallback((input: ToastInput) => {
+    // UX-09 · el aviso se ancla abajo y un error llega, casi siempre, con el
+    // teclado numérico de un formulario abierto: lo taparía. Cerrarlo es más
+    // simple y más robusto que medir su altura (varía por dispositivo y por
+    // teclado), y de paso deja ver el formulario completo. El aviso normal no:
+    // llega al navegar, cuando el teclado ya no está.
+    if (input.tone === 'error') Keyboard.dismiss();
+
     nextId.current += 1;
     setCurrent({ ...input, id: nextId.current });
   }, []);
