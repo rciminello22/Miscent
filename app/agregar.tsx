@@ -54,6 +54,7 @@ import {
 } from '@/features/spaces/useSpaces';
 import {
   AudienceBadge,
+  type Audience,
   Button,
   Card,
   IconButton,
@@ -183,6 +184,12 @@ export default function Agregar() {
           }),
     [plan, amount, expansion, myShareRatio, today],
   );
+
+  // PR-03 · quién va a ver lo que se guarda: lo dicen el selector y el pie.
+  const audience: Audience =
+    isShared && space != null
+      ? { kind: 'shared', otherMemberName: space.other.displayName }
+      : { kind: 'private' };
 
   // UX-16 · un solo lugar decide si se guarda y por qué no. Un espacio elegido
   // que todavía no cargó no se guarda como personal.
@@ -334,9 +341,11 @@ export default function Agregar() {
     <Screen
       footer={
         // Fijo abajo y sobre el teclado: se ve mientras se escribe (10/10).
-        <SaveFooter reason={blockReason}>
+        <SaveFooter audience={audience} reason={blockReason}>
           <Button
             label="Guardar"
+            // Mismo color que dentro del espacio: lo compartido se ve compartido.
+            variant={destination != null ? 'shared' : 'primary'}
             size="lg"
             fullWidth
             haptic="success"
@@ -412,14 +421,10 @@ export default function Agregar() {
                 />
               ))}
           </Row>
-          {/* PR-03 · siempre dice quién lo va a ver. */}
-          <AudienceBadge
-            audience={
-              isShared && space != null
-                ? { kind: 'shared', otherMemberName: space.other.displayName }
-                : { kind: 'private' }
-            }
-          />
+          {/* PR-03 · §17 campo 4 · debajo del selector, la audiencia. Además, la
+              misma queda en el pie, pegada a Guardar, que es lo que se ve
+              siempre (también con el teclado abierto). */}
+          <AudienceBadge audience={audience} />
         </Field>
 
         {/* §17 campos 5 y 6 · solo con un espacio elegido. */}

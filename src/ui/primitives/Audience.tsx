@@ -2,6 +2,9 @@ import { User, Users } from 'lucide-react-native';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../theme';
 import { Text } from './Text';
+import { audienceLabel, type Audience } from './audienceCopy';
+
+export { audienceLabel, type Audience };
 
 /**
  * Indicador de audiencia. §12 · PR-03: **toda pantalla y todo formulario
@@ -10,28 +13,20 @@ import { Text } from './Text';
  * El ícono de una o dos personas aparece además en cada fila de las listas
  * mixtas (§12), para que no haya que leer para saber quién ve qué.
  */
-
-export type Audience =
-  | { kind: 'private' }
-  | { kind: 'shared'; otherMemberName: string; spaceName?: string };
-
-export function audienceLabel(audience: Audience): string {
-  // Los textos son los de §33, literales.
-  return audience.kind === 'private'
-    ? 'Solo vos'
-    : `Lo ven vos y ${audience.otherMemberName}`;
-}
-
 export function AudienceBadge({
   audience,
+  label: customLabel,
   style,
 }: {
   audience: Audience;
+  /** Otra redacción de la misma audiencia (ver `audienceSentence`). */
+  label?: string;
   style?: StyleProp<ViewStyle>;
 }) {
   const theme = useTheme();
   const isPrivate = audience.kind === 'private';
   const Icon = isPrivate ? User : Users;
+  const label = customLabel ?? audienceLabel(audience);
 
   return (
     <View
@@ -47,11 +42,11 @@ export function AudienceBadge({
         },
         style,
       ]}
-      accessibilityLabel={audienceLabel(audience)}
+      accessibilityLabel={label}
     >
       <Icon size={12} color={isPrivate ? theme.colors.textMuted : theme.colors.shared} />
       <Text variant="caption" tone={isPrivate ? 'muted' : 'shared'}>
-        {audienceLabel(audience)}
+        {label}
       </Text>
     </View>
   );

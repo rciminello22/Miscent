@@ -301,7 +301,10 @@ export default function AgregarCompartido() {
     <Screen
       footer={
         // Fijo abajo y sobre el teclado: se ve mientras se escribe (10/10).
-        <SaveFooter reason={blockReason}>
+        <SaveFooter
+          audience={{ kind: 'shared', otherMemberName: derived.other.displayName }}
+          reason={blockReason}
+        >
           <Button
             label="Guardar"
             variant="shared"
