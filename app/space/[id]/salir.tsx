@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { View } from 'react-native';
+import { useFeedback } from '@/features/shared/useFeedback';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { goBack } from '@/features/shared/navigation';
 import { X } from 'lucide-react-native';
@@ -56,6 +57,7 @@ export default function Salir() {
   const spaceId = id ?? '';
 
   const { session } = useSession();
+  const feedback = useFeedback();
   const { derived, today } = useSpace(spaceId);
   const [confirming, setConfirming] = useState(false);
 
@@ -85,7 +87,7 @@ export default function Salir() {
     },
     onError: (error: Error) => {
       setConfirming(false);
-      Alert.alert('No pudimos hacerlo', error.message);
+      feedback.error('No pudimos hacerlo', error);
     },
   });
 

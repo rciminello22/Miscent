@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { goBack } from '@/features/shared/navigation';
 import { useOpenSpace } from '@/features/spaces/useOpenSpace';
@@ -8,6 +7,7 @@ import { Segmented } from '@/features/add/fields';
 import { StepShell } from '@/features/onboarding/StepShell';
 import { useCreateSpace } from '@/features/spaces/useSpaces';
 import { useSession } from '@/features/auth/SessionProvider';
+import { useFeedback } from '@/features/shared/useFeedback';
 import { Button, Screen, Stack, Text, TextField } from '@/ui/primitives';
 
 /**
@@ -35,6 +35,7 @@ export default function NuevoEspacio() {
   const openSpace = useOpenSpace();
   const { profile, accountState } = useSession();
   const createSpace = useCreateSpace();
+  const feedback = useFeedback();
 
   const [step, setStep] = useState<Step>('who');
   const [otherName, setOtherName] = useState('');
@@ -59,10 +60,7 @@ export default function NuevoEspacio() {
       });
       openSpace(spaceId, 'replace', true);
     } catch (error) {
-      Alert.alert(
-        'No pudimos crearlo',
-        error instanceof Error ? error.message : 'Probá de nuevo en un momento.',
-      );
+      feedback.error('No pudimos crearlo', error);
     }
   }
 

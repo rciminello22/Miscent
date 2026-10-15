@@ -218,6 +218,7 @@ export function AccountActions({ kind }: { kind: 'personal' | 'guest' }) {
   const { session, isAnonymous } = useSession();
   const copy = DELETE_COPY[kind];
   const { exportData } = useExportData();
+  const feedback = useFeedback();
 
   function confirmSignOut() {
     Alert.alert('¿Cerrar sesión?', 'Vas a tener que pedir un enlace nuevo para volver.', [
@@ -246,7 +247,7 @@ export function AccountActions({ kind }: { kind: 'personal' | 'guest' }) {
   async function deleteAccount() {
     const { error } = await supabase.rpc('app_delete_account');
     if (error != null) {
-      Alert.alert(copy.failure, 'Probá de nuevo en un momento.');
+      feedback.error(copy.failure);
       return;
     }
     await signOut();

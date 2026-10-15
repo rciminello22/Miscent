@@ -8,6 +8,7 @@ import { formatPesos } from '@/lib/format';
 import { queryKeys } from '@/data/queryClient';
 import { movePersonalToSpace } from '@/data/repositories/edits';
 import { useSession } from '@/features/auth/SessionProvider';
+import { useFeedback } from '@/features/shared/useFeedback';
 import { useSpaces } from '@/features/spaces/useSpaces';
 import {
   Card,
@@ -51,6 +52,7 @@ export function MoveToSpace({
   const theme = useTheme();
   const queryClient = useQueryClient();
   const { session } = useSession();
+  const feedback = useFeedback();
   const { data: spaces } = useSpaces();
   const [moving, setMoving] = useState(false);
 
@@ -81,7 +83,10 @@ export function MoveToSpace({
     },
     onError: (error: Error) => {
       setMoving(false);
-      Alert.alert('No pudimos moverlo', error.message);
+      // UX-23 · el toque estaba en un Sheet (un Modal nativo tapa el aviso, que vive en
+      // la raíz): la hoja se cierra y el error sale por toast. Se reintenta desde el detalle.
+      onClose();
+      feedback.error('No pudimos moverlo', error);
     },
   });
 

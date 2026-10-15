@@ -64,7 +64,7 @@ export default function Invitar() {
       setCopied(false);
       await state.refetch();
     },
-    onError: (error: Error) => Alert.alert('No pudimos generarla', error.message),
+    onError: (error: Error) => feedback.error('No pudimos generarla', error),
   });
 
   const revoke = useMutation({

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { History, LogOut, Pencil, Share2, UserPlus, UserX } from 'lucide-react-native';
 import { Button, Divider, Pressable, Row, Sheet, Stack, Text, TextField } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
+import { useFeedback } from '@/features/shared/useFeedback';
 import { useRemoveMemberAccess, useRenameSpace } from './useSpaces';
 
 /**
@@ -42,6 +43,7 @@ export function SpaceMenu({
   const router = useRouter();
   const rename = useRenameSpace(spaceId);
   const removeAccess = useRemoveMemberAccess(spaceId);
+  const feedback = useFeedback();
 
   /**
    * §26 (Should) · "Enlace reenviado por error: el creador ve quién entró y
@@ -76,9 +78,9 @@ export function SpaceMenu({
                 text: 'Quitar el acceso',
                 style: 'destructive',
                 onPress: () =>
-                  void removeAccess.mutateAsync().catch(() =>
-                    Alert.alert('No pudimos quitar el acceso', 'Probá de nuevo en un momento.'),
-                  ),
+                  void removeAccess
+                    .mutateAsync()
+                    .catch((cause: unknown) => feedback.error('No pudimos quitar el acceso', cause)),
               },
             ]),
         },
