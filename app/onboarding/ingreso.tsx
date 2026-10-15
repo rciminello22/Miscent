@@ -6,7 +6,8 @@ import { monthOf } from '@domain/calendar';
 import { AmountInput } from '@/features/add/AmountInput';
 import { Field } from '@/features/add/fields';
 import { StepShell } from '@/features/onboarding/StepShell';
-import { useCreateRecurrence } from '@/features/shared/usePersonalFacts';
+import { onboardingBranches, onboardingProgress } from '@/features/onboarding/onboardingProgress';
+import { useCreateRecurrence, usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { useToday } from '@/features/shared/useToday';
 import { DayPicker } from '@/features/onboarding/DayPicker';
 import { Card, Stack, Text } from '@/ui/primitives';
@@ -31,6 +32,9 @@ export default function Ingreso() {
   const standalone = desde === 'perfil';
   const today = useToday();
   const createRecurrence = useCreateRecurrence();
+  const { facts } = usePersonalFacts();
+  // UX-22 · la barra cuenta los pasos que de verdad se recorren.
+  const progress = onboardingProgress('ingreso', onboardingBranches(facts, today));
 
   const [amount, setAmount] = useState(0);
   const [day, setDay] = useState(1);
@@ -59,8 +63,8 @@ export default function Ingreso() {
 
   return (
     <StepShell
-      step={1}
-      total={standalone ? 0 : 5}
+      step={progress.step}
+      total={standalone ? 0 : progress.total}
       title="¿Cuánto cobrás por mes?"
       description="Lo usamos para mostrarte qué parte de tus ingresos ya tiene destino."
       help="Si tu ingreso varía, poné un promedio. Después podés ajustar un mes puntual con “Este mes fue distinto”."

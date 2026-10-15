@@ -19,6 +19,8 @@ import { AmountInput } from '@/features/add/AmountInput';
 import { DateField } from '@/features/add/DateField';
 import { Field, Segmented } from '@/features/add/fields';
 import { StepShell } from '@/features/onboarding/StepShell';
+import { cardStepTitle } from '@/features/onboarding/onboardingCopy';
+import { onboardingBranches, onboardingProgress } from '@/features/onboarding/onboardingProgress';
 import { installmentsInSpaceLine } from '@/features/onboarding/alreadyInSpacesCopy';
 import { categoryLabel } from '@/features/add/categories';
 import { NumberField } from '@/features/onboarding/NumberField';
@@ -183,11 +185,14 @@ export default function Deuda() {
   // render: el router lo procesa tarde y hacía loop (HANDOFF §11).
   if (card == null) return <Redirect href="/onboarding/pagados" />;
 
+  // UX-22 · Deuda y Pagados ya no comparten el "3".
+  const progress = onboardingProgress('deuda', onboardingBranches(facts, today));
+
   return (
     <StepShell
-      step={3}
-      total={5}
-      title={`¿Qué debés de tu ${card.name}?`}
+      step={progress.step}
+      total={progress.total}
+      title={cardStepTitle(card.name)}
       description="Esto es lo que hace que tus próximos meses sean reales desde hoy."
       help="Abrí tu último resumen o la app del banco. Si no te acordás de algo, dejalo vacío y cargalo después."
       saving={save.isPending}

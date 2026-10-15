@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Redirect, useRouter } from 'expo-router';
 import { paidByMeWithoutMethod } from '@domain/paidByMe';
 import { StepShell } from '@/features/onboarding/StepShell';
+import { onboardingProgress } from '@/features/onboarding/onboardingProgress';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { PaidByMeSection } from '@/features/spaces/PaidByMeSection';
 import { onboardingPaidTitle } from '@/features/spaces/paidByMeCopy';
@@ -35,15 +36,19 @@ export default function Pagados() {
   if (hadSomething == null) return null;
   if (!hadSomething) return <Redirect href="/onboarding/fijos" />;
 
+  // UX-22 · se llega acá solo desde Deuda, o sea con tarjetas. Contestar vacía la
+  // lista, así que las ramas no se vuelven a mirar: este paso existe.
+  const progress = onboardingProgress('conQue', { hasCards: true, hasPaidByMe: true });
+
   return (
     <StepShell
-      step={3}
-      total={5}
+      step={progress.step}
+      total={progress.total}
       title="¿Con qué pagaste estos gastos?"
       description="Los cargaste cuando todavía no tenías tu cuenta personal."
       help="Si fue con tarjeta, entran en su resumen estimado y en tus Próximos pagos."
-      onContinue={() => router.push('/onboarding/fijos')}
-      onSkip={() => router.push('/onboarding/fijos')}
+      onContinue={() => router.push({ pathname: '/onboarding/fijos', params: { pagados: '1' } })}
+      onSkip={() => router.push({ pathname: '/onboarding/fijos', params: { pagados: '1' } })}
     >
       <Stack gap="4">
         {facts.spaces.map((membership) => (

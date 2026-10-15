@@ -15,6 +15,7 @@ import { useToday } from '@/features/shared/useToday';
 import { Field } from '@/features/add/fields';
 import { DayNote, DayPicker } from '@/features/onboarding/DayPicker';
 import { StepShell } from '@/features/onboarding/StepShell';
+import { onboardingBranches, onboardingProgress } from '@/features/onboarding/onboardingProgress';
 import { Button, Card, Divider, Row, Stack, Text, TextField } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
@@ -48,6 +49,9 @@ export default function Tarjetas() {
   const [adding, setAdding] = useState(false);
 
   const cards = facts.paymentMethods.filter((method) => method.kind === 'card');
+  // UX-22 · la barra cuenta los pasos que de verdad se recorren: con la primera
+  // tarjeta aparece el paso de Deuda y el total crece.
+  const progress = onboardingProgress('tarjetas', onboardingBranches(facts, today));
 
   const addCard = useMutation({
     mutationFn: () =>
@@ -82,8 +86,8 @@ export default function Tarjetas() {
 
   return (
     <StepShell
-      step={2}
-      total={5}
+      step={progress.step}
+      total={progress.total}
       title="¿Usás tarjetas de crédito?"
       description="Con el día de cierre y el de vencimiento, la app sabe en qué resumen cae cada compra."
       help="Solo el nombre y los días. Nunca el número de la tarjeta."

@@ -1,24 +1,22 @@
-import { ScrollView } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { Chip } from '@/features/add/fields';
+import { COMMON_DAYS, otherDays } from './dayOptions';
 import { Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 
 /**
  * Elige un día del mes.
  *
- * Los días más comunes van primero y el resto se desplaza: un sueldo se cobra
- * el 1, el 5 o fin de mes; una tarjeta cierra el 20 o el 25. Mostrar 31 chips
- * en orden estricto obliga a buscar.
+ * Los días más comunes van primero, como atajos, y una raya los separa del
+ * resto, que sigue en orden ascendente (UX-22): un sueldo se cobra el 1, el 5 o
+ * fin de mes; una tarjeta cierra el 20 o el 25. Sin la raya, la lista corrida
+ * (1, 5, 10 ... 31, 2, 3 ...) parecía desordenada.
  *
  * T-04 · un día que no existe en el mes (el 31 en febrero) lo resuelve el
  * dominio al expandir las ocurrencias, así que acá se puede elegir libremente.
  */
 
-const COMMON = [1, 5, 10, 15, 20, 25, 28, 30, 31];
-const REST = Array.from({ length: 31 }, (_, index) => index + 1).filter(
-  (day) => !COMMON.includes(day),
-);
-const DAYS = [...COMMON, ...REST];
+const REST = otherDays();
 
 export function DayPicker({
   value,
@@ -44,7 +42,28 @@ export function DayPicker({
         <Chip label={nullLabel} selected={value == null} onPress={() => onChange(null)} />
       )}
 
-      {DAYS.map((day) => (
+      {COMMON_DAYS.map((day) => (
+        <Chip
+          key={day}
+          label={`${day}`}
+          selected={value === day}
+          onPress={() => onChange(day)}
+        />
+      ))}
+
+      {/* UX-22 · hasta acá los atajos; después, todos los días en orden. */}
+      <View
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={{
+          width: 1,
+          alignSelf: 'stretch',
+          marginVertical: theme.space['1'],
+          backgroundColor: theme.colors.border,
+        }}
+      />
+
+      {REST.map((day) => (
         <Chip
           key={day}
           label={`${day}`}

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Check, Plus, X } from 'lucide-react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { monthOf } from '@domain/calendar';
@@ -11,6 +11,7 @@ import { formatPesos } from '@/lib/format';
 import { AmountInput } from '@/features/add/AmountInput';
 import { DayPicker } from '@/features/onboarding/DayPicker';
 import { StepShell } from '@/features/onboarding/StepShell';
+import { onboardingBranches, onboardingProgress } from '@/features/onboarding/onboardingProgress';
 import { alreadyInLine, anotherOneQuestion } from '@/features/onboarding/alreadyInSpacesCopy';
 import {
   SUGGESTIONS,
@@ -55,6 +56,13 @@ export default function Fijos() {
   const feedback = useFeedback();
   const { facts } = usePersonalFacts();
   const createRecurrence = useCreateRecurrence();
+  // UX-22 · Pagados contestado ya no tiene gastos pendientes; si se pasó por ese
+  // paso, `pagados` viene en la ruta y el total lo cuenta.
+  const { pagados } = useLocalSearchParams<{ pagados?: string }>();
+  const progress = onboardingProgress('fijos', {
+    hasCards: onboardingBranches(facts, today).hasCards,
+    hasPaidByMe: pagados === '1',
+  });
 
   const [drafts, setDrafts] = useState<Partial<Record<string, FixedDraft>>>({});
   const [editing, setEditing] = useState<string | null>(null);
@@ -145,8 +153,8 @@ export default function Fijos() {
 
   return (
     <StepShell
-      step={4}
-      total={5}
+      step={progress.step}
+      total={progress.total}
       title="¿Qué pagás todos los meses?"
       description="Los fijos son la mitad de tu Futuro: una vez cargados, se repiten solos."
       help="Tildá los que tengas y poné el monto. Los que falten los agregás después."
