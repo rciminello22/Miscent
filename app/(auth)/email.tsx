@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { sendMagicLink } from '@/data/auth';
@@ -8,9 +7,8 @@ import {
   rememberOnboardingIntent,
   type OnboardingIntent,
 } from '@/features/auth/onboardingIntent';
-import { Button, Screen, Stack, Text } from '@/ui/primitives';
+import { Button, Screen, Stack, Text, TextField } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
-import { useTheme } from '@/ui/theme';
 
 /**
  * O1 paso 4 · "Registro: email → enlace mágico, sin contraseña" [P1].
@@ -37,7 +35,6 @@ type Mode = 'signup' | 'invite' | 'login';
 const INTENTS: readonly string[] = ['personal', 'shared', 'both'];
 
 export default function Email() {
-  const theme = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams<{ intent?: string; mode?: string }>();
 
@@ -50,7 +47,6 @@ export default function Email() {
   const [email, setEmail] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [focused, setFocused] = useState(false);
 
   const valid = looksLikeEmail(email);
 
@@ -106,38 +102,22 @@ export default function Email() {
         </Animated.View>
 
         <Stack gap="3">
-          <View
-            style={{
-              borderRadius: theme.radius.md,
-              borderWidth: 1,
-              borderColor: focused ? theme.colors.brand : theme.colors.border,
-              backgroundColor: theme.colors.surface,
-              paddingHorizontal: theme.space['4'],
-              height: 54,
-              justifyContent: 'center',
+          <TextField
+            value={email}
+            onChangeText={(next) => {
+              setEmail(next);
+              setError(null);
             }}
-          >
-            <TextInput
-              value={email}
-              onChangeText={(next) => {
-                setEmail(next);
-                setError(null);
-              }}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
-              onSubmitEditing={() => void submit()}
-              placeholder="vos@email.com"
-              placeholderTextColor={theme.colors.textMuted}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              autoCorrect={false}
-              autoFocus
-              returnKeyType="go"
-              accessibilityLabel="Tu email"
-              style={[theme.typography.body, { color: theme.colors.text }]}
-            />
-          </View>
+            onSubmitEditing={() => void submit()}
+            placeholder="vos@email.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            autoCorrect={false}
+            autoFocus
+            returnKeyType="go"
+            accessibilityLabel="Tu email"
+          />
 
           {error != null && (
             <Animated.View entering={FadeInDown.duration(duration.quick)}>

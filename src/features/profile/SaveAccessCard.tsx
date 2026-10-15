@@ -1,6 +1,6 @@
 import { TextInput, View } from 'react-native';
 import { KeyRound } from 'lucide-react-native';
-import { Button, Card, Row, Stack, Text } from '@/ui/primitives';
+import { Button, Card, Row, Stack, Text, TextField } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 import { useSaveAccess } from './useSaveAccess';
 
@@ -46,20 +46,16 @@ export function SaveAccessCard() {
         </Text>
 
         {access.step === 'email' ? (
-          <View style={inputStyle}>
-            <TextInput
-              value={access.email}
-              onChangeText={access.setEmail}
-              placeholder="vos@email.com"
-              placeholderTextColor={theme.colors.textMuted}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              autoCorrect={false}
-              accessibilityLabel="Tu email"
-              style={[theme.typography.body, { color: theme.colors.text }]}
-            />
-          </View>
+          <TextField
+            value={access.email}
+            onChangeText={access.setEmail}
+            placeholder="vos@email.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            autoCorrect={false}
+            accessibilityLabel="Tu email"
+          />
         ) : (
           <View style={inputStyle}>
             <TextInput

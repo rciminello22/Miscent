@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ClipboardPaste } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { parseInvitationToken } from '@/features/auth/invitationLink';
-import { Button, Screen, Stack, Text } from '@/ui/primitives';
+import { Button, Screen, Stack, Text, TextField } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
 
@@ -26,7 +25,6 @@ export default function TengoUnaInvitacion() {
   const router = useRouter();
 
   const [text, setText] = useState('');
-  const [focused, setFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function open(input: string) {
@@ -79,35 +77,18 @@ export default function TengoUnaInvitacion() {
             onPress={() => void paste()}
           />
 
-          <View
-            style={{
-              borderRadius: theme.radius.md,
-              borderWidth: 1,
-              borderColor: focused ? theme.colors.brand : theme.colors.border,
-              backgroundColor: theme.colors.surface,
-              paddingHorizontal: theme.space['4'],
-              paddingVertical: theme.space['3'],
-              minHeight: 54,
-              justifyContent: 'center',
+          <TextField
+            value={text}
+            onChangeText={(next) => {
+              setText(next);
+              setError(null);
             }}
-          >
-            <TextInput
-              value={text}
-              onChangeText={(next) => {
-                setText(next);
-                setError(null);
-              }}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
-              placeholder="radar://invite/…"
-              placeholderTextColor={theme.colors.textMuted}
-              autoCapitalize="none"
-              autoCorrect={false}
-              multiline
-              accessibilityLabel="Enlace de invitación"
-              style={[theme.typography.body, { color: theme.colors.text }]}
-            />
-          </View>
+            placeholder="radar://invite/…"
+            autoCapitalize="none"
+            autoCorrect={false}
+            multiline
+            accessibilityLabel="Enlace de invitación"
+          />
 
           {error != null && (
             <Animated.View entering={FadeInDown.duration(duration.quick)}>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, TextInput, View } from 'react-native';
+import { Alert, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { goBack } from '@/features/shared/navigation';
 import { useOpenSpace } from '@/features/spaces/useOpenSpace';
@@ -42,6 +42,7 @@ import {
   SectionHeader,
   Stack,
   Text,
+  TextField,
 } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
@@ -370,27 +371,13 @@ export default function MovimientoDetalle() {
               )}
 
               <Field label="Descripción (opcional)">
-                <View
-                  style={{
-                    borderRadius: theme.radius.md,
-                    borderWidth: 1,
-                    borderColor: theme.colors.border,
-                    backgroundColor: theme.colors.surface,
-                    paddingHorizontal: theme.space['4'],
-                    height: 48,
-                    justifyContent: 'center',
-                  }}
-                >
-                  <TextInput
-                    value={description}
-                    onChangeText={setDescription}
-                    placeholder="Opcional"
-                    placeholderTextColor={theme.colors.textMuted}
-                    maxLength={140}
-                    accessibilityLabel="Descripción"
-                    style={[theme.typography.body, { color: theme.colors.text }]}
-                  />
-                </View>
+                <TextField
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder="Opcional"
+                  maxLength={140}
+                  accessibilityLabel="Descripción"
+                />
               </Field>
 
               {/* X-04 · el aviso de que se regeneran las cuotas. */}

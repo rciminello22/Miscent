@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react-native';
@@ -27,7 +27,7 @@ import {
   purchasesToSave,
   type ExistingPurchase,
 } from '@/features/onboarding/existingPurchases';
-import { Button, Card, Divider, Pressable, Row, Stack, Text } from '@/ui/primitives';
+import { Button, Card, Divider, Pressable, Row, Stack, Text, TextField } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
 import { hitSlopFor } from '@/ui/touch';
@@ -344,25 +344,12 @@ function PurchaseForm({
         )}
 
         <Field label="¿Qué compraste?" hint="Opcional. Te sirve para reconocerla después.">
-          <TextInput
+          <TextField
             value={purchase.description}
             onChangeText={(description) => onChange({ description })}
             placeholder="Heladera, celular, zapatillas…"
-            placeholderTextColor={theme.colors.textMuted}
             maxLength={140}
             accessibilityLabel="Qué compraste"
-            style={[
-              theme.typography.body,
-              {
-                color: theme.colors.text,
-                borderRadius: theme.radius.md,
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-                backgroundColor: theme.colors.surface,
-                paddingHorizontal: theme.space['4'],
-                height: 48,
-              },
-            ]}
           />
         </Field>
 

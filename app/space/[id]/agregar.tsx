@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Switch, TextInput, View } from 'react-native';
+import { Alert, Switch, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { goBack } from '@/features/shared/navigation';
 import { X } from 'lucide-react-native';
@@ -49,6 +49,7 @@ import {
   Screen,
   Stack,
   Text,
+  TextField,
 } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
@@ -411,27 +412,13 @@ export default function AgregarCompartido() {
           </Field>
 
           <Field label="Descripción (opcional)">
-            <View
-              style={{
-                borderRadius: theme.radius.md,
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-                backgroundColor: theme.colors.surface,
-                paddingHorizontal: theme.space['4'],
-                height: 48,
-                justifyContent: 'center',
-              }}
-            >
-              <TextInput
-                value={description}
-                onChangeText={setDescription}
-                placeholder="Supermercado, internet, heladera…"
-                placeholderTextColor={theme.colors.textMuted}
-                maxLength={140}
-                accessibilityLabel="Descripción"
-                style={[theme.typography.body, { color: theme.colors.text }]}
-              />
-            </View>
+            <TextField
+              value={description}
+              onChangeText={setDescription}
+              placeholder="Supermercado, internet, heladera…"
+              maxLength={140}
+              accessibilityLabel="Descripción"
+            />
             {/* Should 8 · sugiere, nunca elige sola. */}
             <SuggestedCategory
               suggestion={suggestedCategory}

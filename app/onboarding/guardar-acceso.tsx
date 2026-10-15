@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { StepShell } from '@/features/onboarding/StepShell';
 import { useSaveAccess } from '@/features/profile/useSaveAccess';
 import { goBack } from '@/features/shared/navigation';
-import { Button, Stack, Text } from '@/ui/primitives';
+import { Button, Stack, Text, TextField } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 
 /**
@@ -54,23 +54,19 @@ export default function GuardarAcceso() {
         skipLabel="Ahora no"
       >
         <Stack gap="3">
-          <View style={inputStyle}>
-            <TextInput
-              value={access.email}
-              onChangeText={access.setEmail}
-              onSubmitEditing={() => void access.sendCode()}
-              placeholder="vos@email.com"
-              placeholderTextColor={theme.colors.textMuted}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              autoCorrect={false}
-              autoFocus
-              returnKeyType="go"
-              accessibilityLabel="Tu email"
-              style={[theme.typography.body, { color: theme.colors.text }]}
-            />
-          </View>
+          <TextField
+            value={access.email}
+            onChangeText={access.setEmail}
+            onSubmitEditing={() => void access.sendCode()}
+            placeholder="vos@email.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            autoCorrect={false}
+            autoFocus
+            returnKeyType="go"
+            accessibilityLabel="Tu email"
+          />
           {access.error != null && (
             <Text variant="small" tone="danger">
               {access.error}

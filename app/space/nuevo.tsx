@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, TextInput, View } from 'react-native';
+import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { goBack } from '@/features/shared/navigation';
 import { useOpenSpace } from '@/features/spaces/useOpenSpace';
@@ -8,8 +8,7 @@ import { Segmented } from '@/features/add/fields';
 import { StepShell } from '@/features/onboarding/StepShell';
 import { useCreateSpace } from '@/features/spaces/useSpaces';
 import { useSession } from '@/features/auth/SessionProvider';
-import { Button, Screen, Stack, Text } from '@/ui/primitives';
-import { useTheme } from '@/ui/theme';
+import { Button, Screen, Stack, Text, TextField } from '@/ui/primitives';
 
 /**
  * §9 + §26 · crear un espacio (Caso 2), paso a paso (10/10).
@@ -114,7 +113,15 @@ export default function NuevoEspacio() {
         onSkip={() => goBack(router)}
         skipLabel="Ahora no"
       >
-        <TextField value={otherName} onChange={setOtherName} placeholder="Martina" autoFocus />
+        <TextField
+          variant="shared"
+          value={otherName}
+          onChangeText={setOtherName}
+          placeholder="Martina"
+          autoFocus
+          maxLength={60}
+          accessibilityLabel="Martina"
+        />
       </StepShell>
     );
   }
@@ -163,49 +170,15 @@ export default function NuevoEspacio() {
       onSkip={() => setStep('balance')}
       skipLabel="Atrás"
     >
-      <TextField value={name} onChange={setName} placeholder={defaultName} autoFocus />
-    </StepShell>
-  );
-}
-
-function TextField({
-  value,
-  onChange,
-  placeholder,
-  autoFocus = false,
-}: {
-  value: string;
-  onChange: (next: string) => void;
-  placeholder: string;
-  autoFocus?: boolean;
-}) {
-  const theme = useTheme();
-  const [focused, setFocused] = useState(false);
-
-  return (
-    <View
-      style={{
-        borderRadius: theme.radius.md,
-        borderWidth: 1,
-        borderColor: focused ? theme.colors.shared : theme.colors.border,
-        backgroundColor: theme.colors.surface,
-        paddingHorizontal: theme.space['4'],
-        height: 50,
-        justifyContent: 'center',
-      }}
-    >
-      <TextInput
-        value={value}
-        onChangeText={onChange}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        placeholder={placeholder}
-        placeholderTextColor={theme.colors.textMuted}
-        autoFocus={autoFocus}
+      <TextField
+        variant="shared"
+        value={name}
+        onChangeText={setName}
+        placeholder={defaultName}
+        autoFocus
         maxLength={60}
-        accessibilityLabel={placeholder}
-        style={[theme.typography.body, { color: theme.colors.text }]}
+        accessibilityLabel={defaultName}
       />
-    </View>
+    </StepShell>
   );
 }

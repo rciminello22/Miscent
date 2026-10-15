@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Check, Plus, X } from 'lucide-react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
@@ -24,7 +24,7 @@ import { Field } from '@/features/add/fields';
 import { useFeedback } from '@/features/shared/useFeedback';
 import { useCreateRecurrence, usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { useToday } from '@/features/shared/useToday';
-import { Button, Card, Pressable, Row, Stack, Text } from '@/ui/primitives';
+import { Button, Card, Pressable, Row, Stack, Text, TextField } from '@/ui/primitives';
 import { duration, stagger } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
 import { LINK_HIT_SLOP, hitSlopFor } from '@/ui/touch';
@@ -367,26 +367,13 @@ function CustomFixedForm({
         </Row>
 
         <Field label="¿Cómo se llama?">
-          <TextInput
+          <TextField
             value={custom.name}
             onChangeText={(name) => onChange({ name })}
             placeholder="Monotributo, telepase, club…"
-            placeholderTextColor={theme.colors.textMuted}
             maxLength={140}
             autoFocus
             accessibilityLabel="Nombre del fijo"
-            style={[
-              theme.typography.body,
-              {
-                color: theme.colors.text,
-                borderRadius: theme.radius.md,
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-                backgroundColor: theme.colors.surface,
-                paddingHorizontal: theme.space['4'],
-                height: 48,
-              },
-            ]}
           />
         </Field>
 

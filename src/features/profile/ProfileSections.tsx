@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, TextInput, View } from 'react-native';
+import { Alert, View } from 'react-native';
 import { Download, LogOut, ShieldCheck, Trash2, User } from 'lucide-react-native';
 import { useMutation } from '@tanstack/react-query';
 import { signOut } from '@/data/auth';
@@ -16,6 +16,7 @@ import {
   SectionHeader,
   Stack,
   Text,
+  TextField,
 } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 import { MIN_TARGET } from '@/ui/touch';
@@ -64,25 +65,13 @@ export function DisplayNameCard() {
 
         {editingName ? (
           <Stack gap="3">
-            <View
-              style={{
-                borderRadius: theme.radius.md,
-                borderWidth: 1,
-                borderColor: theme.colors.brand,
-                paddingHorizontal: theme.space['4'],
-                height: 48,
-                justifyContent: 'center',
-              }}
-            >
-              <TextInput
-                value={name}
-                onChangeText={setName}
-                autoFocus
-                maxLength={60}
-                accessibilityLabel="Tu nombre visible"
-                style={[theme.typography.body, { color: theme.colors.text }]}
-              />
-            </View>
+            <TextField
+              value={name}
+              onChangeText={setName}
+              autoFocus
+              maxLength={60}
+              accessibilityLabel="Tu nombre visible"
+            />
             <Row gap="2">
               <Button
                 label="Guardar"

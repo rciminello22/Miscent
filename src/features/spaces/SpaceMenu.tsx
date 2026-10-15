@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Alert, Share, TextInput, View } from 'react-native';
+import { Alert, Share } from 'react-native';
 import { useRouter } from 'expo-router';
 import { History, LogOut, Pencil, Share2, UserPlus, UserX } from 'lucide-react-native';
-import { Button, Divider, Pressable, Row, Sheet, Stack, Text } from '@/ui/primitives';
+import { Button, Divider, Pressable, Row, Sheet, Stack, Text, TextField } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 import { useRemoveMemberAccess, useRenameSpace } from './useSpaces';
 
@@ -112,26 +112,14 @@ export function SpaceMenu({
             ¿Cómo se llama el espacio?
           </Text>
 
-          <View
-            style={{
-              borderRadius: theme.radius.md,
-              borderWidth: 1,
-              borderColor: theme.colors.shared,
-              backgroundColor: theme.colors.surface,
-              paddingHorizontal: theme.space['4'],
-              height: 50,
-              justifyContent: 'center',
-            }}
-          >
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              autoFocus
-              maxLength={60}
-              accessibilityLabel="Nombre del espacio"
-              style={[theme.typography.body, { color: theme.colors.text }]}
-            />
-          </View>
+          <TextField
+            variant="shared"
+            value={name}
+            onChangeText={setName}
+            autoFocus
+            maxLength={60}
+            accessibilityLabel="Nombre del espacio"
+          />
 
           <Row gap="2">
             <Button

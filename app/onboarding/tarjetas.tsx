@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CreditCard, Plus } from 'lucide-react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
@@ -15,7 +15,7 @@ import { useToday } from '@/features/shared/useToday';
 import { Field } from '@/features/add/fields';
 import { DayNote, DayPicker } from '@/features/onboarding/DayPicker';
 import { StepShell } from '@/features/onboarding/StepShell';
-import { Button, Card, Divider, Row, Stack, Text } from '@/ui/primitives';
+import { Button, Card, Divider, Row, Stack, Text, TextField } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
 
@@ -128,27 +128,14 @@ export default function Tarjetas() {
             <Card>
               <Stack gap="5">
                 <Field label="Nombre">
-                  <View
-                    style={{
-                      borderRadius: theme.radius.md,
-                      borderWidth: 1,
-                      borderColor: theme.colors.border,
-                      paddingHorizontal: theme.space['4'],
-                      height: 48,
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <TextInput
-                      value={name}
-                      onChangeText={setName}
-                      placeholder="Visa Galicia"
-                      placeholderTextColor={theme.colors.textMuted}
-                      autoFocus
-                      maxLength={60}
-                      accessibilityLabel="Nombre de la tarjeta"
-                      style={[theme.typography.body, { color: theme.colors.text }]}
-                    />
-                  </View>
+                  <TextField
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="Visa Galicia"
+                    autoFocus
+                    maxLength={60}
+                    accessibilityLabel="Nombre de la tarjeta"
+                  />
                 </Field>
 
                 <Field label="Día de cierre">

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useOpenSpace } from '@/features/spaces/useOpenSpace';
 import { Users } from 'lucide-react-native';
@@ -14,7 +14,7 @@ import { forgetOnboardingIntent } from '@/features/auth/onboardingIntent';
 import { signInAsGuest } from '@/data/auth';
 import { useSession } from '@/features/auth/SessionProvider';
 import { parseInvitationToken } from '@/features/auth/invitationLink';
-import { Button, Card, Screen, Stack, Text } from '@/ui/primitives';
+import { Button, Card, Screen, Stack, Text, TextField } from '@/ui/primitives';
 import { duration, stagger } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
 
@@ -186,27 +186,13 @@ export default function Invite() {
           <Text variant="smallMedium" tone="secondary">
             ¿Cómo querés que te vean?
           </Text>
-          <View
-            style={{
-              borderRadius: theme.radius.md,
-              borderWidth: 1,
-              borderColor: theme.colors.border,
-              backgroundColor: theme.colors.surface,
-              paddingHorizontal: theme.space['4'],
-              height: 50,
-              justifyContent: 'center',
-            }}
-          >
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder="Tu nombre"
-              placeholderTextColor={theme.colors.textMuted}
-              maxLength={60}
-              accessibilityLabel="Tu nombre visible"
-              style={[theme.typography.body, { color: theme.colors.text }]}
-            />
-          </View>
+          <TextField
+            value={name}
+            onChangeText={setName}
+            placeholder="Tu nombre"
+            maxLength={60}
+            accessibilityLabel="Tu nombre visible"
+          />
           {/* K7 · es lo único que ve el otro miembro. */}
           <Text variant="caption" tone="muted">
             Es lo único que va a ver la otra persona.
