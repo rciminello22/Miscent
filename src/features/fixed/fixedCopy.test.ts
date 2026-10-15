@@ -1,6 +1,27 @@
 import { describe, it, expect } from 'vitest';
 import { MARTINA, RENZO, sharedRecurrence } from '@domain/__tests__/fixtures';
-import { fixedAuthorLine } from './fixedCopy';
+import { fixedAuthorLine, fixedWording } from './fixedCopy';
+
+describe('UX-01 · el detalle de un fijo habla de cobrar si es un ingreso', () => {
+  it('un gasto fijo se paga', () => {
+    const wording = fixedWording(false);
+
+    expect(wording.stopLabel).toBe('Dejar de pagarlo');
+    expect(wording.dayQuestion).toBe('¿Qué día lo pagás?');
+    expect(wording.deleteTitle).toBe('¿Eliminar este fijo?');
+  });
+
+  it('un ingreso fijo se cobra: nunca "pagarlo"', () => {
+    const wording = fixedWording(true);
+
+    expect(wording.stopLabel).toBe('Dejar de cobrarlo');
+    expect(wording.dayQuestion).toBe('¿Qué día lo cobrás?');
+    expect(wording.stopQuestion).toBe('¿Cuál fue el último mes que lo cobrás?');
+    expect(wording.deleteTitle).toBe('¿Eliminar este ingreso?');
+    expect(wording.deleteMessage).toContain('“Dejar de cobrarlo”');
+    expect(wording.deleteMessage).not.toMatch(/pagar/);
+  });
+});
 
 describe('§21 · K3 · la autoría de un fijo compartido, visible', () => {
   const alquiler = sharedRecurrence({ amount: 500_000, dayOfMonth: 1, startMonth: '2026-01', payerSlot: RENZO });

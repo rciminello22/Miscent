@@ -1,7 +1,9 @@
 import { useRouter } from 'expo-router';
 import { ChevronRight, CreditCard, Repeat } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { monthOf } from '@domain/calendar';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
+import { selectFixedIncomes } from '@/features/fixed/fixedIncomes';
 import {
   AccountActions,
   DisplayNameCard,
@@ -30,13 +32,14 @@ import { useTheme } from '@/ui/theme';
 export default function Perfil() {
   const theme = useTheme();
   const router = useRouter();
-  const { facts } = usePersonalFacts();
+  const { facts, today } = usePersonalFacts();
 
   const cards = facts.paymentMethods.filter((method) => method.kind === 'card');
   const fixed = facts.recurrences.filter(
     (recurrence) => recurrence.kind === 'expense' && recurrence.spaceId == null,
   );
-  const incomes = facts.recurrences.filter((recurrence) => recurrence.kind === 'income');
+  // UX-01 · el mismo criterio que la lista que abre: el número y la lista coinciden.
+  const incomes = selectFixedIncomes(facts.recurrences, monthOf(today));
 
   return (
     <Screen>
@@ -58,7 +61,7 @@ export default function Perfil() {
                 icon={<Repeat size={16} color={theme.colors.textSecondary} />}
                 label="Ingresos"
                 value={`${incomes.length}`}
-                onPress={() => router.push('/onboarding/ingreso')}
+                onPress={() => router.push('/fijo/ingresos')}
               />
               <Divider />
               <SummaryRow

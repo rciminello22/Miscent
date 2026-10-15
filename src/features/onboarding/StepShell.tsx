@@ -75,20 +75,23 @@ export function StepShell({
       }
     >
       <Stack gap="7">
-        <Row gap="2" align="center">
-          {Array.from({ length: total }, (_, index) => (
-            <View
-              key={index}
-              style={{
-                height: 3,
-                flex: 1,
-                borderRadius: 2,
-                backgroundColor:
-                  index < step ? theme.colors.brand : theme.colors.surfaceSunken,
-              }}
-            />
-          ))}
-        </Row>
+        {/* UX-01 · `total` en 0: el paso se usa suelto (desde Perfil), sin la barra. */}
+        {total > 0 && (
+          <Row gap="2" align="center">
+            {Array.from({ length: total }, (_, index) => (
+              <View
+                key={index}
+                style={{
+                  height: 3,
+                  flex: 1,
+                  borderRadius: 2,
+                  backgroundColor:
+                    index < step ? theme.colors.brand : theme.colors.surfaceSunken,
+                }}
+              />
+            ))}
+          </Row>
+        )}
 
         <Animated.View entering={FadeInDown.duration(duration.deliberate)}>
           <Stack gap="3">

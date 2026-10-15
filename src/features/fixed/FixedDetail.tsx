@@ -18,6 +18,7 @@ import {
 } from '@/data/repositories/edits';
 import { useFeedback } from '@/features/shared/useFeedback';
 import type { FeedbackAudience } from '@/features/shared/feedbackCopy';
+import { fixedWording } from './fixedCopy';
 import { AmountInput } from '@/features/add/AmountInput';
 import { prettyLabel } from '@/features/add/categories';
 import { Chip, Field } from '@/features/add/fields';
@@ -193,13 +194,13 @@ export function FixedDetail({
   }
 
   const isIncome = recurrence.kind === 'income';
+  // UX-01 · un ingreso fijo se cobra, no se paga.
+  const wording = fixedWording(isIncome);
 
   function confirmDelete() {
     Alert.alert(
-      '¿Eliminar este fijo?',
-      shared == null
-        ? 'Desaparece de todos los meses, también de los que ya pasaron. Si lo que querés es dejar de pagarlo desde ahora, usá “Dejar de pagarlo”.'
-        : shared.deleteMessage,
+      wording.deleteTitle,
+      shared == null ? wording.deleteMessage : shared.deleteMessage,
       [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Eliminar', style: 'destructive', onPress: () => remove.mutate() },
@@ -366,7 +367,7 @@ export function FixedDetail({
               }}
             />
             <Button
-              label="Dejar de pagarlo"
+              label={wording.stopLabel}
               variant="secondary"
               fullWidth
               onPress={() => {
@@ -426,7 +427,7 @@ export function FixedDetail({
 
               {mode === 'correct' && (
                 <Stack gap="5">
-                  <Field label="¿Qué día lo pagás?">
+                  <Field label={wording.dayQuestion}>
                     <DayPicker value={day} onChange={(next) => setDay(next ?? 1)} />
                     <DayNote day={day} />
                   </Field>
@@ -436,7 +437,7 @@ export function FixedDetail({
               {mode === 'stop' && (
                 <Stack gap="5">
                   <Text variant="smallMedium" tone="secondary">
-                    ¿Cuál fue el último mes que lo pagás?
+                    {wording.stopQuestion}
                   </Text>
                   <MonthChips
                     value={targetMonth}

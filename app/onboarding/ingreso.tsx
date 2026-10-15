@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { goBack } from '@/features/shared/navigation';
 import { monthOf } from '@domain/calendar';
 import { AmountInput } from '@/features/add/AmountInput';
 import { Field } from '@/features/add/fields';
@@ -24,6 +25,10 @@ import { Card, Stack, Text } from '@/ui/primitives';
  */
 export default function Ingreso() {
   const router = useRouter();
+  // UX-01 · desde Perfil ("Tus ingresos") esta pantalla registra UN ingreso y
+  // vuelve: no es el paso 1 de 5, así que no sigue al wizard de tarjetas.
+  const { desde } = useLocalSearchParams<{ desde?: string }>();
+  const standalone = desde === 'perfil';
   const today = useToday();
   const createRecurrence = useCreateRecurrence();
 
@@ -45,7 +50,8 @@ export default function Ingreso() {
         endMonth: null,
         paymentMethodId: null,
       });
-      router.push('/onboarding/tarjetas');
+      if (standalone) goBack(router);
+      else router.push('/onboarding/tarjetas');
     } catch {
       setSaving(false);
     }
@@ -54,14 +60,16 @@ export default function Ingreso() {
   return (
     <StepShell
       step={1}
-      total={5}
+      total={standalone ? 0 : 5}
       title="¿Cuánto cobrás por mes?"
       description="Lo usamos para mostrarte qué parte de tus ingresos ya tiene destino."
       help="Si tu ingreso varía, poné un promedio. Después podés ajustar un mes puntual con “Este mes fue distinto”."
       continueDisabled={amount <= 0}
       saving={saving}
       onContinue={() => void save()}
-      onSkip={() => router.push('/onboarding/tarjetas')}
+      onSkip={() => (standalone ? goBack(router) : router.push('/onboarding/tarjetas'))}
+      skipLabel={standalone ? 'Cancelar' : undefined}
+      continueLabel={standalone ? 'Guardar' : undefined}
     >
       <Stack gap="6">
         <View>

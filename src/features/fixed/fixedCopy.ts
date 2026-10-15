@@ -5,6 +5,30 @@
 
 import type { Recurrence, Slot } from '@domain/types';
 
+/**
+ * UX-01 · las palabras del detalle de un fijo. Un ingreso fijo se COBRA: con
+ * "pagarlo" el sueldo se leería como un gasto.
+ */
+export function fixedWording(isIncome: boolean): {
+  stopLabel: string;
+  dayQuestion: string;
+  stopQuestion: string;
+  deleteTitle: string;
+  deleteMessage: string;
+} {
+  const verb = isIncome ? 'cobrar' : 'pagar';
+  const voseo = isIncome ? 'cobrás' : 'pagás';
+  const stopLabel = isIncome ? 'Dejar de cobrarlo' : 'Dejar de pagarlo';
+
+  return {
+    stopLabel,
+    dayQuestion: `¿Qué día lo ${voseo}?`,
+    stopQuestion: `¿Cuál fue el último mes que lo ${voseo}?`,
+    deleteTitle: isIncome ? '¿Eliminar este ingreso?' : '¿Eliminar este fijo?',
+    deleteMessage: `Desaparece de todos los meses, también de los que ya pasaron. Si lo que querés es dejar de ${verb}lo desde ahora, usá “${stopLabel}”.`,
+  };
+}
+
 export function fixedAuthorLine(recurrence: Recurrence, mySlot: Slot, otherName: string): string {
   const who = (slot: Slot) => (slot === mySlot ? 'vos' : otherName);
   const parts: string[] = [];
