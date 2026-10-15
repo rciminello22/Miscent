@@ -20,8 +20,10 @@ import {
   Segmented,
 } from '@/features/add/fields';
 import { InstallmentPreview } from '@/features/add/InstallmentPreview';
-import { installmentCountIssue, isValidInstallmentCount } from '@/features/add/installmentCount';
+import { isValidInstallmentCount } from '@/features/add/installmentCount';
 import { buildInstallmentPreview } from '@/features/add/installmentPreviewModel';
+import { canSaveForm, saveBlockReason } from '@/features/add/saveBlockReason';
+import { SaveFooter } from '@/features/add/SaveFooter';
 import { PastDateField } from '@/features/add/DateField';
 import { MoreOptions } from '@/features/add/MoreOptions';
 import { lastUsedPaymentMethodId, moreOptionsSummary } from '@/features/add/addDefaults';
@@ -201,7 +203,6 @@ export default function AgregarCompartido() {
   const myShare = mySlot === 1 ? shares.slot1 : shares.slot2;
   const otherShare = mySlot === 1 ? shares.slot2 : shares.slot1;
 
-  // UX-06 · una cantidad de cuotas fuera de 2 a 36 (el 1 de "Otra") no se guarda.
   // §17 campo 12 · K9 · solo con cuenta personal, y solo tu parte.
   const myShareRatio = amount === 0 ? 1 : myShare / amount;
   const previewModel =
@@ -213,8 +214,11 @@ export default function AgregarCompartido() {
       ? `${SALDO_POR_CUOTA.charAt(0).toUpperCase()}${SALDO_POR_CUOTA.slice(1)}.`
       : effect;
 
-  const canSave =
-    amount > 0 && category != null && installmentCountIssue(installmentCount) == null && !saving;
+  // UX-16 · un solo lugar decide si se guarda y por qué no (incluida la
+  // cantidad de cuotas fuera de 2 a 36 de UX-06).
+  const form = { amount, category, installmentCount, destinationLoading: false };
+  const canSave = canSaveForm(form) && !saving;
+  const blockReason = saving ? null : saveBlockReason(form);
   const dirty =
     amount > 0 || category != null || description.trim() !== '' || date !== today;
 
@@ -297,16 +301,18 @@ export default function AgregarCompartido() {
     <Screen
       footer={
         // Fijo abajo y sobre el teclado: se ve mientras se escribe (10/10).
-        <Button
-          label="Guardar"
-          variant="shared"
-          size="lg"
-          fullWidth
-          haptic="success"
-          disabled={!canSave}
-          loading={saving}
-          onPress={() => void save()}
-        />
+        <SaveFooter reason={blockReason}>
+          <Button
+            label="Guardar"
+            variant="shared"
+            size="lg"
+            fullWidth
+            haptic="success"
+            disabled={!canSave}
+            loading={saving}
+            onPress={() => void save()}
+          />
+        </SaveFooter>
       }
     >
       <Stack gap="7">

@@ -30,8 +30,10 @@ import {
   Segmented,
 } from '@/features/add/fields';
 import { InstallmentPreview } from '@/features/add/InstallmentPreview';
-import { installmentCountIssue, isValidInstallmentCount } from '@/features/add/installmentCount';
+import { isValidInstallmentCount } from '@/features/add/installmentCount';
 import { buildInstallmentPreview } from '@/features/add/installmentPreviewModel';
+import { canSaveForm, saveBlockReason } from '@/features/add/saveBlockReason';
+import { SaveFooter } from '@/features/add/SaveFooter';
 import { PastDateField } from '@/features/add/DateField';
 import { MoreOptions } from '@/features/add/MoreOptions';
 import { lastUsedPaymentMethodId, moreOptionsSummary } from '@/features/add/addDefaults';
@@ -182,9 +184,16 @@ export default function Agregar() {
     [plan, amount, expansion, myShareRatio, today],
   );
 
-  // UX-06 · una cantidad de cuotas fuera de 2 a 36 (el 1 de "Otra") no se guarda.
-  const canSave =
-    amount > 0 && category != null && installmentCountIssue(installmentCount) == null && !saving;
+  // UX-16 · un solo lugar decide si se guarda y por qué no. Un espacio elegido
+  // que todavía no cargó no se guarda como personal.
+  const form = {
+    amount,
+    category,
+    installmentCount,
+    destinationLoading: destination != null && space == null,
+  };
+  const canSave = canSaveForm(form) && !saving;
+  const blockReason = saving ? null : saveBlockReason(form);
 
   /** §17 · los mensajes de efecto, que es lo que vuelve útil cada registro. */
   const effect = useMemo(() => {
@@ -325,15 +334,17 @@ export default function Agregar() {
     <Screen
       footer={
         // Fijo abajo y sobre el teclado: se ve mientras se escribe (10/10).
-        <Button
-          label="Guardar"
-          size="lg"
-          fullWidth
-          haptic="success"
-          disabled={!canSave}
-          loading={saving}
-          onPress={() => void save()}
-        />
+        <SaveFooter reason={blockReason}>
+          <Button
+            label="Guardar"
+            size="lg"
+            fullWidth
+            haptic="success"
+            disabled={!canSave}
+            loading={saving}
+            onPress={() => void save()}
+          />
+        </SaveFooter>
       }
     >
       <Stack gap="7">
