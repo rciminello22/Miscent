@@ -181,6 +181,33 @@ describe('§15 · RadarSummary', () => {
     ).toBeTruthy();
   });
 
+  it('UX-04 · CA-03 · sin ingresos y con gasto, la barra NO dibuja segmentos (no se calcula)', async () => {
+    const radar = radarFor({ spentCash: 250_000, fixed: 100_000 });
+    const view = await renderWithTheme(<RadarSummary radar={radar} month={MONTH} />);
+
+    // La barra sigue ahí, como track neutro, pero sin proporciones.
+    expect(view.getByLabelText('Destino de tus ingresos registrados')).toBeTruthy();
+    expect(view.queryByTestId('radar-bar-spent')).toBeNull();
+    expect(view.queryByTestId('radar-bar-committed')).toBeNull();
+    expect(view.queryByTestId('radar-bar-excess')).toBeNull();
+  });
+
+  it('UX-04 · con ingresos, la barra sí dibuja gastado y comprometido', async () => {
+    const radar = radarFor({ income: 1_200_000, spentCash: 250_000, fixed: 550_000 });
+    const view = await renderWithTheme(<RadarSummary radar={radar} month={MONTH} />);
+
+    expect(view.getByTestId('radar-bar-spent')).toBeTruthy();
+    expect(view.getByTestId('radar-bar-committed')).toBeTruthy();
+    expect(view.queryByTestId('radar-bar-excess')).toBeNull();
+  });
+
+  it('UX-04 · §15 · con exceso, la barra se llena y aparece la marca de ingresos', async () => {
+    const radar = radarFor({ income: 500_000, spentCash: 535_000 });
+    const view = await renderWithTheme(<RadarSummary radar={radar} month={MONTH} />);
+
+    expect(view.getByTestId('radar-bar-excess')).toBeTruthy();
+  });
+
   it('CA-02 / N-08 · con los compromisos por encima de los ingresos, la frase exacta', async () => {
     const radar = radarFor({ income: 500_000, spentCash: 535_000 });
 

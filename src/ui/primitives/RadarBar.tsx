@@ -3,6 +3,7 @@ import { View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import type { Pesos } from '@domain/money';
 import { barTransition } from '../motion';
+import { radarBarRatios } from './radarBarRatios';
 import { useTheme } from '../theme';
 
 export type RadarBarProps = {
@@ -39,19 +40,22 @@ export function RadarBar({
 }: RadarBarProps) {
   const theme = useTheme();
 
-  const assigned = spent + committed;
-  const base = Math.max(registeredIncome, assigned, 1);
-  const exceeds = assigned > registeredIncome && registeredIncome > 0;
+  // UX-04 · CA-03 · sin ingresos registrados no hay proporciones: el track
+  // queda neutro, sin segmentos.
+  const ratios = radarBarRatios({ registeredIncome, spent, committed });
+  const spentTarget = ratios?.spent ?? 0;
+  const committedTarget = ratios?.committed ?? 0;
+  const incomeMarkTarget = ratios?.incomeMark ?? 0;
 
   const spentRatio = useSharedValue(0);
   const committedRatio = useSharedValue(0);
   const incomeMarkRatio = useSharedValue(0);
 
   useEffect(() => {
-    spentRatio.value = barTransition(spent / base);
-    committedRatio.value = barTransition(committed / base);
-    incomeMarkRatio.value = barTransition(registeredIncome / base);
-  }, [spent, committed, registeredIncome, base, spentRatio, committedRatio, incomeMarkRatio]);
+    spentRatio.value = barTransition(spentTarget);
+    committedRatio.value = barTransition(committedTarget);
+    incomeMarkRatio.value = barTransition(incomeMarkTarget);
+  }, [spentTarget, committedTarget, incomeMarkTarget, spentRatio, committedRatio, incomeMarkRatio]);
 
   const spentStyle = useAnimatedStyle(() => ({
     flexGrow: spentRatio.value,
@@ -80,13 +84,24 @@ export function RadarBar({
       accessibilityRole="progressbar"
       accessibilityLabel="Destino de tus ingresos registrados"
     >
-      <Animated.View style={[{ backgroundColor: theme.colors.spent }, spentStyle]} />
-      <Animated.View style={[{ backgroundColor: theme.colors.committed }, committedStyle]} />
-      {/* El resto del flex queda vacío: eso es Sin asignar. */}
-      <View style={{ flexGrow: Math.max(1 - assigned / base, 0) }} />
+      {ratios != null && (
+        <>
+          <Animated.View
+            testID="radar-bar-spent"
+            style={[{ backgroundColor: theme.colors.spent }, spentStyle]}
+          />
+          <Animated.View
+            testID="radar-bar-committed"
+            style={[{ backgroundColor: theme.colors.committed }, committedStyle]}
+          />
+          {/* El resto del flex queda vacío: eso es Sin asignar. */}
+          <View style={{ flexGrow: ratios.unassigned }} />
+        </>
+      )}
 
-      {exceeds && (
+      {ratios?.exceeds === true && (
         <Animated.View
+          testID="radar-bar-excess"
           style={[
             {
               position: 'absolute',
