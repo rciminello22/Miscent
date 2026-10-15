@@ -42,6 +42,7 @@ import {
   useSpace,
 } from '@/features/spaces/useSpaces';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
+import { savedBalanceDetail, savedDetail } from '@/features/spaces/savedBalance';
 import { useSession } from '@/features/auth/SessionProvider';
 import {
   AudienceBadge,
@@ -288,7 +289,18 @@ export default function AgregarCompartido() {
           pinnedFirstMonth: null,
           myPaymentMethod: payerIsMe ? method : null,
         });
-        feedback.saved({ audience, detail: effect, undo: { kind: 'shared-expense', id, spaceId } });
+        // UX-27 · §17: "Con esto, Martina te debe $X", solo si el gasto mueve el saldo hoy.
+        const balanceDetail = savedBalanceDetail({
+          facts: derived!.facts,
+          mySlot,
+          today,
+          draft: { amount, date, category, payerSlot, split, installmentCount, repeats: false },
+        });
+        feedback.saved({
+          audience,
+          detail: savedDetail(balanceDetail, effect),
+          undo: { kind: 'shared-expense', id, spaceId },
+        });
       }
       goBack(router);
     } catch (cause) {

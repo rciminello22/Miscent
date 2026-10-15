@@ -44,6 +44,7 @@ import type { FeedbackAudience } from '@/features/shared/feedbackCopy';
 const PRIVATE: FeedbackAudience = { kind: 'private' };
 import { SplitField } from '@/features/spaces/SplitField';
 import { confirmIfDuplicate } from '@/features/spaces/confirmDuplicate';
+import { savedBalanceDetail, savedDetail } from '@/features/spaces/savedBalance';
 import { SuggestedCategory } from '@/features/add/SuggestedCategory';
 import { suggestCategory } from '@/features/add/suggestCategory';
 import {
@@ -297,7 +298,18 @@ export default function Agregar() {
             pinnedFirstMonth: null,
             myPaymentMethod: payerIsMe ? method : null,
           });
-          feedback.saved({ audience, detail: effect, undo: { kind: 'shared-expense', id, spaceId } });
+          // UX-27 · §17: "Con esto, Martina te debe $X", solo si el gasto mueve el saldo hoy.
+          const balanceDetail = savedBalanceDetail({
+            facts: space.facts,
+            mySlot: space.mySlot,
+            today,
+            draft: { amount, date, category, payerSlot, split, installmentCount, repeats: false },
+          });
+          feedback.saved({
+            audience,
+            detail: savedDetail(balanceDetail, effect),
+            undo: { kind: 'shared-expense', id, spaceId },
+          });
         }
         goBack(router);
         return;
