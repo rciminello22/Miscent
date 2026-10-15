@@ -32,7 +32,7 @@ import { GuestPersonalSheet } from '@/features/add/GuestPersonalSheet';
 import { encodePersonalDraft } from '@/features/add/personalDraftCodec';
 import { rememberPersonalDraft } from '@/features/add/personalDraft';
 import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
-import { SplitPicker } from '@/features/spaces/SplitPicker';
+import { SplitField } from '@/features/spaces/SplitField';
 import { confirmIfDuplicate } from '@/features/spaces/confirmDuplicate';
 import { SuggestedCategory } from '@/features/add/SuggestedCategory';
 import { suggestCategory } from '@/features/add/suggestCategory';
@@ -371,19 +371,15 @@ export default function AgregarCompartido() {
           </Row>
         </Field>
 
-        {/* §17 campo 6 · P3 */}
-        {amount > 0 && (
-          <Field label="¿Cómo lo reparten?">
-            <SplitPicker
-              total={amount}
-              split={split}
-              onChange={setSplit}
-              mySlot={mySlot}
-              myName={me.displayName}
-              otherName={other.displayName}
-            />
-          </Field>
-        )}
+        {/* §17 campo 6 · P3 · siempre está: no aparece al tipear (UX-15). */}
+        <SplitField
+          total={amount}
+          split={split}
+          onChange={setSplit}
+          mySlot={mySlot}
+          myName={me.displayName}
+          otherName={other.displayName}
+        />
 
         {/* §17 campo 7 · solo si pagó el usuario, y solo en Estado A. */}
         {payerIsMe && accountState === 'personal' && (

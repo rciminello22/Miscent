@@ -42,7 +42,7 @@ import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
 import type { FeedbackAudience } from '@/features/shared/feedbackCopy';
 
 const PRIVATE: FeedbackAudience = { kind: 'private' };
-import { SplitPicker } from '@/features/spaces/SplitPicker';
+import { SplitField } from '@/features/spaces/SplitField';
 import { confirmIfDuplicate } from '@/features/spaces/confirmDuplicate';
 import { SuggestedCategory } from '@/features/add/SuggestedCategory';
 import { suggestCategory } from '@/features/add/suggestCategory';
@@ -447,19 +447,16 @@ export default function Agregar() {
                 </Row>
               </Field>
 
-              {/* P3 · 50/50 o personalizado por monto, sin porcentajes. */}
-              {amount > 0 && (
-                <Field label="¿Cómo lo reparten?">
-                  <SplitPicker
-                    total={amount}
-                    split={split}
-                    onChange={setSplit}
-                    mySlot={space.mySlot}
-                    myName={space.me.displayName}
-                    otherName={space.other.displayName}
-                  />
-                </Field>
-              )}
+              {/* P3 · 50/50 o personalizado por monto, sin porcentajes. Depende
+                  del destino y no del monto: no aparece al tipear (UX-15). */}
+              <SplitField
+                total={amount}
+                split={split}
+                onChange={setSplit}
+                mySlot={space.mySlot}
+                myName={space.me.displayName}
+                otherName={space.other.displayName}
+              />
             </Stack>
           </Animated.View>
         )}
