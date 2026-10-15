@@ -29,8 +29,11 @@ import {
 import { confirmDiscardChanges } from '@/features/edit/confirmDiscard';
 import { DateEditField } from '@/features/edit/DateEditField';
 import { dateEditability, hasUnsavedChanges, type EditFormValues } from '@/features/edit/editForm';
+import { moreOptionsSummary } from '@/features/add/addDefaults';
 import { Field, InstallmentCountPicker } from '@/features/add/fields';
-import { installmentCountIssue, isValidInstallmentCount } from '@/features/add/installmentCount';
+import { MoreOptions } from '@/features/add/MoreOptions';
+import { canSaveForm, saveBlockReason } from '@/features/add/saveBlockReason';
+import { isValidInstallmentCount } from '@/features/add/installmentCount';
 import { PaymentMethodField } from '@/features/add/PaymentMethodField';
 import { useFeedback } from '@/features/shared/useFeedback';
 import { MoveToSpace } from '@/features/movements/MoveToSpace';
@@ -92,6 +95,7 @@ export default function MovimientoDetalle() {
   const [description, setDescription] = useState(movement?.description ?? '');
   // UX-18 · la fecha se edita solo si es de un solo pago (ver `dateEditability`).
   const [date, setDate] = useState(movement?.date ?? today);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const method = facts.paymentMethods.find((item) => item.id === paymentMethodId) ?? null;
 
@@ -189,6 +193,8 @@ export default function MovimientoDetalle() {
     description,
   };
 
+  const saveForm = { amount, category, installmentCount, destinationLoading: false };
+
   function stopEditing() {
     setAmount(initialForm.amount);
     setCategory(initialForm.category);
@@ -244,12 +250,16 @@ export default function MovimientoDetalle() {
               size="lg"
               fullWidth
               haptic="success"
-              disabled={
-                amount <= 0 || category == null || installmentCountIssue(installmentCount) != null
-              }
+              disabled={!canSaveForm(saveForm)}
               loading={save.isPending}
               onPress={() => save.mutate()}
             />
+            {/* UX-16 · también acá: la cantidad de cuotas queda plegada. */}
+            {!save.isPending && saveBlockReason(saveForm) != null && (
+              <Text variant="caption" tone="muted" align="center" accessibilityLiveRegion="polite">
+                {saveBlockReason(saveForm)}
+              </Text>
+            )}
             <Button
               label="Cancelar"
               variant="ghost"
@@ -396,32 +406,46 @@ export default function MovimientoDetalle() {
                 </Field>
               )}
 
-              {movement.kind === 'expense' && (
-                <Field label="En cuotas">
-                  <InstallmentCountPicker
-                    value={installmentCount}
-                    onChange={setInstallmentCount}
+              {/* UX-18 · como en Agregar: lo que casi nunca se toca va plegado,
+                  con lo elegido a la vista. */}
+              <MoreOptions
+                open={moreOpen}
+                onToggle={() => setMoreOpen(!moreOpen)}
+                summary={moreOptionsSummary({
+                  date,
+                  today,
+                  installmentCount: movement.kind === 'expense' ? installmentCount : null,
+                  repeats: false,
+                  description,
+                })}
+              >
+                {movement.kind === 'expense' && (
+                  <Field label="En cuotas">
+                    <InstallmentCountPicker
+                      value={installmentCount}
+                      onChange={setInstallmentCount}
+                    />
+                  </Field>
+                )}
+
+                {/* UX-18 · X-01 · editable salvo en una compra en cuotas (F2). */}
+                <DateEditField
+                  value={date}
+                  onChange={setDate}
+                  today={today}
+                  editability={dateEditability(movement)}
+                />
+
+                <Field label="Descripción (opcional)">
+                  <TextField
+                    value={description}
+                    onChangeText={setDescription}
+                    placeholder="Opcional"
+                    maxLength={140}
+                    accessibilityLabel="Descripción"
                   />
                 </Field>
-              )}
-
-              {/* UX-18 · X-01 · editable salvo en una compra en cuotas (F2). */}
-              <DateEditField
-                value={date}
-                onChange={setDate}
-                today={today}
-                editability={dateEditability(movement)}
-              />
-
-              <Field label="Descripción (opcional)">
-                <TextField
-                  value={description}
-                  onChangeText={setDescription}
-                  placeholder="Opcional"
-                  maxLength={140}
-                  accessibilityLabel="Descripción"
-                />
-              </Field>
+              </MoreOptions>
 
               {/* X-04 · el aviso de que se regeneran las cuotas. */}
               {isValidInstallmentCount(installmentCount) && (

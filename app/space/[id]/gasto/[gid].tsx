@@ -31,13 +31,16 @@ import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { useMarkReviewed, useSpace } from '@/features/spaces/useSpaces';
 import { reviewTag } from '@/features/spaces/reviewCopy';
 import { balanceSentence } from '@/features/spaces/balanceCopy';
-import { SplitPicker } from '@/features/spaces/SplitPicker';
+import { SplitField } from '@/features/spaces/SplitField';
 import { DeletedWhileEditing, type DeletedBy } from '@/features/spaces/DeletedWhileEditing';
 import { confirmDiscardChanges } from '@/features/edit/confirmDiscard';
 import { DateEditField } from '@/features/edit/DateEditField';
 import { dateEditability, hasUnsavedChanges, type EditFormValues } from '@/features/edit/editForm';
 import { AmountInput } from '@/features/add/AmountInput';
-import { installmentCountIssue, isValidInstallmentCount } from '@/features/add/installmentCount';
+import { moreOptionsSummary } from '@/features/add/addDefaults';
+import { MoreOptions } from '@/features/add/MoreOptions';
+import { isValidInstallmentCount } from '@/features/add/installmentCount';
+import { canSaveForm, saveBlockReason } from '@/features/add/saveBlockReason';
 import { CategoryGrid } from '@/features/add/CategoryGrid';
 import { EXPENSE_CATEGORIES, prettyLabel } from '@/features/add/categories';
 import {
@@ -117,6 +120,7 @@ export default function GastoCompartido() {
   const [paymentMethodId, setPaymentMethodId] = useState<string | null>(null);
   // UX-18 · la fecha se edita solo si es de un solo pago (ver `dateEditability`).
   const [date, setDate] = useState(expense?.date ?? today);
+  const [moreOpen, setMoreOpen] = useState(false);
   /** UX-18 · el formulario tal como estaba al tocar Editar, para saber si hay cambios sin guardar. */
   const [initialForm, setInitialForm] = useState<EditFormValues | null>(null);
 
@@ -333,6 +337,8 @@ export default function GastoCompartido() {
     split,
   };
 
+  const saveForm = { amount, category, installmentCount, destinationLoading: false };
+
   /** "Cancelar" y la X: con cambios sin guardar, preguntan antes de tirarlos. */
   function leaveEditing(then: () => void) {
     if (initialForm != null && hasUnsavedChanges(initialForm, currentForm)) {
@@ -390,12 +396,16 @@ export default function GastoCompartido() {
               size="lg"
               fullWidth
               haptic="success"
-              disabled={
-                amount <= 0 || category == null || installmentCountIssue(installmentCount) != null
-              }
+              disabled={!canSaveForm(saveForm)}
               loading={save.isPending}
               onPress={() => save.mutate()}
             />
+            {/* UX-16 · también acá: la cantidad de cuotas queda plegada. */}
+            {!save.isPending && saveBlockReason(saveForm) != null && (
+              <Text variant="caption" tone="muted" align="center" accessibilityLiveRegion="polite">
+                {saveBlockReason(saveForm)}
+              </Text>
+            )}
             <Button
               label="Cancelar"
               variant="ghost"
@@ -623,18 +633,14 @@ export default function GastoCompartido() {
                 </Row>
               </Field>
 
-              {amount > 0 && (
-                <Field label="¿Cómo lo reparten?">
-                  <SplitPicker
-                    total={amount}
-                    split={split}
-                    onChange={setSplit}
-                    mySlot={mySlot}
-                    myName={me.displayName}
-                    otherName={other.displayName}
-                  />
-                </Field>
-              )}
+              <SplitField
+                total={amount}
+                split={split}
+                onChange={setSplit}
+                mySlot={mySlot}
+                myName={me.displayName}
+                otherName={other.displayName}
+              />
 
               {/* §17 campo 7 · solo en Estado A (A-05): la invitada no tiene medios. */}
               {payerIsMe && accountState === 'personal' && (
@@ -650,32 +656,46 @@ export default function GastoCompartido() {
                 </Field>
               )}
 
-              <Field label="En cuotas">
-                <InstallmentCountPicker
-                  value={installmentCount}
-                  onChange={setInstallmentCount}
-                />
-              </Field>
+              {/* UX-18 · como en Agregar: lo que casi nunca se toca va plegado,
+                  con lo elegido a la vista. */}
+              <MoreOptions
+                open={moreOpen}
+                onToggle={() => setMoreOpen(!moreOpen)}
+                summary={moreOptionsSummary({
+                  date,
+                  today,
+                  installmentCount,
+                  repeats: false,
+                  description,
+                })}
+              >
+                <Field label="En cuotas">
+                  <InstallmentCountPicker
+                    value={installmentCount}
+                    onChange={setInstallmentCount}
+                  />
+                </Field>
 
-              {/* UX-18 · X-02 · editable salvo en una compra en cuotas (F2): el
-                  plan guarda el mes y el día de cada cuota, que salen de la
-                  tarjeta de quien pagó y el otro miembro no la ve (PR-02). */}
-              <DateEditField
-                value={date}
-                onChange={setDate}
-                today={today}
-                editability={dateEditability(expense)}
-              />
-
-              <Field label="Descripción (opcional)">
-                <TextField
-                  value={description}
-                  onChangeText={setDescription}
-                  placeholder="Opcional"
-                  maxLength={140}
-                  accessibilityLabel="Descripción"
+                {/* UX-18 · X-02 · editable salvo en una compra en cuotas (F2): el
+                    plan guarda el mes y el día de cada cuota, que salen de la
+                    tarjeta de quien pagó y el otro miembro no la ve (PR-02). */}
+                <DateEditField
+                  value={date}
+                  onChange={setDate}
+                  today={today}
+                  editability={dateEditability(expense)}
                 />
-              </Field>
+
+                <Field label="Descripción (opcional)">
+                  <TextField
+                    value={description}
+                    onChangeText={setDescription}
+                    placeholder="Opcional"
+                    maxLength={140}
+                    accessibilityLabel="Descripción"
+                  />
+                </Field>
+              </MoreOptions>
 
               {/* X-04 · el aviso de que cambia el saldo de los dos. */}
               {!deletedWhileEditing && (
