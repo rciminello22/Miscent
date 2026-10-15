@@ -161,6 +161,13 @@ export default function GastoCompartido() {
         mySlot: derived.mySlot,
         myPaymentMethod: payerIsMe ? method : null,
         spaceId,
+        // Si pagó el otro, su medio es privado (PR-02): no se ve y no cuenta.
+        before: {
+          date: expense.date,
+          installmentCount: expense.installments?.count ?? null,
+          payerSlot: expense.payerSlot,
+          payerMethodId: expense.payerSlot === derived.mySlot ? currentPaymentMethodId : null,
+        },
       });
     },
     onSuccess: async () => {

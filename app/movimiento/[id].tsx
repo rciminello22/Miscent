@@ -116,6 +116,11 @@ export default function MovimientoDetalle() {
         paymentMethod: method,
         installmentCount,
         pinnedFirstMonth: null,
+        before: {
+          date: movement.date,
+          installmentCount: movement.installments?.count ?? null,
+          payerMethodId: movement.paymentMethodId,
+        },
       });
     },
     onSuccess: async () => {

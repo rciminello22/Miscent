@@ -64,6 +64,14 @@ export function PaidByMeSection({
         mySlot: membership.mySlot,
         myPaymentMethod: method,
         spaceId,
+        // Está en esta lista justamente porque no tiene medio: ponerlo rearma
+        // las cuotas con la tarjeta (Q-02).
+        before: {
+          date: expense.date,
+          installmentCount: expense.installments?.count ?? null,
+          payerSlot: expense.payerSlot,
+          payerMethodId: null,
+        },
       });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.spaceFacts(spaceId) }),

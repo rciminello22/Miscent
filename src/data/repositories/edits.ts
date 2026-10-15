@@ -7,7 +7,12 @@
  * volver a leer. No hay nada que migrar ni recalcular a mano.
  */
 
-import { endInstallmentsNow, planInstallments } from '@domain/installments';
+import {
+  endInstallmentsNow,
+  planInstallments,
+  shouldReplan,
+  type PlanDefiningFacts,
+} from '@domain/installments';
 import type { IsoDate, Month } from '@domain/calendar';
 import type { Pesos } from '@domain/money';
 import type {
@@ -37,20 +42,34 @@ export type MovementEdit = {
   paymentMethod: PaymentMethod | null;
   installmentCount: number | null;
   pinnedFirstMonth: Month | null;
+  /** Lo que definía el plan antes de editar: decide si hay que rearmarlo. */
+  before: PlanDefiningFacts;
 };
 
 /**
- * X-04 · editar una compra en cuotas REGENERA sus cuotas.
+ * X-04 · editar una compra en cuotas REGENERA sus cuotas… cuando la edición
+ * toca lo que las define (cantidad, fecha, medio de pago).
  *
- * El cronograma se le vuelve a pedir al dominio con los datos nuevos, en vez
- * de parchear el plan viejo: si cambió el medio de pago, Q-02 y Q-03 dan
- * cronogramas distintos, y mantener el anterior dejaría cuotas en meses que
- * ya no corresponden.
+ * En ese caso el cronograma se le vuelve a pedir al dominio con los datos
+ * nuevos, en vez de parchear el plan viejo: si cambió el medio de pago, Q-02 y
+ * Q-03 dan cronogramas distintos.
+ *
+ * Si no (descripción, monto, categoría), el UPDATE NO incluye las columnas de
+ * cuotas: el plan persistido (F2) queda tal cual. Omitirlas es más seguro que
+ * reenviarlas, porque no escribe nada que pueda pisar un cambio concurrente ni
+ * reconstruir con datos incompletos lo que ya estaba bien. Las cuotas siguen
+ * recalculándose solas: sus montos salen del total (X-01).
  */
 export async function updatePersonalMovement(
   id: string,
   input: MovementEdit,
 ): Promise<void> {
+  const replan = shouldReplan(input.before, {
+    date: input.date,
+    installmentCount: input.installmentCount,
+    payerMethodId: input.paymentMethod?.id ?? null,
+  });
+
   const plan =
     input.installmentCount != null && input.installmentCount >= 2
       ? planInstallments({
@@ -69,7 +88,7 @@ export async function updatePersonalMovement(
       category: input.category,
       description: input.description,
       payment_method_id: input.paymentMethod?.id ?? null,
-      ...installmentColumns(plan),
+      ...(replan ? installmentColumns(plan) : {}),
     })
     .eq('id', id);
 
@@ -190,6 +209,8 @@ export type SharedExpenseEdit = {
   mySlot: Slot;
   myPaymentMethod: PaymentMethod | null;
   spaceId: string;
+  /** Lo que definía el plan antes de editar, tal como lo ve quien edita. */
+  before: PlanDefiningFacts;
 };
 
 /** SY-02 · el gasto que se estaba editando ya no existe. */
@@ -217,12 +238,32 @@ export async function fetchSharedExpenseDeletion(
   return { deletedBySlot: data.deleted_by_slot === 1 ? 1 : 2 };
 }
 
-/** X-02 / K3 · los dos miembros editan, y se registra el último editor. */
+/**
+ * X-02 / K3 · los dos miembros editan, y se registra el último editor.
+ *
+ * Solo se rearma el plan de cuotas si cambió algo que lo define (`shouldReplan`).
+ * Si el miembro que NO pagó edita la descripción de una compra hecha con la
+ * tarjeta del otro, rearmarlo sin esa tarjeta (PR-02, Q-03) pisaría el primer
+ * mes y el día de impacto persistidos (F2) y movería el saldo de los dos. En
+ * ese caso el UPDATE no incluye las columnas de cuotas.
+ *
+ * Caso que hoy NO tiene solución: el que no pagó cambia la CANTIDAD de cuotas
+ * de una compra con la tarjeta del otro. Se rearma (la cantidad cambió) pero sin
+ * tarjeta, con la regla Q-03; no hay forma de recalcular con una tarjeta que no
+ * puede ver.
+ */
 export async function updateSharedExpense(
   id: string,
   input: SharedExpenseEdit,
 ): Promise<void> {
   const iPaid = input.payerSlot === input.mySlot;
+
+  const replan = shouldReplan(input.before, {
+    date: input.date,
+    installmentCount: input.installmentCount,
+    payerSlot: input.payerSlot,
+    payerMethodId: iPaid ? input.myPaymentMethod?.id ?? null : null,
+  });
 
   const plan =
     input.installmentCount != null && input.installmentCount >= 2
@@ -242,7 +283,7 @@ export async function updateSharedExpense(
       description: input.description,
       payer_slot: input.payerSlot,
       ...splitColumns(input.amount, input.split),
-      ...installmentColumns(plan),
+      ...(replan ? installmentColumns(plan) : {}),
       updated_by_slot: input.mySlot,
     })
     .eq('id', id)

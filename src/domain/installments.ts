@@ -11,7 +11,7 @@
 import { addMonths, dateInMonth, dayOf, monthOf, type IsoDate, type Month } from './calendar';
 import { distribute, type Pesos } from './money';
 import { resolveCardPayment } from './cards';
-import type { InstallmentPlan, PaymentMethod } from './types';
+import type { InstallmentPlan, PaymentMethod, Slot } from './types';
 
 export type ScheduledInstallment = {
   /** 1-indexado: "cuota 3 de 6". */
@@ -76,6 +76,44 @@ export function planInstallments(args: {
     impactDay: dayOf(purchaseDate),
     approximate: false,
   };
+}
+
+/**
+ * Lo único que define el plan de cuotas de un gasto ya cargado. El monto, el
+ * reparto, la categoría y la descripción NO están acá a propósito: cambian las
+ * cuotas (monto) o las partes (C-02), pero no en qué mes ni qué día caen.
+ */
+export type PlanDefiningFacts = {
+  date: IsoDate;
+  installmentCount: number | null;
+  /** Solo en gastos compartidos. */
+  payerSlot?: Slot;
+  /**
+   * El medio de quien paga, tal como lo ve QUIEN EDITA. Si paga el otro
+   * miembro es `null` siempre (PR-02: su medio es privado), así que un cambio
+   * ahí no se puede ver ni se puede recalcular.
+   */
+  payerMethodId: string | null;
+};
+
+/**
+ * X-04 · ¿esta edición obliga a rearmar el plan de cuotas?
+ *
+ * El plan se persiste (F2) porque el día de impacto y el primer mes salen de la
+ * tarjeta de quien pagó, que el otro miembro no ve (PR-02). Rearmarlo cuando la
+ * edición no lo afecta lo pisaría con un cálculo sin tarjeta (Q-03).
+ */
+export function shouldReplan(before: PlanDefiningFacts, after: PlanDefiningFacts): boolean {
+  const hasPlan = (count: number | null) => count != null && count >= 2;
+  // Un solo pago antes y después: no hay plan que rearmar, cambie lo que cambie.
+  if (!hasPlan(before.installmentCount) && !hasPlan(after.installmentCount)) return false;
+
+  return (
+    before.installmentCount !== after.installmentCount ||
+    before.date !== after.date ||
+    before.payerSlot !== after.payerSlot ||
+    before.payerMethodId !== after.payerMethodId
+  );
 }
 
 /** Expande el plan a sus `count` ocurrencias, una por mes consecutivo. */
