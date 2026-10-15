@@ -5,9 +5,9 @@ import { ArrowLeft, CircleUser, MoreHorizontal, Plus, UserPlus } from 'lucide-re
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addMonths, monthOf } from '@domain/calendar';
-import type { SpaceOccurrence } from '@domain/occurrences';
 import { pendingStoppedFixed } from '@domain/departure';
-import { formatDayMonth, formatInstallment, formatMonth, formatPesos } from '@/lib/format';
+import { paidByMeWithoutMethod } from '@domain/paidByMe';
+import { formatMonth, formatPesos } from '@/lib/format';
 import { prettyLabel } from '@/features/add/categories';
 import { useSession } from '@/features/auth/SessionProvider';
 import { StoppedFixedCard } from './StoppedFixedCard';
@@ -15,13 +15,7 @@ import { PaidByMeSection } from './PaidByMeSection';
 import { paidByOtherTitle } from './paidByMeCopy';
 import { deletedLabel, deletedTag, markAllLabel, reviewTag, toReviewLine } from './reviewCopy';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
-import {
-  balanceSentence,
-  paymentSentence,
-  prepaidInstallmentsSentence,
-  previousMonthSentence,
-  putExtraSentence,
-} from '@/features/spaces/balanceCopy';
+import { balanceSentence, paymentSentence, prepaidInstallmentsSentence } from '@/features/spaces/balanceCopy';
 import {
   useDeleteMemberPayment,
   useMarkReviewed,
@@ -30,7 +24,7 @@ import {
 } from '@/features/spaces/useSpaces';
 import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
 import { calculateSharedBalance } from '@domain/shared-balance';
-import type { DeletedRecord, MemberPayment } from '@domain/types';
+import type { MemberPayment } from '@domain/types';
 import { SpaceMenu } from '@/features/spaces/SpaceMenu';
 import { spaceSummaryText } from './shareSummary';
 import { ActivityList } from './ActivityList';
@@ -41,12 +35,10 @@ import {
   AudienceBadge,
   Button,
   Card,
-  ContributionBar,
   Divider,
   EmptyState,
   ErrorState,
   IconButton,
-  Money,
   Pressable,
   Row,
   RowChevron,
@@ -57,7 +49,11 @@ import {
   Text,
   TextLink,
 } from '@/ui/primitives';
+import { Disclosure } from './Disclosure';
 import { PaymentDetail } from './PaymentDetail';
+import { DeletedRow, PaymentRow, ReviewTag, SharedRow, type SpaceMovement } from './SpaceRows';
+import { SpaceMonthCard } from './SpaceMonthCard';
+import { limitMovements, pendingGroupTitle, planSpaceLayout } from './spaceLayout';
 import { duration, stagger } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
 
@@ -75,7 +71,13 @@ import { useTheme } from '@/ui/theme';
  * "puso" es otra cosa, con su marca aparte en lo que le corresponde a cada uno.
  *
  * E-09 · el espacio no muestra ni infiere cuánto dinero tiene cada miembro.
+ *
+ * UX-05 · el orden lo decide `planSpaceLayout` (puro): primero el saldo y las
+ * dos acciones, después los pendientes en una sola fila, el mes, Próximos meses
+ * y Movimientos. Este archivo es el container: trae los datos, y las piezas de
+ * dibujo están en `SpaceMonthCard` y `SpaceRows`.
  */
+
 /**
  * Qué va arriba a la izquierda. Lo decide la ruta que muestra el espacio:
  *   back    · una flecha con su destino
@@ -112,22 +114,26 @@ export function SpaceScreen({
   // Should 6 · la actividad reciente, en su propia hoja.
   const [activityOpen, setActivityOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<MemberPayment | null>(null);
+  // UX-05 · lo plegable. `null` = lo que decida `planSpaceLayout`.
+  const [pendingOpen, setPendingOpen] = useState<boolean | null>(null);
+  const [monthDetailOpen, setMonthDetailOpen] = useState(false);
+  const [upcomingOpen, setUpcomingOpen] = useState(false);
+  const [movementsExpanded, setMovementsExpanded] = useState(false);
 
   const currentMonth = monthOf(today);
 
-  // §23.4 · los compromisos compartidos de los próximos meses.
+  // §23.4 · los compromisos compartidos de los próximos meses. Se ven todos,
+  // en su hoja: nada se corta sin avisar.
   const upcomingShared = useMemo(() => {
     if (derived == null) return [];
-    return derived.occurrences
-      .filter((occurrence) => occurrence.month > currentMonth)
-      .slice(0, 12);
+    return derived.occurrences.filter((occurrence) => occurrence.month > currentMonth);
   }, [derived, currentMonth]);
 
-  // §24 · los movimientos del espacio, del mes en curso hacia atrás.
   /**
    * §24 / §25 · los movimientos del espacio: gastos Y pagos entre miembros,
    * por fecha. Solo lo que ya pasó, igual que el saldo: lo que viene está en
-   * "Se vienen este mes" y en Próximos meses.
+   * "Se vienen este mes" y en Próximos meses. Todos; el recorte lo hace
+   * `limitMovements` y avisa cuántos quedan.
    */
   const movements = useMemo((): SpaceMovement[] => {
     if (derived == null) return [];
@@ -138,9 +144,7 @@ export function SpaceScreen({
       .filter((payment) => payment.date <= today)
       .map((payment) => ({ kind: 'payment', date: payment.date, payment }));
 
-    return [...expenses, ...payments]
-      .sort((a, b) => (a.date < b.date ? 1 : -1))
-      .slice(0, 30);
+    return [...expenses, ...payments].sort((a, b) => (a.date < b.date ? 1 : -1));
   }, [derived, today]);
 
   const deletePayment = useDeleteMemberPayment(spaceId);
@@ -188,6 +192,15 @@ export function SpaceScreen({
   const { facts: personalFacts } = usePersonalFacts();
   const myMembership = personalFacts.spaces.find(
     (membership) => membership.facts.space.id === spaceId,
+  );
+
+  // Lo que el otro cargó como pagado por vos, sin medio: solo con cuenta personal.
+  const paidByOtherCount = useMemo(
+    () =>
+      accountState === 'personal' && myMembership != null
+        ? paidByMeWithoutMethod(myMembership, today, { includeOwn: false }).length
+        : 0,
+    [accountState, myMembership, today],
   );
 
   // SA-04 · los fijos que detuvo una salida y que quien queda todavía no decidió.
@@ -261,7 +274,6 @@ export function SpaceScreen({
     setRefreshing(false);
   }
 
-
   if (isLoading) {
     return (
       <ScrollView
@@ -314,6 +326,292 @@ export function SpaceScreen({
   });
   const toReviewCount = derived.pendingReview.size + derived.pendingDeletions.length;
 
+  // UX-05 · qué secciones se muestran y en qué orden (puro, con test).
+  const layout = planSpaceLayout({
+    stoppedFixed: stopped.length,
+    paidByOther: paidByOtherCount,
+    toReview: toReviewCount,
+    month: {
+      total: month.total,
+      payments: month.payments.length,
+      upcoming: month.upcoming.length,
+      categories: month.byCategory.length,
+    },
+    upcomingMonths: upcomingShared.length,
+    movements: movements.length,
+  });
+  const shown = limitMovements(movements, movementsExpanded);
+  const showPay = !balance.settled && settlement != null;
+
+  const sections: Record<(typeof layout.sections)[number], ReactNode> = {
+    /* ── El saldo compartido ─────────────────────────────────────────── */
+    balance: (
+      <Animated.View key="balance" entering={FadeInDown.duration(duration.deliberate)}>
+        <Stack gap="4">
+          <Text variant="overline" tone="muted">
+            {derived.facts.space.name}
+          </Text>
+
+          <Text variant="title">{balanceSentence(balance)}</Text>
+
+          {/* §24 · "Martina · todavía no entró · Invitar" y "ex miembro". */}
+          {other.status === 'no_access' && (
+            <Row gap="2" align="center">
+              <Text variant="small" tone="muted">
+                {other.displayName} todavía no entró
+              </Text>
+              <TextLink
+                label="Invitar"
+                variant="smallMedium"
+                onPress={() => router.push(`/space/${spaceId}/invitar`)}
+              />
+            </Row>
+          )}
+          {/* P7 · el lugar de un ex miembro se puede volver a invitar. */}
+          {other.status === 'former' && (
+            <Row gap="2" align="center">
+              <Text variant="small" tone="muted">
+                {other.displayName} · ex miembro
+              </Text>
+              <TextLink
+                label="Invitar de nuevo"
+                variant="smallMedium"
+                onPress={() => router.push(`/space/${spaceId}/invitar`)}
+              />
+            </Row>
+          )}
+
+          {/* §25 · el aviso de adelanto, para que el número no se lea mal. */}
+          {prepaidInstallmentsSentence(balance, pendingInstallments) != null && (
+            <Card tone="shared">
+              <Text variant="small">{prepaidInstallmentsSentence(balance, pendingInstallments)}</Text>
+            </Card>
+          )}
+        </Stack>
+      </Animated.View>
+    ),
+
+    /* ── Las dos acciones, juntas, debajo del saldo ──────────────────── */
+    actions: (
+      <Row key="actions" gap="3">
+        {showPay && (
+          <Button
+            label="Registrar pago"
+            variant="secondary"
+            fullWidth
+            style={{ flex: 1 }}
+            onPress={() => router.push(`/space/${spaceId}/pago`)}
+          />
+        )}
+        <Button
+          label="Agregar gasto"
+          variant="shared"
+          fullWidth
+          style={{ flex: 1 }}
+          icon={<Plus size={16} color={theme.colors.textOnBrand} />}
+          onPress={() => router.push(`/space/${spaceId}/agregar`)}
+        />
+      </Row>
+    ),
+
+    /* ── Pendientes: UNA fila; cada tarjeta sigue existiendo adentro ──── */
+    pending:
+      layout.pending == null ? null : (
+        <Disclosure
+          key="pending"
+          title={pendingGroupTitle(layout.pending.count)}
+          open={pendingOpen ?? layout.pending.startsOpen}
+          onToggle={() => setPendingOpen(!(pendingOpen ?? layout.pending!.startsOpen))}
+        >
+          {/* SA-04 · §27 · "¿Lo seguís pagando vos?": explica por qué cambió el radar. */}
+          {stopped.length > 0 && (
+            <StoppedFixedCard
+              otherName={stopped[0]!.otherName}
+              spaceName={derived.facts.space.name}
+              items={stopped.map((item) => ({
+                recurrenceId: item.recurrenceId,
+                label: item.description ?? prettyLabel(item.category),
+                amount: item.amount,
+              }))}
+              canKeep={accountState === 'personal'}
+              busyId={resolving}
+              onKeep={(recurrenceId) => resolve(recurrenceId, true)}
+              onEnd={(recurrenceId) => resolve(recurrenceId, false)}
+            />
+          )}
+
+          {/* §5 1º Should · lo que el otro cargó como pagado por vos, sin medio:
+              hasta que se completa, no entra al resumen de tu tarjeta. */}
+          {accountState === 'personal' && myMembership != null && (
+            <PaidByMeSection
+              membership={myMembership}
+              methods={personalFacts.paymentMethods}
+              today={today}
+              includeOwn={false}
+              title={(count) => paidByOtherTitle(other.displayName, count)}
+            />
+          )}
+
+          {/* Opción B · lo que cargó el otro y no revisaste. Revisar no es
+              aprobar: ya cuenta, igual para los dos. */}
+          {toReviewCount > 0 && (
+            <Row justify="space-between" align="center" gap="3">
+              <ReviewTag label={toReviewLine(toReviewCount)} />
+              <Button
+                label={markAllLabel(toReviewCount)}
+                variant="ghost"
+                loading={markReviewed.isPending}
+                onPress={() => reviewAll()}
+              />
+            </Row>
+          )}
+        </Disclosure>
+      ),
+
+    /* ── §24 · el mes del espacio ────────────────────────────────────── */
+    month: (
+      <Animated.View key="month" entering={FadeInDown.delay(stagger(1, 80)).duration(duration.base)}>
+        <SpaceMonthCard
+          month={month}
+          mySlot={derived.mySlot}
+          otherName={other.displayName}
+          currentMonth={currentMonth}
+          hasDetail={layout.monthDetail}
+          detailOpen={monthDetailOpen}
+          onToggleDetail={() => setMonthDetailOpen((open) => !open)}
+        />
+      </Animated.View>
+    ),
+
+    /* ── §23.4 · Próximos meses del espacio, en su hoja ──────────────── */
+    upcoming: (
+      <Pressable
+        key="upcoming"
+        onPress={() => setUpcomingOpen(true)}
+        haptic="none"
+        scaleOnPress={false}
+        accessibilityRole="button"
+        accessibilityLabel={`Próximos meses de ${derived.facts.space.name}`}
+        style={{ minHeight: 48, justifyContent: 'center' }}
+      >
+        <Row justify="space-between" align="center" gap="3">
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text variant="bodyMedium">Próximos meses de {derived.facts.space.name}</Text>
+            <Text variant="caption" tone="muted">
+              {upcomingShared.length === 1
+                ? '1 compromiso entre los dos'
+                : `${upcomingShared.length} compromisos entre los dos`}
+            </Text>
+          </View>
+          <RowChevron />
+        </Row>
+      </Pressable>
+    ),
+
+    /* ── §24 · Movimientos del espacio ───────────────────────────────── */
+    movements: (
+      <Stack key="movements" gap="4">
+        <SectionHeader title={`Movimientos de ${derived.facts.space.name}`} />
+
+        {/* Opción B · lo que eliminó el otro ya no está en la lista: queda
+            su rastro hasta que lo revisás. */}
+        {derived.pendingDeletions.length > 0 && (
+          <Stack gap="0">
+            {derived.pendingDeletions.map((item, index) => (
+              <View key={`deleted-${item.sourceId}`}>
+                <DeletedRow
+                  item={item}
+                  label={deletedLabel(item, {
+                    mySlot: derived.mySlot,
+                    otherName: other.displayName,
+                    categoryLabel: prettyLabel,
+                  })}
+                  tag={deletedTag(other.displayName)}
+                  onReviewed={() => reviewIds([item.sourceId], 'Listo, ya lo revisaste.')}
+                />
+                {index < derived.pendingDeletions.length - 1 && <Divider />}
+              </View>
+            ))}
+          </Stack>
+        )}
+
+        {movements.length === 0 ? (
+          <EmptyState
+            title="Anoten acá lo que pagan para la casa."
+            description="La app hace las cuentas."
+          />
+        ) : (
+          <Stack gap="0">
+            {shown.visible.map((movement, index) => (
+              <Animated.View
+                key={
+                  movement.kind === 'occurrence'
+                    ? movement.occurrence.id
+                    : `payment-${movement.payment.id}`
+                }
+                layout={LinearTransition}
+                entering={
+                  index < 10
+                    ? FadeInDown.delay(stagger(index, 35)).duration(duration.base)
+                    : undefined
+                }
+              >
+                {movement.kind === 'occurrence' ? (
+                  <SharedRow
+                    occurrence={movement.occurrence}
+                    mySlot={derived.mySlot}
+                    otherName={other.displayName}
+                    myName={me.displayName}
+                    reviewTag={
+                      taggedOccurrences.has(movement.occurrence.id)
+                        ? reviewTag(
+                            other.displayName,
+                            derived.pendingReview.get(movement.occurrence.sourceId)!,
+                          )
+                        : null
+                    }
+                    onPress={() =>
+                      // Un gasto se edita desde su detalle; un fijo, desde el
+                      // fijo (§21: los dos lo editan), no desde un mes suelto.
+                      router.push(
+                        movement.occurrence.sourceKind === 'expense'
+                          ? `/space/${spaceId}/gasto/${movement.occurrence.sourceId}`
+                          : `/space/${spaceId}/fijo/${movement.occurrence.sourceId}`,
+                      )
+                    }
+                  />
+                ) : (
+                  <PaymentRow
+                    sentence={paymentSentence(movement.payment, derived.mySlot, other.displayName)}
+                    date={movement.payment.date}
+                    amount={movement.payment.amount}
+                    reviewTag={
+                      derived.pendingReview.has(movement.payment.id)
+                        ? reviewTag(other.displayName, 'created')
+                        : null
+                    }
+                    onPress={() => setSelectedPayment(movement.payment)}
+                  />
+                )}
+                {index < shown.visible.length - 1 && <Divider />}
+              </Animated.View>
+            ))}
+          </Stack>
+        )}
+
+        {/* Nunca se corta sin avisar: dice cuántos faltan y los muestra todos. */}
+        {shown.hidden > 0 && (
+          <Button
+            label={`Ver todos (${movements.length})`}
+            variant="ghost"
+            fullWidth
+            onPress={() => setMovementsExpanded(true)}
+          />
+        )}
+      </Stack>
+    ),
+  };
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.colors.background }}
@@ -356,9 +654,7 @@ export function SpaceScreen({
 
           <Row gap="3" align="center">
             {/* §12 · el encabezado dice quién lo ve. */}
-            <AudienceBadge
-              audience={{ kind: 'shared', otherMemberName: other.displayName }}
-            />
+            <AudienceBadge audience={{ kind: 'shared', otherMemberName: other.displayName }} />
 
             {/* §24 · Renombrar · Invitar · Salir */}
             <IconButton
@@ -379,335 +675,7 @@ export function SpaceScreen({
           />
         )}
 
-        {/* SA-04 · §27 · "¿Lo seguís pagando vos?", arriba de todo: es lo
-            que explica por qué cambió el radar. */}
-        {stopped.length > 0 && (
-          <Animated.View entering={FadeInDown.duration(duration.base)}>
-            <StoppedFixedCard
-              otherName={stopped[0]!.otherName}
-              spaceName={derived.facts.space.name}
-              items={stopped.map((item) => ({
-                recurrenceId: item.recurrenceId,
-                label: item.description ?? prettyLabel(item.category),
-                amount: item.amount,
-              }))}
-              canKeep={accountState === 'personal'}
-              busyId={resolving}
-              onKeep={(recurrenceId) => resolve(recurrenceId, true)}
-              onEnd={(recurrenceId) => resolve(recurrenceId, false)}
-            />
-          </Animated.View>
-        )}
-
-        {/* §5 1º Should · lo que el otro cargó como pagado por vos, sin medio:
-            hasta que se completa, no entra al resumen de tu tarjeta. */}
-        {accountState === 'personal' && myMembership != null && (
-          <PaidByMeSection
-            membership={myMembership}
-            methods={personalFacts.paymentMethods}
-            today={today}
-            includeOwn={false}
-            title={(count) => paidByOtherTitle(other.displayName, count)}
-          />
-        )}
-
-        {/* ── El saldo compartido ──────────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.duration(duration.deliberate)}>
-          <Stack gap="4">
-            <Text variant="overline" tone="muted">
-              {derived.facts.space.name}
-            </Text>
-
-            <Text variant="title">{balanceSentence(balance)}</Text>
-
-            {/* §24 · "Martina · todavía no entró · Invitar" y "ex miembro". */}
-            {other.status === 'no_access' && (
-              <Row gap="2" align="center">
-                <Text variant="small" tone="muted">
-                  {other.displayName} todavía no entró
-                </Text>
-                <TextLink
-                  label="Invitar"
-                  variant="smallMedium"
-                  onPress={() => router.push(`/space/${spaceId}/invitar`)}
-                />
-              </Row>
-            )}
-            {/* P7 · el lugar de un ex miembro se puede volver a invitar. */}
-            {other.status === 'former' && (
-              <Row gap="2" align="center">
-                <Text variant="small" tone="muted">
-                  {other.displayName} · ex miembro
-                </Text>
-                <TextLink
-                  label="Invitar de nuevo"
-                  variant="smallMedium"
-                  onPress={() => router.push(`/space/${spaceId}/invitar`)}
-                />
-              </Row>
-            )}
-
-            {/* §25 · el aviso de adelanto, para que el número no se lea mal. */}
-            {prepaidInstallmentsSentence(balance, pendingInstallments) != null && (
-              <Card tone="shared">
-                <Text variant="small">
-                  {prepaidInstallmentsSentence(balance, pendingInstallments)}
-                </Text>
-              </Card>
-            )}
-
-            {!balance.settled && settlement != null && (
-              <Button
-                label="Registrar pago"
-                variant="shared"
-                onPress={() => router.push(`/space/${spaceId}/pago`)}
-              />
-            )}
-          </Stack>
-        </Animated.View>
-
-        {/* ── §24 · el mes del espacio ─────────────────────────────────── */}
-        {(month.total > 0 || month.payments.length > 0 || month.upcoming.length > 0) && (
-          <Animated.View entering={FadeInDown.delay(stagger(1, 80)).duration(duration.base)}>
-            <Stack gap="4">
-              <Row justify="space-between" align="baseline">
-                <Text variant="smallMedium" tone="secondary">
-                  {formatMonth(currentMonth, currentMonth)} · gastos compartidos
-                </Text>
-                <Money amount={month.total} variant="bodyMedium" animate />
-              </Row>
-
-              <Stack gap="4">
-                <MemberContribution
-                  name="Vos"
-                  put={month.viewer.put}
-                  share={month.viewer.share}
-                  max={Math.max(month.viewer.put, month.other.put, 1)}
-                  tone="viewer"
-                  index={0}
-                />
-                <MemberContribution
-                  name={other.displayName}
-                  put={month.other.put}
-                  share={month.other.share}
-                  max={Math.max(month.viewer.put, month.other.put, 1)}
-                  tone="other"
-                  index={1}
-                />
-              </Stack>
-
-              {/* S-05 · la frase es "puso de más", nunca la diferencia. */}
-              {putExtraSentence(month) != null && (
-                <Text variant="small">{putExtraSentence(month)}</Text>
-              )}
-
-              {previousMonthSentence(month, formatMonth(addMonths(currentMonth, -1), currentMonth)) !=
-                null && (
-                <Text variant="caption" tone="muted">
-                  {previousMonthSentence(
-                    month,
-                    formatMonth(addMonths(currentMonth, -1), currentMonth),
-                  )}
-                </Text>
-              )}
-
-              <Text variant="caption" tone="muted">
-                La marca en cada barra es la parte de cada uno según el reparto. Cuenta lo
-                que ya pasó, igual que lo que se deben.
-              </Text>
-
-              {/* Should 7 · por categoría, en lista y sin gráficos (§6). Con
-                  una sola categoría repetiría el total: no aparece. */}
-              {month.byCategory.length > 1 && (
-                <Stack gap="2">
-                  <Text variant="smallMedium" tone="secondary">
-                    Por categoría
-                  </Text>
-                  {month.byCategory.map((item) => (
-                    <Row key={item.category} justify="space-between" align="baseline">
-                      <Text variant="small">{prettyLabel(item.category)}</Text>
-                      <Money amount={item.total} variant="small" />
-                    </Row>
-                  ))}
-                </Stack>
-              )}
-
-              {/* §25 · "en el mes: Pagos entre ustedes". No cambian lo que cada
-                  uno puso (P-04): por eso van aparte, y no en las barras. */}
-              {month.payments.length > 0 && (
-                <Stack gap="2">
-                  <Text variant="smallMedium" tone="secondary">
-                    Pagos entre ustedes
-                  </Text>
-                  {month.payments.map((payment, index) => (
-                    <Row key={`${payment.date}-${index}`} justify="space-between" align="baseline">
-                      <Text variant="small">
-                        {paymentSentence(payment, derived.mySlot, other.displayName)}
-                      </Text>
-                      <Text variant="caption" tone="muted">
-                        {formatDayMonth(payment.date)}
-                      </Text>
-                    </Row>
-                  ))}
-                </Stack>
-              )}
-
-              {/* Lo que falta del mes: todavía no cuenta (S-02). */}
-              {month.upcoming.length > 0 && (
-                <Stack gap="2">
-                  <Text variant="smallMedium" tone="secondary">
-                    Se vienen este mes
-                  </Text>
-                  {month.upcoming.map((item, index) => (
-                    <Row key={`${item.date}-${index}`} justify="space-between" align="baseline">
-                      <Text variant="small">
-                        {prettyLabel(item.label)} · {formatDayMonth(item.date)}
-                      </Text>
-                      <Money amount={item.amount} variant="small" />
-                    </Row>
-                  ))}
-                </Stack>
-              )}
-            </Stack>
-          </Animated.View>
-        )}
-
-        {/* ── §23.4 · Próximos meses del espacio ───────────────────────── */}
-        {upcomingShared.length > 0 && (
-          <Stack gap="4">
-            <SectionHeader title="Próximos meses" />
-            <Stack gap="0">
-              {upcomingShared.map((occurrence, index) => (
-                <View key={occurrence.id}>
-                  <SharedRow
-                    occurrence={occurrence}
-                    mySlot={derived.mySlot}
-                    otherName={other.displayName}
-                    myName={me.displayName}
-                    showMonth
-                  />
-                  {index < upcomingShared.length - 1 && <Divider />}
-                </View>
-              ))}
-            </Stack>
-            <Text variant="caption" tone="muted">
-              Lo que ya está comprometido entre los dos. Lo ven ambos.
-            </Text>
-          </Stack>
-        )}
-
-        {/* ── §24 · Movimientos del espacio ────────────────────────────── */}
-        <Stack gap="4">
-          <SectionHeader title={`Movimientos de ${derived.facts.space.name}`} />
-
-          {/* Opción B · lo que cargó el otro y no revisaste. Revisar no es
-              aprobar: ya cuenta, igual para los dos. */}
-          {toReviewCount > 0 && (
-            <Row justify="space-between" align="center" gap="3">
-              <ReviewTag label={toReviewLine(toReviewCount)} />
-              <Button
-                label={markAllLabel(toReviewCount)}
-                variant="ghost"
-                loading={markReviewed.isPending}
-                onPress={() => reviewAll()}
-              />
-            </Row>
-          )}
-
-          {/* Opción B · lo que eliminó el otro ya no está en la lista: queda
-              su rastro hasta que lo revisás. */}
-          {derived.pendingDeletions.length > 0 && (
-            <Stack gap="0">
-              {derived.pendingDeletions.map((item, index) => (
-                <View key={`deleted-${item.sourceId}`}>
-                  <DeletedRow
-                    item={item}
-                    label={deletedLabel(item, {
-                      mySlot: derived.mySlot,
-                      otherName: other.displayName,
-                      categoryLabel: prettyLabel,
-                    })}
-                    tag={deletedTag(other.displayName)}
-                    onReviewed={() => reviewIds([item.sourceId], 'Listo, ya lo revisaste.')}
-                  />
-                  {index < derived.pendingDeletions.length - 1 && <Divider />}
-                </View>
-              ))}
-            </Stack>
-          )}
-
-          {movements.length === 0 ? (
-            <EmptyState
-              title="Anoten acá lo que pagan para la casa."
-              description="La app hace las cuentas."
-              actionLabel="Agregar el primero"
-              onAction={() => router.push(`/space/${spaceId}/agregar`)}
-            />
-          ) : (
-            <Stack gap="0">
-              {movements.map((movement, index) => (
-                <Animated.View
-                  key={
-                    movement.kind === 'occurrence'
-                      ? movement.occurrence.id
-                      : `payment-${movement.payment.id}`
-                  }
-                  layout={LinearTransition}
-                  entering={FadeInDown.delay(stagger(index, 35)).duration(duration.base)}
-                >
-                  {movement.kind === 'occurrence' ? (
-                    <SharedRow
-                      occurrence={movement.occurrence}
-                      mySlot={derived.mySlot}
-                      otherName={other.displayName}
-                      myName={me.displayName}
-                      reviewTag={
-                        taggedOccurrences.has(movement.occurrence.id)
-                          ? reviewTag(
-                              other.displayName,
-                              derived.pendingReview.get(movement.occurrence.sourceId)!,
-                            )
-                          : null
-                      }
-                      onPress={() =>
-                        // Un gasto se edita desde su detalle; un fijo, desde el
-                        // fijo (§21: los dos lo editan), no desde un mes suelto.
-                        router.push(
-                          movement.occurrence.sourceKind === 'expense'
-                            ? `/space/${spaceId}/gasto/${movement.occurrence.sourceId}`
-                            : `/space/${spaceId}/fijo/${movement.occurrence.sourceId}`,
-                        )
-                      }
-                    />
-                  ) : (
-                    <PaymentRow
-                      sentence={paymentSentence(movement.payment, derived.mySlot, other.displayName)}
-                      date={movement.payment.date}
-                      amount={movement.payment.amount}
-                      reviewTag={
-                        derived.pendingReview.has(movement.payment.id)
-                          ? reviewTag(other.displayName, 'created')
-                          : null
-                      }
-                      onPress={() => setSelectedPayment(movement.payment)}
-                    />
-                  )}
-                  {index < movements.length - 1 && <Divider />}
-                </Animated.View>
-              ))}
-            </Stack>
-          )}
-        </Stack>
-
-        {movements.length > 0 && (
-          <Button
-            label="Agregar un gasto"
-            variant="shared"
-            fullWidth
-            icon={<Plus size={16} color={theme.colors.textOnBrand} />}
-            onPress={() => router.push(`/space/${spaceId}/agregar`)}
-          />
-        )}
+        {layout.sections.map((section) => sections[section])}
 
         {other.status === 'no_access' && (
           <Button
@@ -766,6 +734,33 @@ export function SpaceScreen({
         />
       </Sheet>
 
+      {/* §23.4 · Próximos meses del espacio: lo comprometido entre los dos. */}
+      <Sheet
+        visible={upcomingOpen}
+        onClose={() => setUpcomingOpen(false)}
+        title={`Próximos meses de ${derived.facts.space.name}`}
+      >
+        <ScrollView style={{ maxHeight: 460 }} showsVerticalScrollIndicator={false}>
+          <Stack gap="0">
+            {upcomingShared.map((occurrence, index) => (
+              <View key={occurrence.id}>
+                <SharedRow
+                  occurrence={occurrence}
+                  mySlot={derived.mySlot}
+                  otherName={other.displayName}
+                  myName={me.displayName}
+                  showMonth
+                />
+                {index < upcomingShared.length - 1 && <Divider />}
+              </View>
+            ))}
+            <Text variant="caption" tone="muted" style={{ marginTop: theme.space['3'] }}>
+              Lo que ya está comprometido entre los dos. Lo ven ambos.
+            </Text>
+          </Stack>
+        </ScrollView>
+      </Sheet>
+
       {/* §25 · tocar un pago lo muestra; eliminar queda adentro. */}
       <Sheet
         visible={selectedPayment != null}
@@ -803,261 +798,5 @@ export function SpaceScreen({
         )}
       </Sheet>
     </ScrollView>
-  );
-}
-
-/**
- * §24 · la barra de lo que puso cada uno, con la marca de su parte.
- *
- * "Parte" y no "le corresponde" (decisión del 10/10): en la pantalla de las
- * deudas, "te corresponden $350.000" se leía como plata que te deben. "Parte"
- * es el sinónimo exacto del glosario (§7.2).
- */
-function MemberContribution({
-  name,
-  put,
-  share,
-  max,
-  tone,
-  index,
-}: {
-  name: string;
-  put: number;
-  share: number;
-  max: number;
-  tone: 'viewer' | 'other';
-  index: number;
-}) {
-  const isViewer = tone === 'viewer';
-
-  return (
-    <Stack gap="2">
-      <Row justify="space-between" align="baseline">
-        <Text variant="small" tone="secondary">
-          {isViewer ? 'Pusiste' : `${name} puso`}
-        </Text>
-        <Money amount={put} variant="smallMedium" />
-      </Row>
-
-      <ContributionBar put={put} share={share} max={max} tone={tone} index={index} />
-
-      <Row justify="flex-end">
-        <Text variant="caption" tone="muted">
-          {isViewer ? 'tu parte ' : 'su parte '}
-        </Text>
-        <Money amount={share} variant="caption" tone="muted" />
-      </Row>
-    </Stack>
-  );
-}
-
-type SpaceMovement =
-  | { kind: 'occurrence'; date: string; occurrence: SpaceOccurrence }
-  | { kind: 'payment'; date: string; payment: MemberPayment };
-
-/**
- * §25 · un pago entre miembros en los movimientos del espacio. P-04: no cambia
- * lo que cada uno puso ni el radar; solo lo que se deben.
- */
-function PaymentRow({
-  sentence,
-  date,
-  amount,
-  reviewTag = null,
-  onPress,
-}: {
-  sentence: string;
-  date: string;
-  amount: number;
-  reviewTag?: string | null;
-  onPress: () => void;
-}) {
-  const theme = useTheme();
-
-  return (
-    <Pressable
-      onPress={onPress}
-      haptic="none"
-      scaleOnPress={false}
-      accessibilityRole="button"
-      accessibilityLabel={sentence}
-      style={{ paddingVertical: theme.space['3'] }}
-    >
-      <Row gap="3" align="flex-start">
-        <View style={{ flex: 1, gap: 3 }}>
-          <Text variant="bodyMedium" numberOfLines={1}>
-            {sentence}
-          </Text>
-          <Text variant="caption" tone="muted">
-            {formatDayMonth(date)} · pago entre ustedes · no cambia lo que cada uno puso
-          </Text>
-          {reviewTag != null && <ReviewTag label={reviewTag} />}
-        </View>
-        <Money amount={amount} variant="bodyMedium" tone="muted" />
-        {/* UX-11 · el pago se abre. */}
-        <View style={{ marginTop: 3 }}>
-          <RowChevron />
-        </View>
-      </Row>
-    </Pressable>
-  );
-}
-
-/**
- * Opción B · el rastro de algo que eliminó el otro. Tachado y en gris: ya no
- * cuenta en ningún número, y se dice qué era para que se entienda el cambio.
- */
-function DeletedRow({
-  item,
-  label,
-  tag,
-  onReviewed,
-}: {
-  item: DeletedRecord;
-  label: string;
-  tag: string;
-  onReviewed: () => void;
-}) {
-  const theme = useTheme();
-
-  return (
-    <View style={{ paddingVertical: theme.space['3'], gap: 3 }}>
-      <Row gap="3" align="flex-start">
-        <View style={{ flex: 1, gap: 3 }}>
-          <Text
-            variant="bodyMedium"
-            tone="muted"
-            numberOfLines={1}
-            style={{ textDecorationLine: 'line-through' }}
-          >
-            {label}
-          </Text>
-          {item.occurredOn != null && (
-            <Text variant="caption" tone="muted">
-              {formatDayMonth(item.occurredOn)}
-            </Text>
-          )}
-          <ReviewTag label={tag} />
-        </View>
-        <View style={{ alignItems: 'flex-end', gap: 2 }}>
-          {item.amount != null && (
-            <Text
-              variant="bodyMedium"
-              tone="muted"
-              tabular
-              style={{ textDecorationLine: 'line-through' }}
-            >
-              {formatPesos(item.amount)}
-            </Text>
-          )}
-          <TextLink label="Está bien" variant="smallMedium" onPress={onReviewed} />
-        </View>
-      </Row>
-    </View>
-  );
-}
-
-/** Opción B · la marca de "para revisar": un punto y quién lo cargó. */
-function ReviewTag({ label }: { label: string }) {
-  const theme = useTheme();
-  return (
-    <Row gap="2" align="center">
-      <View
-        style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: theme.colors.shared }}
-      />
-      <Text variant="caption" tone="shared">
-        {label}
-      </Text>
-    </Row>
-  );
-}
-
-/**
- * Una ocurrencia del espacio.
- *
- * Muestra el TOTAL, no la parte: en el espacio la cifra principal es lo que se
- * gastó entre los dos (§7.3, lente del espacio). La parte de cada uno aparece
- * en el reparto, debajo.
- */
-function SharedRow({
-  occurrence,
-  mySlot,
-  otherName,
-  myName,
-  showMonth = false,
-  reviewTag = null,
-  onPress,
-}: {
-  occurrence: SpaceOccurrence;
-  mySlot: 1 | 2;
-  otherName: string;
-  myName: string;
-  showMonth?: boolean;
-  /** Opción B · "Lo cargó Martina · para revisar". */
-  reviewTag?: string | null;
-  onPress?: () => void;
-}) {
-  const theme = useTheme();
-  const iPaid = occurrence.payerSlot === mySlot;
-  const myShare = mySlot === 1 ? occurrence.shares.slot1 : occurrence.shares.slot2;
-
-  const row = (
-    <Row gap="3" align="flex-start">
-        <View style={{ flex: 1, gap: 3 }}>
-          <Text variant="bodyMedium" numberOfLines={1}>
-            {prettyLabel(occurrence.label)}
-          </Text>
-
-          <Text variant="caption" tone="muted">
-            {[
-              showMonth
-                ? formatMonth(occurrence.month, occurrence.month)
-                : formatDayMonth(occurrence.balanceDate),
-              // G-06 · "pagó X" es una declaración, no una verificación.
-              `pagó ${iPaid ? myName : otherName}`,
-              occurrence.installment != null
-                ? `cuota ${formatInstallment(occurrence.installment.index, occurrence.installment.count)}`
-                : null,
-              occurrence.isRecurrence ? 'fijo' : null,
-            ]
-              .filter((part) => part != null)
-              .join(' · ')}
-          </Text>
-
-          <Text variant="caption" tone="shared">
-            tu parte <Money amount={myShare} variant="caption" tone="shared" />
-          </Text>
-
-          {reviewTag != null && <ReviewTag label={reviewTag} />}
-        </View>
-
-        <Money amount={occurrence.amount} variant="bodyMedium" />
-
-        {/* UX-11 · solo la fila que abre algo lleva chevron. */}
-        {onPress != null && (
-          <View style={{ marginTop: 3 }}>
-            <RowChevron />
-          </View>
-        )}
-      </Row>
-  );
-
-  // UX-11 · "Próximos meses" del espacio no abre nada: fila informativa, sin
-  // rol de botón ni chevron. La misma fila en Movimientos sí se abre.
-  if (onPress == null) {
-    return <View style={{ paddingVertical: theme.space['3'] }}>{row}</View>;
-  }
-
-  return (
-    <Pressable
-      onPress={onPress}
-      haptic="none"
-      scaleOnPress={false}
-      accessibilityRole="button"
-      accessibilityLabel={prettyLabel(occurrence.label)}
-      style={{ paddingVertical: theme.space['3'] }}
-    >
-      {row}
-    </Pressable>
   );
 }
