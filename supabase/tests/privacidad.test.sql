@@ -26,7 +26,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
 
-select plan(78);
+select plan(86);
 
 -- ───────────────────────────────────────────────────────────────────────────
 -- Montaje: Renzo (con cuenta personal), Martina (invitada, Estado B) y Juan.
@@ -925,6 +925,77 @@ insert into tests.results(line) select is(
      and has_function_privilege('anon', p.oid, 'execute')),
   0,
   'Sin sesión no se ejecuta ninguna función de la app'
+);
+
+
+-- ───────────────────────────────────────────────────────────────────────────
+-- Días aproximados (0019) · "Más o menos" y "No sé" (T-02, T-05)
+--
+-- Ojo: estos asserts necesitan la migración 0019 aplicada. Contra la base
+-- anterior fallan por columna inexistente: primero RED, después db push.
+-- ───────────────────────────────────────────────────────────────────────────
+
+select tests.as_service();
+
+insert into tests.results(line) select is(
+  (select closing_day_approx or due_day_approx from payment_methods
+   where id = 'aaaaaaaa-0000-0000-0000-000000000001'),
+  false,
+  'Días aproximados · una tarjeta que ya existía no queda marcada como aproximada'
+);
+
+select tests.authenticate_as('11111111-1111-1111-1111-111111111111');
+
+insert into tests.results(line) select lives_ok(
+  $$ insert into payment_methods (user_id, kind, name, closing_day, closing_day_approx, due_day)
+     values ('11111111-1111-1111-1111-111111111111', 'card', 'Tarjeta con cierre aproximado', 15, true, 2) $$,
+  'Días aproximados · el dueño guarda una tarjeta con el cierre "Más o menos"'
+);
+
+insert into tests.results(line) select throws_ok(
+  $$ insert into payment_methods (user_id, kind, name, due_day_approx)
+     values ('11111111-1111-1111-1111-111111111111', 'card', 'Aproximado sin día', true) $$,
+  '23514',
+  null,
+  'Días aproximados · un día aproximado sin día no tiene sentido ("No sé" es sin marca)'
+);
+
+insert into tests.results(line) select lives_ok(
+  $$ insert into recurrences (kind, amount, category, day_of_month, day_approx, start_month, owner_user_id)
+     values ('income', 1200000, 'sueldo', 28, true, '2026-10', '11111111-1111-1111-1111-111111111111') $$,
+  'Días aproximados · un ingreso con el día de cobro "Más o menos"'
+);
+
+insert into tests.results(line) select lives_ok(
+  $$ insert into recurrences (kind, amount, category, day_of_month, start_month, owner_user_id)
+     values ('income', 300000, 'extra', null, '2026-10', '11111111-1111-1111-1111-111111111111') $$,
+  'Días aproximados · un ingreso personal puede quedar sin día ("No sé")'
+);
+
+insert into tests.results(line) select throws_ok(
+  $$ insert into recurrences (kind, amount, category, day_of_month, start_month, owner_user_id)
+     values ('expense', 40000, 'servicios', null, '2026-10', '11111111-1111-1111-1111-111111111111') $$,
+  '23514',
+  null,
+  'Días aproximados · un gasto fijo necesita su día: solo un ingreso puede no tenerlo'
+);
+
+insert into tests.results(line) select throws_ok(
+  $$ insert into recurrences (kind, amount, category, day_of_month, day_approx, start_month, owner_user_id)
+     values ('income', 100000, 'extra', null, true, '2026-10', '11111111-1111-1111-1111-111111111111') $$,
+  '23514',
+  null,
+  'Días aproximados · un día de cobro aproximado sin día tampoco'
+);
+
+-- PR-02 · la tarjeta, y si su día es aproximado, es solo de su dueño.
+select tests.authenticate_as('22222222-2222-2222-2222-222222222222');
+
+insert into tests.results(line) select is(
+  (select count(*)::int from payment_methods
+   where user_id = '11111111-1111-1111-1111-111111111111'),
+  0,
+  'Días aproximados · el otro miembro no ve las tarjetas de Renzo ni sus marcas'
 );
 
 
