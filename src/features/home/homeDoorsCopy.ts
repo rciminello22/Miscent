@@ -40,11 +40,14 @@ export function upcomingDoorContent(
 /* ── Próximos meses ───────────────────────────────────────────────────────── */
 
 export type NextMonthsDoorContent = {
-  bars: { month: Month; committed: Pesos; exceeds: boolean }[];
+  /** `excess` es cuánto se pasa ese mes (0 si no): el tope rayado se dibuja a escala con él. */
+  bars: { month: Month; committed: Pesos; exceeds: boolean; excess: Pesos }[];
   /** El mayor comprometido de la serie, para que las barras sean comparables. */
   maxCommitted: Pesos;
   /** N-08 · el primer mes que queda con Sin asignar negativo; `null` si ninguno. */
   excessPhrase: string | null;
+  /** 2D · "+$35.000" del mismo mes que nombra la frase: va a la derecha de la puerta, en ámbar. */
+  excessValue: string | null;
 };
 
 /**
@@ -64,6 +67,7 @@ export function nextMonthsDoorContent(args: {
     month: item.month,
     committed: item.committed,
     exceeds: exceeding(item),
+    excess: item.unassigned != null && item.unassigned < 0 ? -item.unassigned : 0,
   }));
 
   const first = args.months.find(exceeding);
@@ -76,6 +80,7 @@ export function nextMonthsDoorContent(args: {
     bars,
     maxCommitted: Math.max(0, ...args.months.map((item) => item.committed)),
     excessPhrase,
+    excessValue: first?.unassigned == null ? null : `+${args.formatAmount(-first.unassigned)}`,
   };
 }
 

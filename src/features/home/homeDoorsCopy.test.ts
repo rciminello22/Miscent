@@ -180,6 +180,57 @@ describe('nextMonthsDoorContent · la puerta de Próximos meses', () => {
     expect(content.excessPhrase).toBeNull();
     expect(content.bars[0]!.exceeds).toBe(false);
   });
+
+  it('2D · el monto va aparte, con "+", para ponerlo a la derecha de la puerta', () => {
+    const content = nextMonthsDoorContent({
+      months: [
+        month({ month: '2026-11', committed: 1_235_000, unassigned: -35_000 }),
+        month({ month: '2026-12', committed: 480_000, unassigned: 720_000 }),
+      ],
+      today,
+      formatAmount: formatPesos,
+    });
+
+    expect(content.excessValue).toBe('+$35.000');
+  });
+
+  it('2D · el monto es el del mismo mes que nombra la frase', () => {
+    const content = nextMonthsDoorContent({
+      months: [
+        month({ month: '2026-11', committed: 1_000_000, unassigned: 200_000 }),
+        month({ month: '2026-12', committed: 1_300_000, unassigned: -100_000 }),
+        month({ month: '2027-01', committed: 1_500_000, unassigned: -300_000 }),
+      ],
+      today,
+      formatAmount: formatPesos,
+    });
+
+    expect(content.excessValue).toBe('+$100.000');
+  });
+
+  it('2D · sin exceso no hay monto', () => {
+    const content = nextMonthsDoorContent({
+      months: [month({ month: '2026-11', committed: 620_000, unassigned: 580_000 })],
+      today,
+      formatAmount: formatPesos,
+    });
+
+    expect(content.excessValue).toBeNull();
+  });
+
+  it('2D · cada barra lleva cuánto se pasa, para dibujar el tope a escala', () => {
+    const content = nextMonthsDoorContent({
+      months: [
+        month({ month: '2026-11', committed: 1_235_000, unassigned: -35_000 }),
+        month({ month: '2026-12', committed: 480_000, unassigned: 720_000 }),
+        month({ month: '2027-01', committed: 350_000, expectedIncome: 0, unassigned: null }),
+      ],
+      today,
+      formatAmount: formatPesos,
+    });
+
+    expect(content.bars.map((bar) => bar.excess)).toEqual([35_000, 0, 0]);
+  });
 });
 
 describe('spacesDoorCaption', () => {

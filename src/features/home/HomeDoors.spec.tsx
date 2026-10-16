@@ -32,15 +32,15 @@ describe('UpcomingDoor', () => {
 
 describe('NextMonthsDoor', () => {
   const bars = [
-    { month: '2026-11', committed: 620_000, exceeds: false },
-    { month: '2026-12', committed: 480_000, exceeds: false },
-    { month: '2027-01', committed: 350_000, exceeds: false },
+    { month: '2026-11', committed: 620_000, exceeds: false, excess: 0 },
+    { month: '2026-12', committed: 480_000, exceeds: false, excess: 0 },
+    { month: '2027-01', committed: 350_000, exceeds: false, excess: 0 },
   ];
 
   it('dibuja una barra por mes y "Con tarjeta este mes" cuando hay', async () => {
     const view = await renderWithTheme(
       <NextMonthsDoor
-        content={{ bars, maxCommitted: 620_000, excessPhrase: null }}
+        content={{ bars, maxCommitted: 620_000, excessPhrase: null, excessValue: null }}
         cardPurchases={[{ month: '2026-11', amount: 95_000 }]}
         month="2026-10"
         onPress={jest.fn()}
@@ -56,15 +56,18 @@ describe('NextMonthsDoor', () => {
     expect(view.queryByTestId('door-attention')).toBeNull();
   });
 
-  it('N-08 · un mes en exceso: la frase literal, la marca en su barra y el borde de atención', async () => {
+  it('N-08 · un mes en exceso: la frase literal, el tope rayado en su barra, el monto a la derecha y el borde de atención', async () => {
     const phrase =
       'En noviembre tus gastos y compromisos superan tus ingresos previstos por $35.000.';
     const view = await renderWithTheme(
       <NextMonthsDoor
         content={{
-          bars: bars.map((bar, index) => ({ ...bar, exceeds: index === 0 })),
+          bars: bars.map((bar, index) =>
+            index === 0 ? { ...bar, exceeds: true, excess: 35_000 } : bar,
+          ),
           maxCommitted: 620_000,
           excessPhrase: phrase,
+          excessValue: '+$35.000',
         }}
         cardPurchases={[]}
         month="2026-10"
@@ -73,10 +76,27 @@ describe('NextMonthsDoor', () => {
     );
 
     expect(view.getByText(phrase)).toBeTruthy();
+    expect(view.getByText('+$35.000')).toBeTruthy();
     const hidden = { includeHiddenElements: true };
-    expect(view.getByTestId('mini-bar-excess-2026-11', hidden)).toBeTruthy();
-    expect(view.queryByTestId('mini-bar-excess-2026-12', hidden)).toBeNull();
+    expect(view.getByTestId('mini-bar-cap-2026-11', hidden)).toBeTruthy();
+    expect(view.queryByTestId('mini-bar-cap-2026-12', hidden)).toBeNull();
+    // La marquita vieja ya no existe: el tope rayado la reemplaza.
+    expect(view.queryByTestId('mini-bar-excess-2026-11', hidden)).toBeNull();
     expect(view.getByTestId('door-attention')).toBeTruthy();
+  });
+
+  it('sin exceso no hay monto a la derecha ni tope', async () => {
+    const view = await renderWithTheme(
+      <NextMonthsDoor
+        content={{ bars, maxCommitted: 620_000, excessPhrase: null, excessValue: null }}
+        cardPurchases={[]}
+        month="2026-10"
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(view.queryByText(/^\+\$/)).toBeNull();
+    expect(view.queryByTestId('mini-bar-cap-2026-11', { includeHiddenElements: true })).toBeNull();
   });
 
   it('CA-00 · sin términos prohibidos en el aviso', async () => {
@@ -87,6 +107,7 @@ describe('NextMonthsDoor', () => {
           maxCommitted: 620_000,
           excessPhrase:
             'En noviembre tus gastos y compromisos superan tus ingresos previstos por $35.000.',
+          excessValue: '+$35.000',
         }}
         cardPurchases={[]}
         month="2026-10"

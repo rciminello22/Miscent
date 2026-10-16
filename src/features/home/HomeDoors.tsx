@@ -3,9 +3,13 @@ import { CalendarClock, CalendarRange } from 'lucide-react-native';
 import type { Month } from '@domain/calendar';
 import type { Radar } from '@domain/radar';
 import { CardPurchasesThisMonth } from '@/features/radar/RadarSummary';
-import { Door, Text } from '@/ui/primitives';
+import { Door, HatchFill, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 import type { NextMonthsDoorContent, UpcomingDoorContent } from './homeDoorsCopy';
+import { MINI_BAR_MIN_CAP, miniBarSegments } from './miniBars';
+
+/** El alto de la barra del mes mayor, en px. */
+const MINI_BAR_HEIGHT = 26;
 
 /**
  * Las puertas (N2) de Inicio. Presentacionales: el container arma el contenido
@@ -68,6 +72,16 @@ export function NextMonthsDoor({
         .filter((part) => part != null)
         .join('. ')}
       onPress={onPress}
+      // 2D · el monto va a la derecha, como el valor de una fila, alineado con el título.
+      trailing={
+        content.excessValue != null ? (
+          <View style={{ alignSelf: 'flex-start' }}>
+            <Text variant="bodyMedium" tone="excess" tabular>
+              {content.excessValue}
+            </Text>
+          </View>
+        ) : undefined
+      }
     >
       <MiniMonthBars bars={content.bars} maxCommitted={content.maxCommitted} />
       <CardPurchasesThisMonth entries={cardPurchases} month={month} />
@@ -82,8 +96,9 @@ export function NextMonthsDoor({
 
 /**
  * Tres barras chicas, una por mes, proporcionales entre sí (como las de
- * Futuro). Un mes en exceso lleva una marca ámbar arriba; la frase de abajo es
- * lo que lo dice, así que la marca no es lo único.
+ * Futuro). Un mes en exceso lleva arriba el tope rayado ámbar, A ESCALA (el
+ * lenguaje del recipiente de 1A, `miniBarSegments`); la cifra va a la derecha
+ * de la puerta y la frase de abajo lo dice con palabras.
  */
 function MiniMonthBars({
   bars,
@@ -93,7 +108,6 @@ function MiniMonthBars({
   maxCommitted: number;
 }) {
   const theme = useTheme();
-  const HEIGHT = 26;
 
   return (
     <View
@@ -103,38 +117,41 @@ function MiniMonthBars({
         flexDirection: 'row',
         alignItems: 'flex-end',
         gap: 3,
-        height: HEIGHT,
+        // Lugar para el tope mínimo de un mes que no es el mayor.
+        height: MINI_BAR_HEIGHT + MINI_BAR_MIN_CAP,
         marginVertical: theme.space['1'],
       }}
     >
       {bars.map((bar) => {
-        const ratio = maxCommitted > 0 ? bar.committed / maxCommitted : 0;
+        const { body, cap } = miniBarSegments(
+          { committed: bar.committed, excess: bar.excess, maxCommitted },
+          MINI_BAR_HEIGHT,
+        );
         return (
-          <View
-            key={bar.month}
-            testID={`mini-bar-${bar.month}`}
-            style={{
-              width: 10,
-              height: Math.max(3, HEIGHT * ratio),
-              borderTopLeftRadius: 3,
-              borderTopRightRadius: 3,
-              backgroundColor: theme.colors.committed,
-            }}
-          >
-            {bar.exceeds && (
+          <View key={bar.month} testID={`mini-bar-${bar.month}`} style={{ width: 10 }}>
+            {cap > 0 && (
               <View
-                testID={`mini-bar-excess-${bar.month}`}
+                testID={`mini-bar-cap-${bar.month}`}
                 style={{
-                  position: 'absolute',
-                  top: -3,
-                  left: -2,
-                  right: -2,
-                  height: 3,
-                  borderRadius: 2,
-                  backgroundColor: theme.colors.excess,
+                  height: cap,
+                  borderWidth: 1,
+                  borderBottomWidth: 0,
+                  borderColor: theme.colors.excess,
+                  borderTopLeftRadius: 3,
+                  borderTopRightRadius: 3,
+                  overflow: 'hidden',
                 }}
-              />
+              >
+                <HatchFill id={`mini-hatch-${bar.month}`} color={theme.colors.excess} />
+              </View>
             )}
+            <View
+              style={{
+                height: body,
+                backgroundColor: theme.colors.committed,
+                ...(cap === 0 && { borderTopLeftRadius: 3, borderTopRightRadius: 3 }),
+              }}
+            />
           </View>
         );
       })}
