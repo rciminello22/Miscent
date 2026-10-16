@@ -63,6 +63,18 @@ alter table recurrences
 alter table recurrences
   add constraint approx_day_needs_a_day check (not day_approx or day_of_month is not null);
 
+-- P24 · "Eliminar" una tarjeta no borra la fila: la marca. Si se borrara, sus
+-- compras en 1 pago quedarían sin tarjeta y pasarían de Comprometido (mes del
+-- vencimiento) a Gastado (mes de compra): reescribiría meses que ya pasaron.
+-- Marcada, desaparece de las listas y de "¿Con qué lo pagaste?", pero el
+-- historial se sigue calculando con ella. No es "archivar": no hay vuelta atrás
+-- ni lista de eliminadas en la interfaz.
+alter table payment_methods
+  add column deleted_at timestamptz;
+
+comment on column payment_methods.deleted_at is
+  'P24 · tarjeta eliminada por su dueño. Se oculta, pero el historial se sigue calculando con ella.';
+
 comment on column payment_methods.closing_day_approx is
   'T-02 · el día de cierre salió de un "Más o menos" (2, 15 o 28): la app lo muestra como aproximado.';
 comment on column payment_methods.due_day_approx is
