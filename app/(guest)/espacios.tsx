@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Alert, RefreshControl, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,7 +7,8 @@ import { CircleUser } from 'lucide-react-native';
 import { useSpaces } from '@/features/spaces/useSpaces';
 import { SpaceList } from '@/features/spaces/SpaceList';
 import { FormerSpaces } from '@/features/spaces/FormerSpaces';
-import { PERSONAL_CARD_NOT_NOW } from '@/features/spaces/SpaceScreen';
+import { PERSONAL_CARD_NOT_NOW, SpaceScreen } from '@/features/spaces/SpaceScreen';
+import { soleSpaceId } from '@/features/spaces/spaceNavigation';
 import { useRememberedFlag } from '@/features/shared/useRememberedFlag';
 import { useSession } from '@/features/auth/SessionProvider';
 import {
@@ -51,13 +52,6 @@ export default function Espacios() {
   const [dismissed, markDismissed] = useRememberedFlag(PERSONAL_CARD_NOT_NOW);
   const [refreshing, setRefreshing] = useState(false);
 
-  // §14 · con un solo espacio, entra directo. Para el invitado es su app.
-  useEffect(() => {
-    if (spaces?.length === 1 && spaces[0] != null) {
-      router.replace(`/space/${spaces[0].id}`);
-    }
-  }, [spaces, router]);
-
   async function onRefresh() {
     setRefreshing(true);
     await refetch();
@@ -77,6 +71,14 @@ export default function Espacios() {
         },
       ],
     );
+  }
+
+  // §14 · con un solo espacio, entra directo. Para el invitado es su app. Se
+  // MUESTRA acá, inline: un `useEffect` + `replace` llegaba tarde y hacía loop
+  // al volver (HANDOFF §10). Sin "Volver": en su lugar va el acceso al Perfil.
+  const only = soleSpaceId(spaces);
+  if (only != null) {
+    return <SpaceScreen spaceId={only} leading={{ kind: 'profile' }} />;
   }
 
   return (

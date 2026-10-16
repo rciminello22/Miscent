@@ -56,6 +56,17 @@ export function isInsideSpace(pathname: string): boolean {
   return pathname.startsWith('/compartidos/');
 }
 
+/**
+ * §14 Estado B · "con un solo espacio, entra directo". Devuelve el id del único
+ * espacio, o null si todavía no cargó, no hay ninguno o hay varios. La pantalla
+ * lo RENDERIZA inline: nunca `useEffect` + `replace` (hacía loop).
+ */
+export function soleSpaceId(
+  spaces: readonly { id: string }[] | undefined,
+): string | null {
+  return spaces?.length === 1 ? (spaces[0]?.id ?? null) : null;
+}
+
 export type SpaceBackTarget = '/(personal)/compartidos' | '/(guest)/espacios';
 
 export function spaceBackTarget(args: {

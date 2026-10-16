@@ -1,5 +1,26 @@
 import { describe, it, expect } from 'vitest';
-import { isInsideSpace, spaceBackTarget, spaceHref, spaceSubHref } from './spaceNavigation';
+import {
+  isInsideSpace,
+  soleSpaceId,
+  spaceBackTarget,
+  spaceHref,
+  spaceSubHref,
+} from './spaceNavigation';
+
+describe('soleSpaceId · "con uno solo, entra directo" (§14 Estado B)', () => {
+  it('con un solo espacio devuelve su id', () => {
+    expect(soleSpaceId([{ id: 'casa' }])).toBe('casa');
+  });
+
+  it('con varios espacios no elige: muestra la lista', () => {
+    expect(soleSpaceId([{ id: 'casa' }, { id: 'viaje' }])).toBeNull();
+  });
+
+  it('sin espacios, o mientras no cargaron, no hay a dónde entrar', () => {
+    expect(soleSpaceId([])).toBeNull();
+    expect(soleSpaceId(undefined)).toBeNull();
+  });
+});
 
 /**
  * Decisión del 9/10 · dentro de un espacio se oculta el "Agregar" flotante
