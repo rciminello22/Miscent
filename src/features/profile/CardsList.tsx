@@ -1,29 +1,25 @@
-import { View } from 'react-native';
 import { CreditCard } from 'lucide-react-native';
 import type { PaymentMethod } from '@domain/types';
-import { Button, Card, Divider, Row, Stack, Text } from '@/ui/primitives';
-import { useTheme } from '@/ui/theme';
-import { cardScheduleLine } from './cards';
+import { Button, Card, Door, Stack, Text } from '@/ui/primitives';
 
 /**
- * UX-21 · "Tus tarjetas": las que ya existen, y agregar otra sin el wizard.
- * Presentacional.
+ * P24 · "Tus tarjetas": una puerta por tarjeta con su próximo resumen estimado
+ * (N-10). Tocarla abre el detalle, donde se corrige el nombre y se elimina con
+ * las reglas de §22. Agregar otra no pasa por el wizard. Presentacional.
  *
- * Las filas son INFORMATIVAS (sin chevron ni rol de botón) a propósito: editar
- * las fechas de una tarjeta recalcula todo lo de esa tarjeta con aviso, y
- * eliminarla no se puede con cuotas o fijos activos (§22). Esas reglas todavía
- * no existen en la app, así que no se ofrece lo que no se puede cumplir.
+ * C-05 · las tarjetas se ven solo en lo personal. Nunca número, límite, pago
+ * mínimo ni intereses (T-01).
  */
 export function CardsList({
-  cards,
+  rows,
+  onOpen,
   onAdd,
 }: {
-  cards: readonly PaymentMethod[];
+  rows: readonly { card: PaymentMethod; line: string }[];
+  onOpen: (cardId: string) => void;
   onAdd: () => void;
 }) {
-  const theme = useTheme();
-
-  if (cards.length === 0) {
+  if (rows.length === 0) {
     return (
       <Card tone="sunken">
         <Stack gap="5">
@@ -40,25 +36,17 @@ export function CardsList({
   }
 
   return (
-    <Stack gap="5">
-      <Card>
-        <Stack gap="0">
-          {cards.map((card, index) => (
-            <View key={card.id}>
-              <Row gap="3" align="center" style={{ paddingVertical: theme.space['4'] }}>
-                <CreditCard size={18} color={theme.colors.brand} />
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text variant="bodyMedium">{card.name}</Text>
-                  <Text variant="caption" tone="muted">
-                    {cardScheduleLine(card)}
-                  </Text>
-                </View>
-              </Row>
-              {index < cards.length - 1 && <Divider />}
-            </View>
-          ))}
-        </Stack>
-      </Card>
+    <Stack gap="4">
+      {rows.map(({ card, line }) => (
+        <Door
+          key={card.id}
+          icon={CreditCard}
+          title={card.name}
+          caption={line}
+          accessibilityLabel={`${card.name}. ${line}`}
+          onPress={() => onOpen(card.id)}
+        />
+      ))}
 
       <Button label="Agregar otra tarjeta" variant="secondary" fullWidth onPress={onAdd} />
     </Stack>

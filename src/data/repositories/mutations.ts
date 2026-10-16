@@ -131,6 +131,17 @@ export async function updatePaymentMethod(
 }
 
 /**
+ * P24 · eliminar una tarjeta. Las compras y los fijos que la usaban quedan sin
+ * tarjeta (FK `on delete set null`); su resumen declarado y el detalle privado de
+ * pago se van con ella (`on delete cascade`). La regla de CUÁNDO se puede
+ * (`cardRetention`) la aplica la pantalla: la base no la sabe.
+ */
+export async function deletePaymentMethod(id: string): Promise<void> {
+  const { error } = await supabase.from('payment_methods').delete().eq('id', id);
+  if (error != null) throw new Error('No pudimos eliminar la tarjeta.');
+}
+
+/**
  * T-07 · resumen pendiente declarado al activar la cuenta personal.
  * "Resumen ya cerrado que el usuario declara sin pagar" — NO es deuda
  * bancaria real.

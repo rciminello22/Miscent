@@ -3,7 +3,10 @@ import { useRouter } from 'expo-router';
 import { X } from 'lucide-react-native';
 import { goBack } from '@/features/shared/navigation';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
+import { calculateUpcomingPayments } from '@domain/upcoming';
+import { formatPesos } from '@/lib/format';
 import { CardsList } from '@/features/profile/CardsList';
+import { cardDoorLine, cardStatements } from '@/features/profile/cardOverview';
 import { selectCards } from '@/features/profile/cards';
 import { AudienceBadge, IconButton, Row, Screen, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
@@ -14,16 +17,22 @@ import { useTheme } from '@/ui/theme';
  * Lista las tarjetas y agrega otra sin el wizard de O3: antes Perfil > Tarjetas
  * abría el paso 2 y "Continuar" arrastraba por Deuda, Pagados y Fijos.
  *
- * Solo lista y alta. Editar las fechas o eliminar una tarjeta tiene reglas en
- * §22 (recalcular todo lo de esa tarjeta con aviso; no eliminar con cuotas o
- * fijos activos) que la app todavía no implementa, así que no se ofrece.
+ * P24 · cada tarjeta es una puerta con su próximo resumen estimado; el detalle
+ * (`/tarjetas/[id]`) corrige el nombre y elimina con las reglas de §22.
  */
 export default function Tarjetas() {
   const theme = useTheme();
   const router = useRouter();
-  const { facts } = usePersonalFacts();
+  const { facts, expansion, today } = usePersonalFacts();
 
-  const cards = useMemo(() => selectCards(facts.paymentMethods), [facts.paymentMethods]);
+  // P24 · una puerta por tarjeta con su próximo resumen estimado.
+  const rows = useMemo(() => {
+    const payments = calculateUpcomingPayments(expansion, today, facts.paymentMethods);
+    return selectCards(facts.paymentMethods).map((card) => ({
+      card,
+      line: cardDoorLine(cardStatements(payments, card.id, today)[0] ?? null, formatPesos),
+    }));
+  }, [expansion, today, facts.paymentMethods]);
 
   return (
     <Screen>
@@ -40,7 +49,8 @@ export default function Tarjetas() {
         <AudienceBadge audience={{ kind: 'private' }} />
 
         <CardsList
-          cards={cards}
+          rows={rows}
+          onOpen={(cardId) => router.push(`/tarjetas/${cardId}`)}
           // Una tarjeta nueva, aparte: no sigue al wizard del onboarding.
           onAdd={() => router.push('/onboarding/tarjetas?desde=perfil')}
         />

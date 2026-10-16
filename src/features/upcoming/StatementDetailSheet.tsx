@@ -71,7 +71,7 @@ export function StatementDetailSheet({
   );
 }
 
-function Group({ group }: { group: DetailGroup }) {
+export function Group({ group }: { group: DetailGroup }) {
   return (
     <Stack gap="2">
       <Text variant="overline" tone="muted">
