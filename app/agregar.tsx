@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Switch, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { goBack } from '@/features/shared/navigation';
-import { X } from 'lucide-react-native';
+import { User, Users, X } from 'lucide-react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { addMonths, dayOf, monthOf } from '@domain/calendar';
 import { planInstallments } from '@domain/installments';
@@ -58,7 +58,6 @@ import {
   useSpaces,
 } from '@/features/spaces/useSpaces';
 import {
-  AudienceBadge,
   type Audience,
   Button,
   Card,
@@ -419,11 +418,21 @@ export default function Agregar() {
         {/* §17 campo 4 · CA-10 · "Solo yo" por defecto + un chip por espacio,
             con la audiencia visible. Los ingresos son siempre personales. */}
         <Field label="Destino">
+          {/* PR-03 · §17 campo 4 · el ícono de cada chip dice la audiencia (una
+              persona, dos) y el texto completo —"Solo vos lo ves" / "Lo ven vos y
+              Martina"— va UNA vez, en el pie junto a Guardar, que sigue al
+              destino elegido y se ve siempre (también con el teclado abierto). */}
           <Row gap="2" style={{ flexWrap: 'wrap' }}>
             <Chip
               label="Solo yo"
               selected={destination == null}
               onPress={() => setDestination(null)}
+              icon={
+                <User
+                  size={14}
+                  color={destination == null ? theme.colors.textOnBrand : theme.colors.textSecondary}
+                />
+              }
             />
             {kind === 'expense' &&
               (spaces ?? []).map((item) => (
@@ -436,13 +445,17 @@ export default function Agregar() {
                     setPayerIsMe(true);
                     setSplit({ mode: 'even' });
                   }}
+                  icon={
+                    <Users
+                      size={14}
+                      color={
+                        destination === item.id ? theme.colors.textOnBrand : theme.colors.textSecondary
+                      }
+                    />
+                  }
                 />
               ))}
           </Row>
-          {/* PR-03 · §17 campo 4 · debajo del selector, la audiencia. Además, la
-              misma queda en el pie, pegada a Guardar, que es lo que se ve
-              siempre (también con el teclado abierto). */}
-          <AudienceBadge audience={audience} />
         </Field>
 
         {/* §17 campos 5 y 6 · solo con un espacio elegido. */}
@@ -481,7 +494,15 @@ export default function Agregar() {
 
         {/* §17 campo 7 · solo si pagó el usuario, y solo en Estado A (A-05). */}
         {kind === 'expense' && iPay && accountState === 'personal' && (
-          <Field label="¿Con qué lo pagaste?">
+          <Field
+            label="¿Con qué lo pagaste?"
+            // C-05 · con un espacio elegido, el otro no ve el medio.
+            hint={
+              isShared && space != null
+                ? `${space.other.displayName} no va a ver esto. Solo vos.`
+                : undefined
+            }
+          >
             <PaymentMethodField
               methods={facts.paymentMethods}
               value={paymentMethodId}

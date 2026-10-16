@@ -8,6 +8,7 @@ import { Segmented } from '@/features/add/fields';
 import { Money, Row, Stack, Text } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
+import { SplitBar } from './SplitBar';
 
 /**
  * §17 campo 6 · el reparto.
@@ -83,14 +84,7 @@ export function SplitPicker({
         }
       />
 
-      {split.mode === 'even' ? (
-        <Row justify="space-between" align="baseline">
-          <Text variant="small" tone="secondary">
-            La parte de cada uno
-          </Text>
-          <Money amount={myShare} variant="bodyMedium" />
-        </Row>
-      ) : (
+      {split.mode === 'custom' && (
         <Animated.View entering={FadeInDown.duration(duration.base)}>
           <Stack gap="3">
             <ShareInput label={myName} value={myShare} onChange={setMyShare} />
@@ -117,6 +111,10 @@ export function SplitPicker({
           </Stack>
         </Animated.View>
       )}
+
+      {/* Tu parte y la del otro, UNA vez y como forma: reemplaza a la tarjeta de
+          partes que cada pantalla repetía. */}
+      <SplitBar myShare={myShare} otherShare={otherShare} otherName={otherName} />
 
       {/* P3 · sin porcentajes en la interfaz, ni acá ni en ningún lado. */}
       <View

@@ -30,6 +30,31 @@ describe('UX-15 · SplitField', () => {
     expect(onChange).toHaveBeenCalledTimes(1);
   });
 
+  it('el reparto se dibuja una sola vez, como barra: tu parte y la del otro', async () => {
+    const view = await renderField(100_000);
+
+    expect(view.getByText('Tu parte')).toBeTruthy();
+    expect(view.getByText('Parte de Martina')).toBeTruthy();
+    expect(view.getAllByText('$50.000')).toHaveLength(2);
+    // Ya no hay una línea aparte con "la parte de cada uno".
+    expect(view.queryByText('La parte de cada uno')).toBeNull();
+  });
+
+  it('personalizado: los campos y la barra muestran las mismas partes', async () => {
+    const view = await renderWithTheme(
+      <SplitField
+        total={100_000}
+        split={{ mode: 'custom', shareSlot1: 70_000, shareSlot2: 30_000 }}
+        onChange={jest.fn()}
+        mySlot={1}
+        myName="Renzo"
+        otherName="Martina"
+      />,
+    );
+
+    expect(view.getByLabelText('Reparto: tu parte $70.000, parte de Martina $30.000')).toBeTruthy();
+  });
+
   it('sin monto el campo ya está, para que no salte, y no se puede tocar', async () => {
     const onChange = jest.fn();
     const view = await renderField(0, onChange);

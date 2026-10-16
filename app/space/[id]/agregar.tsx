@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Switch, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { goBack } from '@/features/shared/navigation';
-import { X } from 'lucide-react-native';
+import { User, Users, X } from 'lucide-react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { addMonths, dayOf, monthOf } from '@domain/calendar';
 import { resolveCardPayment } from '@domain/cards';
@@ -45,11 +45,8 @@ import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { savedBalanceDetail, savedDetail } from '@/features/spaces/savedBalance';
 import { useSession } from '@/features/auth/SessionProvider';
 import {
-  AudienceBadge,
   Button,
-  Card,
   IconButton,
-  Money,
   Row,
   Screen,
   Stack,
@@ -202,7 +199,6 @@ export default function AgregarCompartido() {
   const { mySlot, other, me } = derived;
   const payerSlot = payerIsMe ? mySlot : other.slot;
   const myShare = mySlot === 1 ? shares.slot1 : shares.slot2;
-  const otherShare = mySlot === 1 ? shares.slot2 : shares.slot1;
 
   // §17 campo 12 · K9 · solo con cuenta personal, y solo tu parte.
   const myShareRatio = amount === 0 ? 1 : myShare / amount;
@@ -340,9 +336,6 @@ export default function AgregarCompartido() {
           />
         </Row>
 
-        {/* §12 · la audiencia, siempre visible. */}
-        <AudienceBadge audience={{ kind: 'shared', otherMemberName: other.displayName }} />
-
         <AmountInput value={amount} onChange={setAmount} />
 
         <Field label="Categoría">
@@ -352,10 +345,20 @@ export default function AgregarCompartido() {
         {/* CA-07 · Caso 18 · sin cuenta personal, "Personal" se ofrece igual:
             explica dónde viven esos gastos en vez de esconder la opción. */}
         {accountState !== 'personal' && (
-          <Field label="Destino" hint={`${other.displayName} lo va a ver.`}>
+          <Field label="Destino">
             <Row gap="2">
-              <Chip label="Personal" selected={false} onPress={() => setPersonalAsked(true)} />
-              <Chip label={derived.facts.space.name} selected onPress={() => undefined} />
+              <Chip
+                label="Personal"
+                selected={false}
+                onPress={() => setPersonalAsked(true)}
+                icon={<User size={14} color={theme.colors.textSecondary} />}
+              />
+              <Chip
+                label={derived.facts.space.name}
+                selected
+                onPress={() => undefined}
+                icon={<Users size={14} color={theme.colors.textOnBrand} />}
+              />
             </Row>
           </Field>
         )}
@@ -467,41 +470,17 @@ export default function AgregarCompartido() {
           <InstallmentPreview model={previewModel} plan={plan} myShareRatio={myShareRatio} />
         )}
 
-        {/* §17 · "Con esto, Martina te debe $20.000" */}
-        {amount > 0 && (
+        {/* El efecto en el saldo. Tu parte y la del otro ya están en la barra del
+            reparto, y la audiencia en el pie, junto a Guardar: cada cosa, una vez.
+            UX-15 · con vista previa de cuotas, ella ya cuenta el rango: acá queda
+            solo lo que ella no dice, el efecto en el saldo. */}
+        {amount > 0 && cardEffect != null && (
           <Animated.View entering={FadeIn.duration(duration.quick)}>
-            <Card tone="shared">
-              <Stack gap="2">
-                <Row justify="space-between" align="baseline">
-                  <Text variant="small" tone="secondary">
-                    Tu parte
-                  </Text>
-                  <Money amount={myShare} variant="smallMedium" animate />
-                </Row>
-                <Row justify="space-between" align="baseline">
-                  <Text variant="small" tone="secondary">
-                    Parte de {other.displayName}
-                  </Text>
-                  <Money amount={otherShare} variant="smallMedium" animate />
-                </Row>
-
-                {/* UX-15 · con vista previa de cuotas, ella ya cuenta el rango:
-                    acá queda solo lo que ella no dice, el efecto en el saldo. */}
-                {cardEffect != null && (
-                  <Text variant="caption" tone="muted">
-                    {cardEffect}
-                  </Text>
-                )}
-              </Stack>
-            </Card>
+            <Text variant="caption" tone="muted">
+              {cardEffect}
+            </Text>
           </Animated.View>
         )}
-
-        {/* §12 · lo que el otro va a ver, antes de guardar. */}
-        <Text variant="caption" tone="muted" align="center">
-          {other.displayName} va a ver el monto, la fecha, la categoría, quién pagó y el
-          reparto. No va a ver con qué lo pagaste.
-        </Text>
       </Stack>
 
       <GuestPersonalSheet
