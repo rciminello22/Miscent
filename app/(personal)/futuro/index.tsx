@@ -80,6 +80,11 @@ export default function Futuro() {
   const [detailOpen, setDetailOpen] = useState(false);
 
   const future = useMemo(() => calculateFuture(expansion, from, 6), [expansion, from]);
+  // §23.1 · el desglose rotula el resumen estimado de cada tarjeta por su nombre.
+  const cardNames = useMemo(
+    () => new Map(facts.paymentMethods.map((method) => [method.id, method.name])),
+    [facts.paymentMethods],
+  );
   const hasCommitments = future.months.some((month) => month.committed > 0);
 
   // §23.2 · "en Futuro, todos los del mes elegido"; UX-07 · el mes en curso, desde hoy.
@@ -250,6 +255,8 @@ export default function Futuro() {
             committed={selected.committed}
             expectedIncome={selected.expectedIncome}
             unassigned={selected.unassigned}
+            breakdown={selected.breakdown}
+            cardNames={cardNames}
           />
         )}
       </Sheet>

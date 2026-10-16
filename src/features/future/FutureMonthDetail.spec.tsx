@@ -40,6 +40,48 @@ describe('§23.1 · FutureMonthDetail', () => {
     expect(view.queryByText('Sin asignar')).toBeNull();
   });
 
+  it('§23.1 · el desglose: Fijos, Cuotas, cada tarjeta con su resumen estimado y tu parte de los espacios', async () => {
+    const view = await renderWithTheme(
+      <FutureMonthDetail
+        title="noviembre"
+        committed={620_000}
+        expectedIncome={1_200_000}
+        unassigned={580_000}
+        breakdown={{
+          fixed: 300_000,
+          installments: 80_000,
+          cards: [{ cardId: 'visa', amount: 120_000 }],
+          fromSpaces: 90_000,
+        }}
+        cardNames={new Map([['visa', 'Visa Galicia']])}
+      />,
+    );
+
+    expect(view.getByText('Fijos')).toBeTruthy();
+    expect(view.getByText('$300.000')).toBeTruthy();
+    expect(view.getByText('Cuotas')).toBeTruthy();
+    expect(view.getByText('Visa Galicia · resumen estimado')).toBeTruthy();
+    expect(view.getByText('$120.000')).toBeTruthy();
+    expect(view.getByText('De tus espacios · tu parte')).toBeTruthy();
+    expect(view.getByText('$90.000')).toBeTruthy();
+    // Una misma compra puede estar en más de una fila: se aclara.
+    expect(view.getByText(/Un mismo pago puede estar en más de una fila/)).toBeTruthy();
+  });
+
+  it('sin desglose, el detalle sigue siendo el de las tres cifras', async () => {
+    const view = await renderWithTheme(
+      <FutureMonthDetail
+        title="noviembre"
+        committed={620_000}
+        expectedIncome={1_200_000}
+        unassigned={580_000}
+      />,
+    );
+
+    expect(view.queryByText('Fijos')).toBeNull();
+    expect(view.queryByText(/Un mismo pago/)).toBeNull();
+  });
+
   it('§23.1 · sin ingreso previsto: "Sin ingreso registrado" y no se calcula', async () => {
     const view = await renderWithTheme(
       <FutureMonthDetail

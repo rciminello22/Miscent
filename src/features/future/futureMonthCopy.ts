@@ -6,6 +6,8 @@
  * frase de N-08 (misma construcción que RADAR_COPY.exceeds, con "previstos").
  */
 
+import type { FutureMonth } from '@domain/future';
+
 export const FUTURE_COPY = {
   unassigned: {
     label: 'Sin asignar',
@@ -19,6 +21,35 @@ export const FUTURE_COPY = {
   /** §23.1 · sin ingreso previsto no se calcula. */
   noIncome: 'Sin ingreso registrado',
 } as const;
+
+export type BreakdownRow = { key: string; label: string; amount: number; note: string | null };
+
+/**
+ * §23.1 · el desglose al tocar el mes: Fijos · Cuotas · Tarjetas (el resumen
+ * estimado de cada una) · De tus espacios (tu parte). Lente "tu parte" (§7.3).
+ * Lo que está en cero no se muestra. Una tarjeta que ya no existe es "Tarjeta":
+ * nunca su id.
+ */
+export function breakdownRows(
+  breakdown: FutureMonth['breakdown'],
+  cardNames: ReadonlyMap<string, string>,
+): BreakdownRow[] {
+  const rows: BreakdownRow[] = [
+    { key: 'fixed', label: 'Fijos', amount: breakdown.fixed, note: null },
+    { key: 'installments', label: 'Cuotas', amount: breakdown.installments, note: null },
+    ...[...breakdown.cards]
+      .sort((a, b) => b.amount - a.amount)
+      .map((card) => ({
+        key: `card:${card.cardId}`,
+        label: cardNames.get(card.cardId) ?? 'Tarjeta',
+        amount: card.amount,
+        note: 'resumen estimado' as string | null,
+      })),
+    { key: 'spaces', label: 'De tus espacios', amount: breakdown.fromSpaces, note: 'tu parte' },
+  ];
+
+  return rows.filter((row) => row.amount > 0);
+}
 
 export type FutureUnassignedCopy =
   | { kind: 'unassigned'; label: string; help: string; amount: number }
