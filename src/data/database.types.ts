@@ -258,6 +258,49 @@ export type Database = {
           },
         ]
       }
+      payment_method_days: {
+        // MANUAL (migración 0020, todavía sin aplicar): la tabla entera. Regenerar
+        // con `npm run db:types` después del push.
+        Row: {
+          closing_day: number | null
+          closing_day_approx: boolean
+          created_at: string
+          due_day: number | null
+          due_day_approx: boolean
+          id: string
+          payment_method_id: string
+          valid_until: string
+        }
+        Insert: {
+          closing_day?: number | null
+          closing_day_approx?: boolean
+          created_at?: string
+          due_day?: number | null
+          due_day_approx?: boolean
+          id?: string
+          payment_method_id: string
+          valid_until: string
+        }
+        Update: {
+          closing_day?: number | null
+          closing_day_approx?: boolean
+          created_at?: string
+          due_day?: number | null
+          due_day_approx?: boolean
+          id?: string
+          payment_method_id?: string
+          valid_until?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_method_days_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_methods: {
         // MANUAL (migración 0019, todavía sin aplicar): `closing_day_approx`,
         // `due_day_approx` y `deleted_at`. Regenerar con `npm run db:types`

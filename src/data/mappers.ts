@@ -14,6 +14,7 @@
 import type { Database } from './database.types';
 import { toPastTerms } from './pastTerms';
 import type {
+  CardDaysVersion,
   DeclaredStatement,
   DeletedRecord,
   InstallmentPlan,
@@ -43,7 +44,29 @@ function toSlot(value: number): Slot {
   return value;
 }
 
-export function toPaymentMethod(row: Row<'payment_methods'>): PaymentMethod {
+/**
+ * Migración 0020 · los días que tuvo una tarjeta antes de una corrección. Un día
+ * `null` ("No sé") nunca es aproximado, igual que en la tarjeta.
+ */
+export function toCardDaysVersion(row: Row<'payment_method_days'>): CardDaysVersion {
+  return {
+    closingDay: row.closing_day,
+    dueDay: row.due_day,
+    closingApprox: row.closing_day != null && row.closing_day_approx,
+    dueApprox: row.due_day != null && row.due_day_approx,
+    until: row.valid_until,
+  };
+}
+
+/**
+ * `versions` son las filas de `payment_method_days` de ESTA tarjeta. Sin ellas (la
+ * tabla no existe todavía, o la tarjeta nunca se corrigió) la tarjeta usa sus
+ * días vigentes para todo, como antes de la 0020.
+ */
+export function toPaymentMethod(
+  row: Row<'payment_methods'>,
+  versions: readonly Row<'payment_method_days'>[] = [],
+): PaymentMethod {
   return {
     id: row.id,
     kind: row.kind,
@@ -57,7 +80,21 @@ export function toPaymentMethod(row: Row<'payment_methods'>): PaymentMethod {
     dueApprox: row.due_day != null && (row.due_day_approx ?? false),
     // Migración 0019 (P24). Sin la columna llega `undefined`: no eliminada.
     deleted: row.deleted_at != null,
+    ...(versions.length > 0 ? { daysHistory: versions.map(toCardDaysVersion) } : {}),
   };
+}
+
+/** Los medios de pago con la historia de días de cada tarjeta (migración 0020). */
+export function toPaymentMethods(
+  rows: readonly Row<'payment_methods'>[],
+  versions: readonly Row<'payment_method_days'>[],
+): PaymentMethod[] {
+  return rows.map((row) =>
+    toPaymentMethod(
+      row,
+      versions.filter((version) => version.payment_method_id === row.id),
+    ),
+  );
 }
 
 type DayColumns = Record<string, number | boolean | null>;

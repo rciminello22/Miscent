@@ -19,6 +19,8 @@ import { join } from 'node:path';
 const TABLES = [
   'profiles',
   'payment_methods',
+  // Migración 0020: sin aplicarla, el smoke la reporta como inexistente.
+  'payment_method_days',
   'personal_movements',
   'declared_statements',
   'recurrences',

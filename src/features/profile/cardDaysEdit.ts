@@ -5,7 +5,7 @@
  */
 
 import type { CardDaysPlan } from '@domain/cardDays';
-import type { PaymentMethod } from '@domain/types';
+import type { CardDaysVersion, PaymentMethod } from '@domain/types';
 import type { CardEdit } from '@/data/repositories/cardDays';
 import {
   answerFromStored,
@@ -47,6 +47,20 @@ export function cardEditOf(card: PaymentMethod): CardEdit {
     closingApprox: card.closingApprox,
     dueDay: card.dueDay,
     dueApprox: card.dueApprox,
+  };
+}
+
+/**
+ * Los días de la tarjeta tal como están, vigentes hasta `today` (T-06): lo que se
+ * guarda ANTES de corregirlos para que lo ya pagado no cambie de mes.
+ */
+export function daysVersionOf(card: PaymentMethod, today: string): CardDaysVersion {
+  return {
+    closingDay: card.closingDay,
+    closingApprox: card.closingApprox,
+    dueDay: card.dueDay,
+    dueApprox: card.dueApprox,
+    until: today,
   };
 }
 

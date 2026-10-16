@@ -2,12 +2,15 @@
  * Corregir los días de una tarjeta: la tarjeta y los planes de cuotas que se
  * mueven con ella (§22, T-06).
  *
- * ATOMICIDAD. Son varias escrituras (una por compra en cuotas, más la tarjeta) y
- * supabase-js no tiene transacciones desde el cliente. Se hace así, sin RPC:
+ * ATOMICIDAD. Son varias escrituras (una por compra en cuotas, la historia de
+ * días y la tarjeta) y supabase-js no tiene transacciones desde el cliente. Se
+ * hace así, sin RPC:
  *
  *   1. Primero los planes, UNO por UNO.
- *   2. La tarjeta, AL FINAL.
- *   3. Si algo falla, se deshacen los planes ya escritos, en orden inverso.
+ *   2. Los días de antes (`payment_method_days`, migración 0020).
+ *   3. La tarjeta, AL FINAL.
+ *   4. Si algo falla, se deshacen la historia y los planes ya escritos, en orden
+ *      inverso.
  *
  * Por qué ese orden: lo que se calcula como "qué se mueve" sale del plan GUARDADO
  * contra los días nuevos, no contra los días viejos de la tarjeta. Si la tarjeta
@@ -24,8 +27,10 @@
  * de una tarjeta de vez en cuando no justifica ese costo.
  */
 
+import type { IsoDate } from '@domain/calendar';
 import type { PlanWrite } from '@domain/cardDays';
 import { reverseWrites } from '@domain/cardDays';
+import type { CardDaysVersion } from '@domain/types';
 import { supabase } from '../supabase';
 import { installmentDayColumns } from '../mappers';
 import { updatePaymentMethod, type NewPaymentMethod } from './mutations';
@@ -73,21 +78,76 @@ async function rollback(applied: readonly PlanWrite[]): Promise<boolean> {
   return complete;
 }
 
+/**
+ * Guarda los días de antes (migración 0020), vigentes hasta `version.until`, para
+ * que lo ya pagado se siga calculando con ellos. `true` si agregó una fila.
+ *
+ * Si ese día ya se había corregido, la fila de antes de la primera corrección
+ * sigue valiendo y no se agrega otra (`ignoreDuplicates`): devuelve `false`.
+ */
+async function addVersion(cardId: string, version: CardDaysVersion): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('payment_method_days')
+    .upsert(
+      {
+        payment_method_id: cardId,
+        valid_until: version.until,
+        closing_day: version.closingDay,
+        closing_day_approx: version.closingApprox,
+        due_day: version.dueDay,
+        due_day_approx: version.dueApprox,
+      },
+      { onConflict: 'payment_method_id,valid_until', ignoreDuplicates: true },
+    )
+    .select('id');
+  if (error != null) throw new Error('No pudimos guardar los cambios.');
+  return (data ?? []).length > 0;
+}
+
+async function removeVersion(cardId: string, until: IsoDate): Promise<void> {
+  const { error } = await supabase
+    .from('payment_method_days')
+    .delete()
+    .eq('payment_method_id', cardId)
+    .eq('valid_until', until);
+  if (error != null) throw new Error('No pudimos guardar los cambios.');
+}
+
+/**
+ * `version`: los días de antes, solo si los días cambian (un cambio de nombre no
+ * guarda nada). Devuelve la fecha de la versión que se agregó, o `null` si no se
+ * agregó ninguna: es lo que hace falta para deshacer.
+ */
 export async function applyCardDaysChange(args: {
   cardId: string;
   card: CardEdit;
   writes: readonly PlanWrite[];
-}): Promise<void> {
+  version?: CardDaysVersion | null;
+}): Promise<{ versionUntil: IsoDate | null }> {
   const applied: PlanWrite[] = [];
+  let versionUntil: IsoDate | null = null;
 
   try {
     for (const write of args.writes) {
       await writePlan(write);
       applied.push(write);
     }
+    // La historia, ANTES que la tarjeta: si la tarjeta se escribiera primero y
+    // la historia fallara, los meses pasados se calcularían con los días nuevos.
+    if (args.version != null && (await addVersion(args.cardId, args.version))) {
+      versionUntil = args.version.until;
+    }
     await updatePaymentMethod(args.cardId, args.card);
+    return { versionUntil };
   } catch {
-    const restored = await rollback(applied);
+    let restored = await rollback(applied);
+    if (versionUntil != null) {
+      try {
+        await removeVersion(args.cardId, versionUntil);
+      } catch {
+        restored = false;
+      }
+    }
     throw new Error(
       restored
         ? 'No pudimos guardar los cambios. No se tocó nada.'
@@ -100,15 +160,28 @@ export async function applyCardDaysChange(args: {
  * Deshacer: vuelven los días anteriores y los planes que se habían movido. Es
  * determinista (lo mismo, al revés) y no restaura lo que se haya editado en el
  * medio: por eso solo se ofrece mientras dura el aviso.
+ *
+ * `versionUntil` es la versión que agregó el cambio (si agregó alguna). Se saca
+ * DESPUÉS de restaurar la tarjeta: si fallara ahí, quedaría una versión con los
+ * mismos días que los vigentes, que no cambia ningún cálculo.
  */
 export async function undoCardDaysChange(args: {
   cardId: string;
   previousCard: CardEdit;
   writes: readonly PlanWrite[];
+  versionUntil: IsoDate | null;
 }): Promise<void> {
   await applyCardDaysChange({
     cardId: args.cardId,
     card: args.previousCard,
     writes: reverseWrites(args.writes),
   });
+
+  if (args.versionUntil != null) {
+    try {
+      await removeVersion(args.cardId, args.versionUntil);
+    } catch {
+      // Ya quedó como estaba: ver arriba.
+    }
+  }
 }

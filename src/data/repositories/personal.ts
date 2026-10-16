@@ -13,7 +13,7 @@ import { supabase } from '../supabase';
 import {
   toDeclaredStatement,
   toDeletedRecord,
-  toPaymentMethod,
+  toPaymentMethods,
   toPersonalMovement,
   toRecurrence,
   toRecurrenceOverride,
@@ -21,12 +21,15 @@ import {
   toSharedPaymentDetail,
   toSpaceFacts,
 } from '../mappers';
+import { isMissingTable } from '../missingTable';
 import { ownActiveMemberships } from '../memberships';
 import { toFormerMembership } from '../formerMembership';
 
 export async function fetchPersonalFacts(userId: string): Promise<PersonalFacts> {
-  const [methods, movements, recurrences, statements, memberships, formers] = await Promise.all([
+  const [methods, days, movements, recurrences, statements, memberships, formers] = await Promise.all([
     supabase.from('payment_methods').select('*').eq('archived', false),
+    // Migración 0020 · los días que tuvo cada tarjeta antes de una corrección.
+    supabase.from('payment_method_days').select('*'),
     supabase.from('personal_movements').select('*').order('date', { ascending: false }),
     supabase.from('recurrences').select('*'),
     supabase.from('declared_statements').select('*'),
@@ -36,6 +39,10 @@ export async function fetchPersonalFacts(userId: string): Promise<PersonalFacts>
   ]);
 
   throwIfError(methods.error, 'medios de pago');
+  // Antes de aplicar la migración 0020 la tabla no existe: sin historia, cada
+  // tarjeta se calcula con sus días vigentes, como siempre. Otro error sí se tira:
+  // sin la historia, un mes pasado se calcularía con los días nuevos.
+  if (!isMissingTable(days.error)) throwIfError(days.error, 'días de las tarjetas');
   throwIfError(movements.error, 'movimientos');
   throwIfError(recurrences.error, 'fijos');
   throwIfError(statements.error, 'resúmenes declarados');
@@ -60,7 +67,7 @@ export async function fetchPersonalFacts(userId: string): Promise<PersonalFacts>
 
   return {
     userId,
-    paymentMethods: (methods.data ?? []).map(toPaymentMethod),
+    paymentMethods: toPaymentMethods(methods.data ?? [], days.data ?? []),
     movements: (movements.data ?? []).map(toPersonalMovement),
     // Los recurrentes personales son los que NO pertenecen a un espacio; los
     // compartidos llegan dentro de cada membresía, como hechos del espacio.

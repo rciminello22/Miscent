@@ -8,7 +8,7 @@
 -- `authenticated`, igual que un cliente de la app. No hay atajos: si una
 -- política está mal, el test lo ve.
 --
--- 66 asserts. Cubre: PR-01, PR-02, CA-05, CA-11, CA-12, CA-13, CA-22, CA-40,
+-- 92 asserts. Cubre: PR-01, PR-02, CA-05, CA-11, CA-12, CA-13, CA-22, CA-40,
 -- CA-47, CA-48, C-02, C-05, D-01, E-01, E-02, I-02, I-04, I-07, K1, K3, K4,
 -- P5, P7, SA-02, SA-04, SA-06, SY-02, la revisión de lo que carga el otro, X-02, §26 quitar acceso, la asimetría de
 -- shared_payment_details y el usuario anónimo de O2 sin email.
@@ -26,7 +26,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
 
-select plan(86);
+select plan(92);
 
 -- ───────────────────────────────────────────────────────────────────────────
 -- Montaje: Renzo (con cuenta personal), Martina (invitada, Estado B) y Juan.
@@ -996,6 +996,80 @@ insert into tests.results(line) select is(
    where user_id = '11111111-1111-1111-1111-111111111111'),
   0,
   'Días aproximados · el otro miembro no ve las tarjetas de Renzo ni sus marcas'
+);
+
+
+-- ───────────────────────────────────────────────────────────────────────────
+-- Historia de los días (0020) · T-03, T-01, PR-02
+--
+-- Los días que tuvo una tarjeta antes de una corrección son tan privados como la
+-- tarjeta. Ojo: estos asserts necesitan la migración 0020 aplicada. Contra la
+-- base anterior fallan por tabla inexistente: primero RED, después db push.
+-- ───────────────────────────────────────────────────────────────────────────
+
+select tests.authenticate_as('11111111-1111-1111-1111-111111111111');
+
+insert into tests.results(line) select lives_ok(
+  $$ insert into payment_method_days
+       (payment_method_id, valid_until, closing_day, due_day, closing_day_approx, due_day_approx)
+     values ('aaaaaaaa-0000-0000-0000-000000000001', '2026-10-16', 15, 2, true, true) $$,
+  'Historia de días · el dueño guarda los días que tenía su tarjeta antes de corregirlos'
+);
+
+insert into tests.results(line) select is(
+  (select count(*)::int from payment_method_days),
+  1,
+  'Historia de días · el dueño ve la historia de su tarjeta'
+);
+
+insert into tests.results(line) select throws_ok(
+  $$ insert into payment_method_days (payment_method_id, valid_until, due_day_approx)
+     values ('aaaaaaaa-0000-0000-0000-000000000001', '2026-09-01', true) $$,
+  '23514',
+  null,
+  'Historia de días · un día aproximado sin día no tiene sentido ("No sé" es sin marca)'
+);
+
+-- Martina comparte el espacio "Casa" con Renzo, y no ve su historia.
+select tests.authenticate_as('22222222-2222-2222-2222-222222222222');
+
+insert into tests.results(line) select is(
+  (select count(*)::int from payment_method_days),
+  0,
+  'PR-02 · el otro miembro de un espacio no ve la historia de días de una tarjeta ajena'
+);
+
+insert into tests.results(line) select throws_ok(
+  $$ insert into payment_method_days (payment_method_id, valid_until, closing_day)
+     values ('aaaaaaaa-0000-0000-0000-000000000001', '2026-08-01', 20) $$,
+  '42501',
+  null,
+  'PR-02 · el otro miembro tampoco puede escribir en la historia de una tarjeta ajena'
+);
+
+-- Sin sesión (rol anon) tampoco: la política mira auth.uid(), que ahí es null.
+select tests.as_service();
+
+do $$
+declare
+  visibles int;
+begin
+  perform set_config('role', 'anon', true);
+  perform set_config('request.jwt.claims', '', true);
+  begin
+    select count(*)::int into visibles from payment_method_days;
+  exception when insufficient_privilege then
+    visibles := 0;
+  end;
+  perform set_config('role', 'postgres', true);
+  perform tests.put('anon_days', visibles::text);
+end;
+$$;
+
+insert into tests.results(line) select is(
+  tests.get('anon_days')::int,
+  0,
+  'PR-02 · sin sesión no se ve la historia de días de ninguna tarjeta'
 );
 
 

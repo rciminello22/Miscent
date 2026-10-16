@@ -7,6 +7,7 @@ import {
   cardEditOf,
   dayBefore,
   daysChanged,
+  daysVersionOf,
   draftFromCard,
   editedCard,
   editNote,
@@ -41,6 +42,23 @@ describe('draftFromCard', () => {
 
     expect(draft.closing).toEqual({ mode: 'exact', day: null });
     expect(draft.due).toEqual({ mode: 'exact', day: 5 });
+  });
+});
+
+describe('daysVersionOf · lo que se guarda de los días de antes', () => {
+  it('solo los cuatro campos de los días y hasta qué día valieron, sin el nombre ni la historia', () => {
+    const conHistoria: PaymentMethod = {
+      ...aproximada,
+      daysHistory: [{ closingDay: 1, dueDay: 2, closingApprox: false, dueApprox: false, until: '2026-01-01' }],
+    };
+
+    expect(daysVersionOf(conHistoria, '2026-10-16')).toEqual({
+      closingDay: 15,
+      closingApprox: true,
+      dueDay: 2,
+      dueApprox: true,
+      until: '2026-10-16',
+    });
   });
 });
 

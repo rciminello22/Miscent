@@ -22,6 +22,7 @@ import {
   cardEditOf,
   dayBefore,
   daysChanged,
+  daysVersionOf,
   draftFromCard,
   editedCard,
   editNote,
@@ -37,6 +38,8 @@ type Saved = {
   previous: CardEdit;
   writes: readonly PlanWrite[];
   recalculated: number;
+  /** La versión de días que agregó el cambio, para sacarla al deshacer. */
+  versionUntil: string | null;
 };
 
 function storedOf(day: number | null, approx: boolean): StoredDay {
@@ -84,7 +87,12 @@ export function useCardDaysEdit(args: {
   }
 
   function undo(saved: Saved, cardId: string) {
-    undoCardDaysChange({ cardId, previousCard: saved.previous, writes: saved.writes })
+    undoCardDaysChange({
+      cardId,
+      previousCard: saved.previous,
+      writes: saved.writes,
+      versionUntil: saved.versionUntil,
+    })
       .then(invalidate)
       .then(() => toast.show({ title: 'Listo, quedó como estaba' }))
       .catch((cause: unknown) => feedback.error('No pudimos deshacerlo', cause));
@@ -94,12 +102,19 @@ export function useCardDaysEdit(args: {
     mutationFn: async (): Promise<Saved> => {
       if (card == null || next == null) throw new Error('No hay nada para guardar.');
       const edit = cardEditOf(next);
-      await applyCardDaysChange({ cardId: card.id, card: edit, writes: plan.writes });
+      // T-06 · los días de antes quedan guardados hasta hoy: lo ya pagado no cambia.
+      const { versionUntil } = await applyCardDaysChange({
+        cardId: card.id,
+        card: edit,
+        writes: plan.writes,
+        version: changedDays ? daysVersionOf(card, today) : null,
+      });
       return {
         edit,
         previous: cardEditOf(card),
         writes: plan.writes,
         recalculated: plan.items.length,
+        versionUntil,
       };
     },
     onSuccess: async (saved) => {

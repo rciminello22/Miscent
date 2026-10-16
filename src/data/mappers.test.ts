@@ -4,6 +4,7 @@ import {
   installmentDayColumns,
   recurrenceDayColumns,
   toPaymentMethod,
+  toPaymentMethods,
   toRecurrence,
 } from './mappers';
 
@@ -159,6 +160,56 @@ describe('toPaymentMethod · eliminada', () => {
   it('con deleted_at, está eliminada', () => {
     const row = { ...cardRow, closing_day_approx: false, due_day_approx: false };
     expect(toPaymentMethod({ ...row, deleted_at: '2026-10-16T12:00:00Z' }).deleted).toBe(true);
+  });
+});
+
+/**
+ * Migración 0020 · la historia de los días. Sin filas (la tabla no existe todavía
+ * o la tarjeta nunca se corrigió) la tarjeta es la de siempre.
+ */
+describe('toPaymentMethod · historia de los días', () => {
+  const row = { ...cardRow, closing_day_approx: false, due_day_approx: false, deleted_at: null };
+  const version = {
+    id: 'v1',
+    payment_method_id: 'visa',
+    created_at: '2026-10-16T12:00:00Z',
+    valid_until: '2026-10-16',
+    closing_day: 15,
+    closing_day_approx: true,
+    due_day: 2,
+    due_day_approx: true,
+  };
+
+  it('sin versiones no hay historia', () => {
+    expect(toPaymentMethod(row).daysHistory).toBeUndefined();
+    expect(toPaymentMethod(row, []).daysHistory).toBeUndefined();
+  });
+
+  it('cada fila es los días que valieron hasta su fecha', () => {
+    expect(toPaymentMethod(row, [version]).daysHistory).toEqual([
+      { closingDay: 15, closingApprox: true, dueDay: 2, dueApprox: true, until: '2026-10-16' },
+    ]);
+  });
+
+  it('los días vigentes siguen siendo los de la tarjeta', () => {
+    expect(toPaymentMethod(row, [version])).toMatchObject({ closingDay: 25, dueDay: 5 });
+  });
+
+  it('cada tarjeta recibe solo sus versiones', () => {
+    const otra = { ...row, id: 'master' };
+    const [visa, master] = toPaymentMethods([row, otra], [version]);
+
+    expect(visa?.daysHistory).toHaveLength(1);
+    expect(master?.daysHistory).toBeUndefined();
+  });
+
+  it('un día null ("No sé") de una versión nunca queda marcado como aproximado', () => {
+    const sinDatos = { ...version, closing_day: null, closing_day_approx: true };
+
+    expect(toPaymentMethod(row, [sinDatos]).daysHistory?.[0]).toMatchObject({
+      closingDay: null,
+      closingApprox: false,
+    });
   });
 });
 
