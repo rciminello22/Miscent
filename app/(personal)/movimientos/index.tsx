@@ -1,4 +1,8 @@
 import { MovementsScreenA } from '@/features/movements/MovementsScreenA';
+// TEMPORAL: variante B en prueba
+import { MovementsScreenB } from '@/features/movements/MovementsScreenB';
+// TEMPORAL: variante B en prueba
+import { useMovementsVariant } from '@/features/movements/movementsVariant';
 
 /**
  * §16 · Movimientos. "Ver qué se registró en un mes y corregir errores."
@@ -17,5 +21,11 @@ import { MovementsScreenA } from '@/features/movements/MovementsScreenA';
  * mostrando el EFECTO de cada movimiento, que es lo que lo vuelve útil.
  */
 export default function Movimientos() {
+  // TEMPORAL: variante B en prueba. Un interruptor del Perfil (solo en desarrollo)
+  // elige entre las dos; mientras se lee la marca no se muestra ninguna.
+  const { variant } = useMovementsVariant();
+  if (variant === null) return null;
+  if (variant === 'B') return <MovementsScreenB />;
+
   return <MovementsScreenA />;
 }

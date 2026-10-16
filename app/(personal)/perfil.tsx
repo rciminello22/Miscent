@@ -3,6 +3,10 @@ import { CreditCard, Repeat } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { monthOf } from '@domain/calendar';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
+// TEMPORAL: variante B en prueba
+import { MovementsVariantSwitch } from '@/features/movements/MovementsVariantSwitch';
+// TEMPORAL: variante B en prueba
+import { useMovementsVariant } from '@/features/movements/movementsVariant';
 import { selectFixedExpenses } from '@/features/fixed/fixedExpenses';
 import { selectFixedIncomes } from '@/features/fixed/fixedIncomes';
 import { selectCards } from '@/features/profile/cards';
@@ -36,6 +40,8 @@ export default function Perfil() {
   const theme = useTheme();
   const router = useRouter();
   const { facts, today } = usePersonalFacts();
+  // TEMPORAL: variante B en prueba
+  const movementsVariant = useMovementsVariant();
 
   // UX-01 · UX-21 · cada número sale de la MISMA función que la lista que abre:
   // la cuenta y la lista no pueden discrepar.
@@ -84,6 +90,14 @@ export default function Perfil() {
         </Stack>
 
         <PrivacySection />
+
+        {/* TEMPORAL: variante B en prueba. Solo en desarrollo. */}
+        {__DEV__ && movementsVariant.variant !== null && (
+          <MovementsVariantSwitch
+            variant={movementsVariant.variant}
+            onToggle={movementsVariant.toggle}
+          />
+        )}
 
         <AccountActions kind="personal" />
       </Stack>

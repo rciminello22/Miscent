@@ -10,7 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * así no parpadea una tarjeta que ya se cerró. Si el almacenamiento falla,
  * degrada a "no visto" (mostrar de más es mejor que esconder la bienvenida).
  */
-export function useRememberedFlag(key: string): [boolean | null, () => void] {
+export function useRememberedFlag(key: string): [boolean | null, () => void, () => void] {
   const [value, setValue] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -28,5 +28,11 @@ export function useRememberedFlag(key: string): [boolean | null, () => void] {
     AsyncStorage.setItem(key, '1').catch(() => undefined);
   }, [key]);
 
-  return [value, mark];
+  /** Lo contrario de `mark`: la marca vuelve a "no". Sirve para un interruptor. */
+  const forget = useCallback(() => {
+    setValue(false);
+    AsyncStorage.removeItem(key).catch(() => undefined);
+  }, [key]);
+
+  return [value, mark, forget];
 }
