@@ -21,7 +21,9 @@ describe('UX-03 · radarBarValueText', () => {
   it('N-08 · con exceso lo dice sin alarma y sin signo negativo', () => {
     expect(
       radarBarValueText({ registeredIncome: 500_000, spent: 535_000, committed: 0 }),
-    ).toBe('Gastado $535.000, Comprometido $0, por encima de los $500.000 registrados');
+    ).toBe(
+      'Gastado $535.000, Comprometido $0, $35.000 por encima de los $500.000 registrados',
+    );
   });
 
   it('CA-03 · sin ingresos registrados no hay proporciones', () => {

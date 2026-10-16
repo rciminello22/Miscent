@@ -264,6 +264,31 @@ describe('§15 · RadarSummary', () => {
     expect(view.queryByText('Sin asignar')).toBeNull();
   });
 
+  it('1A · N-08 · con exceso la barra es un recipiente: tramo de más con su etiqueta y la frase intacta', async () => {
+    const radar = radarFor({ income: 500_000, spentCash: 535_000 });
+    const view = await renderWithTheme(<RadarSummary radar={radar} month={MONTH} />);
+
+    expect(view.getByTestId('radar-bar-vessel')).toBeTruthy();
+    expect(view.getByTestId('radar-bar-excess')).toBeTruthy();
+    expect(view.getByText('$35.000 de más')).toBeTruthy();
+    expect(view.getByText('Tus ingresos registrados')).toBeTruthy();
+    // La frase de CA-02 sigue ahí, una sola vez, con la cifra suelta.
+    expect(view.getAllByText(/Tus gastos y compromisos superan tus ingresos registrados por/)).toHaveLength(1);
+    expect(view.getByText('$35.000')).toBeTruthy();
+
+    expect(view.getByLabelText('Destino de tus ingresos registrados').props.accessibilityValue).toEqual({
+      text: 'Gastado $535.000, Comprometido $0, $35.000 por encima de los $500.000 registrados',
+    });
+  });
+
+  it('1A · en el caso normal la barra no trae etiqueta de más ni corchete', async () => {
+    const radar = radarFor({ income: 1_200_000, spentCash: 250_000, fixed: 550_000 });
+    const view = await renderWithTheme(<RadarSummary radar={radar} month={MONTH} />);
+
+    expect(view.queryByText(/de más/)).toBeNull();
+    expect(view.queryByText('Tus ingresos registrados')).toBeNull();
+  });
+
   it('M18 · las tres cifras son tocables para ver de dónde salen', async () => {
     const radar = radarFor({ income: 1_200_000, spentCash: 250_000, fixed: 550_000 });
     const onOpen = jest.fn();

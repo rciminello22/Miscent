@@ -22,8 +22,9 @@ export function radarBarValueText(input: {
   const head = `Gastado ${formatPesos(spent, { sign: 'never' })}, Comprometido ${formatPesos(committed, { sign: 'never' })}`;
   const income = formatPesos(registeredIncome, { sign: 'never' });
 
-  // N-08 · lo asignado supera los ingresos: se dice sin alarma.
-  return spent + committed > registeredIncome
-    ? `${head}, por encima de los ${income} registrados`
+  // N-08 · lo asignado supera los ingresos: se dice sin alarma, con la cifra de más.
+  const over = spent + committed - registeredIncome;
+  return over > 0
+    ? `${head}, ${formatPesos(over, { sign: 'never' })} por encima de los ${income} registrados`
     : `${head}, de ${income} registrados`;
 }

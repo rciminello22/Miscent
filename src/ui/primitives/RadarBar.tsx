@@ -1,10 +1,13 @@
-import { useEffect } from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Svg, { Defs, Line, Pattern, Rect } from 'react-native-svg';
 import type { Pesos } from '@domain/money';
+import { formatPesos } from '@/lib/format';
 import { barTransition } from '../motion';
 import { radarBarValueText } from './radarBarCopy';
-import { radarBarRatios, radarBarSeparators } from './radarBarRatios';
+import { radarBarRatios, radarBarSeparators, radarBarTail } from './radarBarRatios';
+import { Text } from './Text';
 import { useTheme } from '../theme';
 
 export type RadarBarProps = {
@@ -17,13 +20,18 @@ export type RadarBarProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-/** UX-03 · separación entre segmentos y marca de exceso, en px. */
+/** UX-03 · separación entre segmentos, en px. */
 const SEPARATOR_WIDTH = 2;
-const MARK_WIDTH = 6;
-const MARK_HALO = 2;
-const MARK_OVERHANG = 3;
-/** El grosor del contorno de Sin asignar: el mismo anillo que su leyenda. */
-const UNASSIGNED_OUTLINE = 1.5;
+/** El grosor del contorno de Sin asignar y del recipiente: el mismo anillo que su leyenda. */
+const OUTLINE = 1.5;
+/** El palito que une la etiqueta con el tramo de más. */
+const STICK_HEIGHT = 6;
+/** El corchete de "Tus ingresos registrados". */
+const BRACKET_HEIGHT = 7;
+/** El rayado del tramo de más: paso y grosor de la línea, en px. */
+const HATCH_STEP = 5;
+const HATCH_STROKE = 2;
+const HATCH_ID = 'radar-excess-hatch';
 
 /**
  * La barra del radar (§15).
@@ -35,9 +43,11 @@ const UNASSIGNED_OUTLINE = 1.5;
  * hueco de su leyenda, y cierra la barra. No hay semáforo, no hay verde de
  * "bien" ni rojo de "mal". La app no juzga, muestra.
  *
- * N-08 · cuando lo asignado supera los ingresos registrados, la barra se llena
- * entera y aparece una marca en el punto de los ingresos, para que se vea
- * cuánto se pasó. Sin alarma (§15).
+ * N-08 · los ingresos registrados son un RECIPIENTE, y cuando lo asignado lo
+ * supera queda lleno y lo de más sale por la derecha, A ESCALA, como un tramo
+ * rayado ámbar con su propio contorno. Arriba, "$X de más" unida al tramo por un
+ * palito; abajo, un corchete que rotula el recipiente: "Tus ingresos
+ * registrados". Sin alarma (§15). La geometría está en `radarBarTail`.
  *
  * La animación es deliberadamente más lenta que el resto: acá el movimiento ES
  * la información. Al guardar un gasto se ve QUÉ segmento creció y cuánto, que
@@ -52,23 +62,23 @@ export function RadarBar({
   style,
 }: RadarBarProps) {
   const theme = useTheme();
+  // El ancho de la barra: el tramo de más se mide a escala contra él.
+  const [width, setWidth] = useState(0);
 
   // UX-04 · CA-03 · sin ingresos registrados no hay proporciones: el track
   // queda neutro, sin segmentos.
   const ratios = radarBarRatios({ registeredIncome, spent, committed });
+  const tail = radarBarTail({ registeredIncome, spent, committed }, width);
   const spentTarget = ratios?.spent ?? 0;
   const committedTarget = ratios?.committed ?? 0;
-  const incomeMarkTarget = ratios?.incomeMark ?? 0;
 
   const spentRatio = useSharedValue(0);
   const committedRatio = useSharedValue(0);
-  const incomeMarkRatio = useSharedValue(0);
 
   useEffect(() => {
     spentRatio.value = barTransition(spentTarget);
     committedRatio.value = barTransition(committedTarget);
-    incomeMarkRatio.value = barTransition(incomeMarkTarget);
-  }, [spentTarget, committedTarget, incomeMarkTarget, spentRatio, committedRatio, incomeMarkRatio]);
+  }, [spentTarget, committedTarget, spentRatio, committedRatio]);
 
   const spentStyle = useAnimatedStyle(() => ({
     flexGrow: spentRatio.value,
@@ -78,99 +88,163 @@ export function RadarBar({
     flexGrow: committedRatio.value,
   }));
 
-  const markStyle = useAnimatedStyle(() => ({
-    left: `${incomeMarkRatio.value * 100}%`,
-  }));
-
   const separators = radarBarSeparators(ratios);
   const gap = (
     <View style={{ width: SEPARATOR_WIDTH, backgroundColor: separatorColor ?? theme.colors.surface }} />
   );
 
+  const onLayout = (event: LayoutChangeEvent) => {
+    const next = event.nativeEvent.layout.width;
+    // Un píxel de diferencia no cambia el dibujo: no se re-renderiza por eso.
+    if (Math.abs(next - width) >= 1) setWidth(next);
+  };
+
   return (
-    // El contenedor no recorta: la marca de exceso sobresale de la barra (UX-03).
+    // El contenedor no recorta: la etiqueta, el palito y el corchete del exceso
+    // viven fuera de la barra.
     <View
-      style={[{ height }, style]}
+      style={style}
       accessibilityRole="progressbar"
       accessibilityLabel="Destino de tus ingresos registrados"
       accessibilityValue={{
         text: radarBarValueText({ registeredIncome, spent, committed }),
       }}
     >
-      <View
-        style={{
-          flex: 1,
-          borderRadius: height / 2,
-          // Con proporciones el vacío se dibuja con contorno (abajo); sin
-          // ingresos (CA-03) no hay nada que dibujar y queda el track neutro.
-          backgroundColor: ratios == null ? theme.colors.unassignedTrack : 'transparent',
-          overflow: 'hidden',
-          flexDirection: 'row',
-        }}
-      >
-        {ratios != null && (
-          <>
-            <Animated.View
-              testID="radar-bar-spent"
-              style={[{ backgroundColor: theme.colors.spent }, spentStyle]}
-            />
-            {separators.spentCommitted && gap}
-            <Animated.View
-              testID="radar-bar-committed"
-              style={[{ backgroundColor: theme.colors.committed }, committedStyle]}
-            />
-            {separators.assignedUnassigned && gap}
-            {/*
-              Sin asignar: lo que todavía no tiene destino se dibuja con CONTORNO,
-              el mismo anillo hueco de su leyenda. Cierra la barra por la derecha y
-              no lleva borde del lado de los tramos llenos. Con exceso (N-08) no
-              queda nada sin asignar y no hay contorno.
-            */}
-            {ratios.unassigned > 0 && (
-              <View
-                testID="radar-bar-unassigned"
-                style={{
-                  flexGrow: ratios.unassigned,
-                  borderWidth: UNASSIGNED_OUTLINE,
-                  borderLeftWidth: 0,
-                  borderColor: theme.colors.textMuted,
-                  borderTopRightRadius: height / 2,
-                  borderBottomRightRadius: height / 2,
-                }}
-              />
-            )}
-          </>
-        )}
-      </View>
-
-      {ratios?.exceeds === true && (
-        /* N-08 · la marca: un halo del color del fondo para que el ámbar se vea
-           contra cualquier segmento, y sobresale 3px por arriba y por abajo. */
-        <Animated.View
-          testID="radar-bar-excess"
-          style={[
-            {
-              position: 'absolute',
-              top: -MARK_OVERHANG,
-              bottom: -MARK_OVERHANG,
-              width: MARK_WIDTH,
-              marginLeft: -MARK_WIDTH / 2,
-              borderRadius: MARK_WIDTH / 2,
-              backgroundColor: separatorColor ?? theme.colors.surface,
-              alignItems: 'center',
-            },
-            markStyle,
-          ]}
-        >
+      {tail != null && (
+        // N-08 · la cifra exacta, siempre: el tramo puede medir 6px.
+        <View style={{ alignItems: 'flex-end', marginBottom: 2 }}>
+          <Text variant="smallMedium" tone="excess">
+            {formatPesos(tail.amount, { sign: 'never' })} de más
+          </Text>
           <View
+            testID="radar-bar-excess-stick"
             style={{
-              flex: 1,
-              width: MARK_WIDTH - 2 * MARK_HALO,
-              borderRadius: 1,
+              width: OUTLINE,
+              height: STICK_HEIGHT,
+              marginRight: Math.max(tail.width / 2 - OUTLINE / 2, 0),
               backgroundColor: theme.colors.excess,
             }}
           />
-        </Animated.View>
+        </View>
+      )}
+
+      <View testID="radar-bar-body" onLayout={onLayout} style={{ height, flexDirection: 'row' }}>
+        <View
+          testID={ratios != null ? 'radar-bar-vessel' : undefined}
+          style={{
+            flex: 1,
+            borderRadius: height / 2,
+            // Con proporciones el vacío se dibuja con contorno (abajo); sin
+            // ingresos (CA-03) no hay nada que dibujar y queda el track neutro.
+            backgroundColor: ratios == null ? theme.colors.unassignedTrack : 'transparent',
+            // Con exceso el recipiente se dibuja entero, para que se vea qué contiene.
+            ...(tail != null && {
+              borderWidth: OUTLINE,
+              borderColor: theme.colors.textMuted,
+            }),
+            overflow: 'hidden',
+            flexDirection: 'row',
+          }}
+        >
+          {ratios != null && (
+            <>
+              <Animated.View
+                testID="radar-bar-spent"
+                style={[{ backgroundColor: theme.colors.spent }, spentStyle]}
+              />
+              {separators.spentCommitted && gap}
+              <Animated.View
+                testID="radar-bar-committed"
+                style={[{ backgroundColor: theme.colors.committed }, committedStyle]}
+              />
+              {separators.assignedUnassigned && gap}
+              {/*
+                Sin asignar: lo que todavía no tiene destino se dibuja con CONTORNO,
+                el mismo anillo hueco de su leyenda. Cierra la barra por la derecha y
+                no lleva borde del lado de los tramos llenos. Con exceso (N-08) no
+                queda nada sin asignar y no hay contorno.
+              */}
+              {ratios.unassigned > 0 && (
+                <View
+                  testID="radar-bar-unassigned"
+                  style={{
+                    flexGrow: ratios.unassigned,
+                    borderWidth: OUTLINE,
+                    borderLeftWidth: 0,
+                    borderColor: theme.colors.textMuted,
+                    borderTopRightRadius: height / 2,
+                    borderBottomRightRadius: height / 2,
+                  }}
+                />
+              )}
+            </>
+          )}
+        </View>
+
+        {tail != null && (
+          // El tramo de más: rayado (se distingue por forma, no solo por el
+          // ámbar) y con su propio contorno, abierto del lado del recipiente.
+          <View
+            testID="radar-bar-excess"
+            style={{
+              width: tail.width,
+              marginLeft: tail.gap,
+              borderWidth: OUTLINE,
+              borderLeftWidth: 0,
+              borderColor: theme.colors.excess,
+              borderTopRightRadius: height / 2,
+              borderBottomRightRadius: height / 2,
+              overflow: 'hidden',
+            }}
+          >
+            <Svg width="100%" height="100%">
+              <Defs>
+                <Pattern
+                  id={HATCH_ID}
+                  width={HATCH_STEP}
+                  height={HATCH_STEP}
+                  patternUnits="userSpaceOnUse"
+                  patternTransform="rotate(45)"
+                >
+                  <Line
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2={HATCH_STEP}
+                    stroke={theme.colors.excess}
+                    strokeWidth={HATCH_STROKE}
+                  />
+                </Pattern>
+              </Defs>
+              <Rect width="100%" height="100%" fill={`url(#${HATCH_ID})`} />
+            </Svg>
+          </View>
+        )}
+      </View>
+
+      {tail != null && (
+        // El corchete rotula el recipiente: dónde terminan los ingresos registrados.
+        <View style={{ marginTop: 4 }}>
+          <View style={{ flexDirection: 'row' }}>
+            <View
+              testID="radar-bar-bracket"
+              style={{
+                flex: 1,
+                height: BRACKET_HEIGHT,
+                borderWidth: OUTLINE,
+                borderTopWidth: 0,
+                borderColor: theme.colors.textMuted,
+              }}
+            />
+            <View style={{ width: tail.width + tail.gap }} />
+          </View>
+          <View style={{ flexDirection: 'row' }}>
+            <Text variant="caption" tone="secondary" align="center" style={{ flex: 1 }}>
+              Tus ingresos registrados
+            </Text>
+            <View style={{ width: tail.width + tail.gap }} />
+          </View>
+        </View>
       )}
     </View>
   );

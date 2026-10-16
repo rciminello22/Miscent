@@ -145,6 +145,30 @@ describe('UX-03 · contraste de los segmentos del radar (>= 3:1 contra el track)
   }
 });
 
+/**
+ * Decisión 1A · el exceso como recipiente. Todo el N1 de Inicio es un panel
+ * `brandSoft`: ahí van la etiqueta "$35.000 de más" (ámbar), el pie "Tus
+ * ingresos registrados", el contorno del recipiente y el contorno y el rayado
+ * del tramo de más. Texto 4,5:1; gráficos 3:1 (WCAG 1.4.11).
+ */
+describe('Decisión 1A · el recipiente del exceso sobre el panel (brandSoft)', () => {
+  for (const scheme of ['light', 'dark'] as const) {
+    const colors = colorSchemes[scheme];
+
+    for (const token of ['excess', 'textSecondary', 'textMuted'] as const) {
+      it(`${scheme} · el texto ${token} se lee sobre brandSoft (>= 4,5:1)`, () => {
+        expect(contrast(colors[token], colors.brandSoft)).toBeGreaterThanOrEqual(AA);
+      });
+    }
+
+    for (const token of ['excess', 'textMuted'] as const) {
+      it(`${scheme} · el contorno ${token} se ve sobre brandSoft (>= 3:1)`, () => {
+        expect(contrast(colors[token], colors.brandSoft)).toBeGreaterThanOrEqual(GRAPHIC);
+      });
+    }
+  }
+});
+
 describe('UX-03 · contraste de las barras por mes (MonthBar, >= 3:1 contra su track)', () => {
   for (const scheme of ['light', 'dark'] as const) {
     const colors = colorSchemes[scheme];

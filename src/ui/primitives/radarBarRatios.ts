@@ -3,15 +3,13 @@
  */
 
 export type RadarBarRatios = {
-  /** Fracción de la barra que es Gastado. */
+  /** Fracción del recipiente (los ingresos registrados) que es Gastado. */
   spent: number;
-  /** Fracción que es Comprometido. */
+  /** Fracción del recipiente que es Comprometido. */
   committed: number;
   /** Lo que queda vacío: Sin asignar. 0 si lo asignado alcanza o supera los ingresos. */
   unassigned: number;
-  /** Dónde caen los ingresos registrados (1 = al final). Sirve para la marca de N-08. */
-  incomeMark: number;
-  /** N-08 · lo asignado supera los ingresos registrados. */
+  /** N-08 · lo asignado supera los ingresos registrados: lo de más sale del recipiente. */
   exceeds: boolean;
 };
 
@@ -21,8 +19,10 @@ export type RadarBarRatios = {
  * dice "todo asignado" cuando lo correcto es "no se sabe". Devuelve `null`:
  * quien dibuja deja el track neutro, sin segmentos.
  *
- * N-08 · si lo asignado supera los ingresos, la base pasa a ser lo asignado: la
- * barra se llena entera y la marca queda en el punto de los ingresos.
+ * Los ingresos registrados son el RECIPIENTE y las fracciones son suyas. N-08 ·
+ * si lo asignado los supera, el recipiente queda lleno (Gastado primero, después
+ * Comprometido hasta donde entra) y lo que no entra sale a un tramo aparte, a
+ * escala: ver `radarBarTail`.
  */
 export function radarBarRatios(input: {
   registeredIncome: number;
@@ -32,15 +32,66 @@ export function radarBarRatios(input: {
   const { registeredIncome, spent, committed } = input;
   if (!(registeredIncome > 0)) return null;
 
-  const assigned = spent + committed;
-  const base = Math.max(registeredIncome, assigned);
+  const spentIn = Math.min(spent, registeredIncome);
+  const committedIn = Math.min(committed, registeredIncome - spentIn);
 
   return {
-    spent: spent / base,
-    committed: committed / base,
-    unassigned: Math.max(1 - assigned / base, 0),
-    incomeMark: registeredIncome / base,
-    exceeds: assigned > registeredIncome,
+    spent: spentIn / registeredIncome,
+    committed: committedIn / registeredIncome,
+    unassigned: Math.max(1 - (spent + committed) / registeredIncome, 0),
+    exceeds: spent + committed > registeredIncome,
+  };
+}
+
+/** El hueco entre el recipiente y el tramo de más, en px. */
+export const TAIL_GAP = 3;
+/** El tramo de más nunca mide menos que esto, para que se vea que algo sale. */
+export const TAIL_MIN_WIDTH = 6;
+
+export type RadarBarTail = {
+  /** Ancho del tramo de más, en px. */
+  width: number;
+  /** Hueco entre el recipiente y el tramo, en px. */
+  gap: number;
+  /** El tramo a escala medía menos que el mínimo y se dibuja con el mínimo. */
+  atMinimum: boolean;
+  /** Cuánto se pasa, en pesos. La etiqueta lleva siempre esta cifra exacta. */
+  amount: number;
+};
+
+/**
+ * N-08 · el tramo de más, a ESCALA. Recipiente y tramo comparten el mismo
+ * "pesos por px": el ancho de la barra (menos el hueco) representa todo lo
+ * asignado. Con $35.000 sobre $1.235.000 mide unos 8px de 293.
+ *
+ * `width` es el ancho medido de la barra; con 0 (todavía sin medir) se usa el
+ * mínimo. Devuelve `null` si no hay exceso o no hay ingresos (CA-03).
+ */
+export function radarBarTail(
+  input: { registeredIncome: number; spent: number; committed: number },
+  width: number,
+): RadarBarTail | null {
+  const { registeredIncome, spent, committed } = input;
+  if (!(registeredIncome > 0)) return null;
+
+  const assigned = spent + committed;
+  const amount = assigned - registeredIncome;
+  if (!(amount > 0)) return null;
+
+  if (!(width > 0)) {
+    return { width: TAIL_MIN_WIDTH, gap: TAIL_GAP, atMinimum: true, amount };
+  }
+
+  const usable = Math.max(width - TAIL_GAP, 0);
+  const scaled = (amount / assigned) * usable;
+  const atMinimum = scaled < TAIL_MIN_WIDTH;
+
+  return {
+    // Nunca más que el espacio que hay, aunque la barra sea diminuta.
+    width: Math.min(Math.max(scaled, TAIL_MIN_WIDTH), usable),
+    gap: TAIL_GAP,
+    atMinimum,
+    amount,
   };
 }
 
