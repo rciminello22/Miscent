@@ -48,7 +48,7 @@ const zapas: CardDaysChangeItem = {
 };
 
 function planOf(items: CardDaysChangeItem[], fromMonth = '2026-11'): CardDaysPlan {
-  return { items, writes: [], fromMonth, pastMonthShifts: 0 };
+  return { items, writes: [], fromMonth };
 }
 
 describe('sheetTitle', () => {

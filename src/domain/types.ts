@@ -37,10 +37,8 @@ export type Category =
 /** §7.4 · Medio de pago. Sin saldo, sin límite (T-01). */
 export type PaymentMethodKind = 'cash' | 'debit' | 'wallet' | 'transfer' | 'other' | 'card';
 
-export type PaymentMethod = {
-  id: string;
-  kind: PaymentMethodKind;
-  name: string;
+/** Los días de una tarjeta: cierre y vencimiento, cada uno con su marca de aproximado. */
+export type CardDays = {
   /** Solo tarjetas. `null` significa "No sé" → modo aproximado (T-05). */
   closingDay: number | null;
   dueDay: number | null;
@@ -51,6 +49,25 @@ export type PaymentMethod = {
    */
   closingApprox: boolean;
   dueApprox: boolean;
+};
+
+/**
+ * Los días que tuvo una tarjeta ANTES de una corrección. Valieron hasta `until`
+ * (la fecha en que se corrigieron, sin incluirla). Los días vigentes siguen en la
+ * propia tarjeta.
+ */
+export type CardDaysVersion = CardDays & { until: IsoDate };
+
+export type PaymentMethod = CardDays & {
+  id: string;
+  kind: PaymentMethodKind;
+  name: string;
+  /**
+   * T-03 · las correcciones de días anteriores, para que corregir el cierre o el
+   * vencimiento no cambie un mes pasado. Ausente o vacío = nunca se corrigieron
+   * (o la base todavía no las guarda): todo se calcula con los días vigentes.
+   */
+  daysHistory?: readonly CardDaysVersion[];
   /**
    * P24 · la tarjeta se eliminó: desaparece de las listas y de los selectores,
    * pero sigue entrando en los cálculos de lo que ya estaba registrado con ella

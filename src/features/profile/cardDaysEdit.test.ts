@@ -153,7 +153,7 @@ describe('cardEditOf', () => {
 });
 
 describe('lo que se le dice al usuario', () => {
-  const sinNada: CardDaysPlan = { items: [], writes: [], fromMonth: null, pastMonthShifts: 0 };
+  const sinNada: CardDaysPlan = { items: [], writes: [], fromMonth: null };
   const conAlgo: CardDaysPlan = {
     items: [
       {
@@ -169,7 +169,6 @@ describe('lo que se le dice al usuario', () => {
     ],
     writes: [],
     fromMonth: '2026-11',
-    pastMonthShifts: 0,
   };
 
   it('la nota de la edición: se recalcula de este mes en adelante, y no cambia el pasado', () => {

@@ -26,7 +26,7 @@ import {
   type IsoDate,
   type Month,
 } from './calendar';
-import { hasApproxDay, isCardDateApprox, resolveCardPayment } from './cards';
+import { hasApproxDay, isCardDateApprox, resolveCardStatement } from './cards';
 import { scheduleInstallments } from './installments';
 import type { Pesos } from './money';
 import { otherSlot, resolveShares, shareOf, splitInstallmentShares, type Shares } from './split';
@@ -409,7 +409,7 @@ function expandPersonalMovement(
   if (card != null) {
     // CA-53 · una compra con tarjeta en 1 pago NO suma a Gastado del mes de
     // compra: suma a Comprometido del mes de vencimiento.
-    const schedule = resolveCardPayment(card, movement.date);
+    const { schedule, days } = resolveCardStatement(card, movement.date);
     return {
       occurrences: [
         ownOccurrence({
@@ -422,7 +422,7 @@ function expandPersonalMovement(
           paymentDate: schedule.dueDate,
           cardId: card.id,
           approximate: schedule.approximate,
-          dateApprox: isCardDateApprox(card, schedule),
+          dateApprox: isCardDateApprox(days, schedule),
           purchaseMonth,
         }),
       ],
@@ -480,7 +480,9 @@ function expandPersonalRecurrence(
 
     // F-01 · con tarjeta, cada ocurrencia entra en el resumen que corresponde.
     // Un gasto fijo siempre tiene día (la base lo exige); sin él, al cierre del mes.
-    const schedule = card != null ? resolveCardPayment(card, date ?? endOfMonth(month)) : null;
+    const statement =
+      card != null ? resolveCardStatement(card, date ?? endOfMonth(month)) : null;
+    const schedule = statement?.schedule ?? null;
 
     occurrences.push(
       ownOccurrence({
@@ -495,7 +497,8 @@ function expandPersonalRecurrence(
         paymentDate: schedule != null ? schedule.dueDate : date,
         cardId: card?.id ?? null,
         approximate: schedule?.approximate ?? false,
-        dateApprox: card != null && schedule != null && isCardDateApprox(card, schedule),
+        dateApprox:
+          statement != null && schedule != null && isCardDateApprox(statement.days, schedule),
         purchaseMonth: month,
         isRecurrence: true,
       }),
@@ -552,10 +555,11 @@ function projectSpaceOccurrence(args: {
   // vencimiento del resumen cuando se pagó con tarjeta), así que volver a
   // aplicar T-03 acá correría el mes de más. Un fijo, en cambio, cae en su día
   // del mes y SÍ hay que ubicarlo en el resumen que corresponde (F-01).
-  const schedule =
+  const statement =
     card != null && payerIsMe && occurrence.installment == null
-      ? resolveCardPayment(card, occurrence.balanceDate)
+      ? resolveCardStatement(card, occurrence.balanceDate)
       : null;
+  const schedule = statement?.schedule ?? null;
 
   let bucket: 'spent' | 'committed';
   let month: Month;
@@ -592,7 +596,11 @@ function projectSpaceOccurrence(args: {
     payerIsMe,
     cardId: payerIsMe ? (card?.id ?? null) : null,
     approximate: schedule?.approximate ?? false,
-    dateApprox: payerIsMe && card != null && paymentDate != null && hasApproxDay(card),
+    dateApprox:
+      payerIsMe &&
+      card != null &&
+      paymentDate != null &&
+      hasApproxDay(statement?.days ?? card),
     purchaseMonth: occurrence.month,
     spaceId,
     spaceName,

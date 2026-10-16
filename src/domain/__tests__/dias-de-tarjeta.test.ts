@@ -325,13 +325,12 @@ describe('compras en 1 pago', () => {
     expect(plan(facts).items).toEqual([]);
   });
 
-  it('las compras de meses pasados que cambiarían de mes se cuentan aparte: no guardan un plan, no se pueden fijar', () => {
+  it('una compra de un mes pasado no cambia de mes: la tarjeta recuerda los días de antes', () => {
     const facts = personalFacts({
       paymentMethods: [antes],
       movements: [
-        // Vencía el 2/8 y ahora vencería el 5/7: un mes que ya pasó cambia.
+        // Vencía el 2/8: con 25 y 5 vencería el 5/7, pero agosto ya pasó y se queda.
         movement({ amount: 10_000, date: '2026-06-20', paymentMethodId: visa.id }),
-        // Mismo mes antes y ahora: no cambia.
         movement({ amount: 10_000, date: '2026-07-05', paymentMethodId: visa.id }),
       ],
     });
@@ -339,20 +338,17 @@ describe('compras en 1 pago', () => {
     const result = plan(facts);
 
     expect(result.items).toEqual([]);
-    expect(result.pastMonthShifts).toBe(1);
+    expect(result.writes).toEqual([]);
   });
 
-  it('si lo que se paga este mes pasaría a un mes pasado, entra en la lista y también se cuenta', () => {
-    // Antes vencía el 2/10 (este mes); ahora cerraría el 25/8 y vencería el 5/9.
+  it('si lo que se paga este mes caería en un mes pasado con los días nuevos, no se mueve hacia atrás', () => {
+    // Antes vencía el 2/10 (este mes); con 25 y 5 cerraría el 25/8 y vencería el 5/9.
     const facts = personalFacts({
       paymentMethods: [antes],
       movements: [movement({ id: 'agosto', amount: 10_000, date: '2026-08-20', paymentMethodId: visa.id })],
     });
 
-    const result = plan(facts);
-
-    expect(result.items.map((item) => item.key)).toEqual(['movement:agosto']);
-    expect(result.pastMonthShifts).toBe(1);
+    expect(plan(facts).items).toEqual([]);
   });
 });
 

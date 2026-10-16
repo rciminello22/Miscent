@@ -12,6 +12,7 @@
 import {
   addMonths,
   compareDates,
+  compareMonths,
   dateInMonth,
   firstDateWithDayAfter,
   firstDateWithDayOnOrAfter,
@@ -19,7 +20,7 @@ import {
   type IsoDate,
   type Month,
 } from './calendar';
-import type { PaymentMethod } from './types';
+import type { CardDays, PaymentMethod } from './types';
 
 /**
  * Cuándo se paga lo comprado con una tarjeta.
@@ -65,6 +66,88 @@ export function isCashLike(method: PaymentMethod | undefined | null): boolean {
   return method == null || method.kind !== 'card';
 }
 
+/** Solo los cuatro campos de los días de una tarjeta (sin la historia ni el resto). */
+function daysOf(source: CardDays): CardDays {
+  return {
+    closingDay: source.closingDay,
+    dueDay: source.dueDay,
+    closingApprox: source.closingApprox,
+    dueApprox: source.dueApprox,
+  };
+}
+
+function sameDays(a: CardDays, b: CardDays): boolean {
+  return (
+    a.closingDay === b.closingDay &&
+    a.dueDay === b.dueDay &&
+    a.closingApprox === b.closingApprox &&
+    a.dueApprox === b.dueApprox
+  );
+}
+
+/**
+ * T-03 · T-06 · corregir los días de una tarjeta SIN reescribir el pasado.
+ *
+ * Los días de antes quedan en `daysHistory`, vigentes hasta `today`; los nuevos
+ * pasan a ser los de la tarjeta. Si el mismo día se corrige dos veces, la versión
+ * del medio duró cero días y no se guarda: queda la de antes de la primera.
+ */
+export function changeCardDays(card: PaymentMethod, next: CardDays, today: IsoDate): PaymentMethod {
+  if (sameDays(card, next)) return card;
+
+  const history = card.daysHistory ?? [];
+  const alreadyCut = history.some((version) => version.until === today);
+
+  return {
+    ...card,
+    ...daysOf(next),
+    daysHistory: alreadyCut ? history : [...history, { ...daysOf(card), until: today }],
+  };
+}
+
+/** Un resumen y los días con los que se calculó (para saber si la fecha es "~"). */
+export type CardStatement = { schedule: CardPaymentSchedule; days: CardDays };
+
+/**
+ * T-03 · T-06 · el resumen de una compra (o de la ocurrencia de un fijo) con los
+ * días que valían para ella. Los meses pasados no cambian nunca.
+ *
+ * Se recorren las versiones de los días, de la más vieja a la vigente. Cada
+ * corrección (con su fecha `until`) reemplaza el resultado SOLO si, con los días
+ * de antes y con los nuevos, el pago cae en el mes de la corrección o después:
+ *
+ *   - lo que ya se pagó en un mes anterior conserva los días de antes;
+ *   - lo que con los días nuevos caería en un mes anterior no se mueve hacia atrás;
+ *   - lo que se paga este mes o después se recalcula, sin importar si la compra
+ *     fue ayer o hace dos meses.
+ *
+ * El corte es por MES DE PAGO y no por fecha de compra: una compra de ayer cuyo
+ * resumen todavía no venció tiene que recalcularse (§22).
+ */
+export function resolveCardStatement(card: PaymentMethod, purchaseDate: IsoDate): CardStatement {
+  const history = card.daysHistory;
+  if (history == null || history.length === 0) {
+    return { schedule: scheduleWith(card, purchaseDate), days: daysOf(card) };
+  }
+
+  const versions = [...history].sort((a, b) => a.until.localeCompare(b.until));
+  let days: CardDays = daysOf(versions[0]!);
+  let schedule = scheduleWith(days, purchaseDate);
+
+  for (const [index, cut] of versions.entries()) {
+    const nextDays = daysOf(versions[index + 1] ?? card);
+    const candidate = scheduleWith(nextDays, purchaseDate);
+    const from = monthOf(cut.until);
+
+    if (compareMonths(schedule.month, from) >= 0 && compareMonths(candidate.month, from) >= 0) {
+      days = nextDays;
+      schedule = candidate;
+    }
+  }
+
+  return { schedule, days };
+}
+
 /**
  * T-03 · con cierre y vencimiento conocidos:
  *   cierre      = primera fecha con el día de cierre IGUAL O POSTERIOR a la compra
@@ -75,8 +158,15 @@ export function isCashLike(method: PaymentMethod | undefined | null): boolean {
  *   solo cierre              → vence el mes siguiente al cierre, sin día
  *   solo vencimiento         → lo comprado en M se paga en M+1, con su día
  *   ninguno de los dos       → lo comprado en M se paga en M+1, sin día
+ *
+ * Con la historia de días de la tarjeta (`resolveCardStatement`), lo pasado se
+ * calcula con los días que valían.
  */
 export function resolveCardPayment(card: PaymentMethod, purchaseDate: IsoDate): CardPaymentSchedule {
+  return resolveCardStatement(card, purchaseDate).schedule;
+}
+
+function scheduleWith(card: CardDays, purchaseDate: IsoDate): CardPaymentSchedule {
   const { closingDay, dueDay } = card;
 
   if (closingDay != null && dueDay != null) {
@@ -131,7 +221,7 @@ function lastPurchaseOfClosedStatement(card: PaymentMethod, today: IsoDate): Iso
  * T-02 · alguno de los días que la tarjeta SÍ tiene salió de un "Más o menos".
  * Un día `null` ("No sé") no cuenta: no es un día aproximado, es ningún día.
  */
-export function hasApproxDay(card: PaymentMethod): boolean {
+export function hasApproxDay(card: CardDays): boolean {
   return (
     (card.closingDay != null && card.closingApprox) || (card.dueDay != null && card.dueApprox)
   );
@@ -142,7 +232,7 @@ export function hasApproxDay(card: PaymentMethod): boolean {
  * alguno de los días que la producen salió de un "Más o menos". Con "No sé" no
  * hay fecha: se muestra el mes (T-05) y no se le pega un "~" encima.
  */
-export function isCardDateApprox(card: PaymentMethod, schedule: CardPaymentSchedule): boolean {
+export function isCardDateApprox(card: CardDays, schedule: CardPaymentSchedule): boolean {
   return schedule.dueDate != null && hasApproxDay(card);
 }
 

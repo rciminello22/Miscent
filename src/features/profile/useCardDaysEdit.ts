@@ -30,7 +30,7 @@ import {
   type CardDraft,
 } from './cardDaysEdit';
 
-const NO_CHANGES: CardDaysPlan = { items: [], writes: [], fromMonth: null, pastMonthShifts: 0 };
+const NO_CHANGES: CardDaysPlan = { items: [], writes: [], fromMonth: null };
 
 type Saved = {
   edit: CardEdit;

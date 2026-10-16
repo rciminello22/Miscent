@@ -18,6 +18,10 @@
  *                       si su resumen no venció y cambian de mes.
  *   Fijos               tampoco guardan nada: cada ocurrencia sale de la tarjeta (F-01).
  *
+ * Lo que no guarda nada respeta el pasado porque la tarjeta recuerda los días de
+ * antes (`changeCardDays`, `resolveCardStatement`): lo que ya se pagó en un mes
+ * anterior se sigue calculando con ellos, así que ningún pago pasado cambia de mes.
+ *
  * "Lo fijado a mano" (Q-04) no se distingue: no hay dónde fijarlo.
  */
 
@@ -30,7 +34,7 @@ import {
   type IsoDate,
   type Month,
 } from './calendar';
-import { hasApproxDay, isCardDateApprox, resolveCardPayment } from './cards';
+import { changeCardDays, hasApproxDay, isCardDateApprox, resolveCardStatement } from './cards';
 import { planInstallments } from './installments';
 import type {
   InstallmentPlan,
@@ -82,17 +86,12 @@ export type CardDaysPlan = {
   writes: PlanWrite[];
   /** El primer mes que se toca. */
   fromMonth: Month | null;
-  /**
-   * Pagos calculados en vivo (compras en 1 pago y fijos) que caen en un mes
-   * pasado y cambiarían de mes: no guardan un plan, así que no se pueden fijar.
-   */
-  pastMonthShifts: number;
 };
 
 /** Cuántos meses hacia adelante se miran las ocurrencias de un fijo. */
 const FIXED_LOOKAHEAD = 12;
 
-const EMPTY: CardDaysPlan = { items: [], writes: [], fromMonth: null, pastMonthShifts: 0 };
+const EMPTY: CardDaysPlan = { items: [], writes: [], fromMonth: null };
 
 function laterMonth(a: Month, b: Month): Month {
   return compareMonths(a, b) >= 0 ? a : b;
@@ -148,8 +147,8 @@ function installmentPoint(plan: InstallmentPlan, index: number, card: PaymentMet
 }
 
 function schedulePoint(card: PaymentMethod, date: IsoDate): PaymentPoint {
-  const schedule = resolveCardPayment(card, date);
-  return { month: schedule.month, date: schedule.dueDate, approx: isCardDateApprox(card, schedule) };
+  const { schedule, days } = resolveCardStatement(card, date);
+  return { month: schedule.month, date: schedule.dueDate, approx: isCardDateApprox(days, schedule) };
 }
 
 type Context = {
@@ -158,20 +157,11 @@ type Context = {
   current: Month;
   items: CardDaysChangeItem[];
   writes: PlanWrite[];
-  pastMonthShifts: number;
 };
 
 type Owner = { spaceName: string | null; otherMemberName: string | null };
 
 const PERSONAL: Owner = { spaceName: null, otherMemberName: null };
-
-/** ¿Un pago calculado en vivo cambia de mes de un lado al otro del mes actual? */
-function crossesThePast(from: PaymentPoint, to: PaymentPoint, current: Month): boolean {
-  return (
-    from.month !== to.month &&
-    (compareMonths(from.month, current) < 0 || compareMonths(to.month, current) < 0)
-  );
-}
 
 function addInstallments(
   context: Context,
@@ -220,8 +210,6 @@ function addPurchase(
   const from = schedulePoint(before, args.date);
   const to = schedulePoint(after, args.date);
 
-  if (crossesThePast(from, to, current)) context.pastMonthShifts += 1;
-
   // Solo lo que se paga este mes o después, y que cambia de mes.
   if (compareMonths(from.month, current) < 0 || from.month === to.month) return;
 
@@ -259,8 +247,6 @@ function addFixed(
     const date = dateInMonth(month, recurrence.dayOfMonth ?? 31);
     const from = schedulePoint(before, date);
     const to = schedulePoint(after, date);
-
-    if (crossesThePast(from, to, current)) context.pastMonthShifts += 1;
 
     if (shown == null && compareMonths(from.month, current) >= 0 && !samePoint(from, to)) {
       shown = { from, to };
@@ -372,9 +358,15 @@ export function planCardDaysChange(args: {
   facts: PersonalFacts;
   today: IsoDate;
 }): CardDaysPlan {
-  const { before, after, facts, today } = args;
+  const { before, facts, today } = args;
 
-  if (before.closingDay === after.closingDay && before.dueDay === after.dueDay) return EMPTY;
+  if (before.closingDay === args.after.closingDay && before.dueDay === args.after.dueDay) {
+    return EMPTY;
+  }
+
+  // La tarjeta de después recuerda los días de antes: lo pasado se calcula con
+  // ellos y nunca cambia de mes (T-03, T-06).
+  const after = changeCardDays(before, args.after, today);
 
   const cardId = before.id;
   const context: Context = {
@@ -383,7 +375,6 @@ export function planCardDaysChange(args: {
     current: monthOf(today),
     items: [],
     writes: [],
-    pastMonthShifts: 0,
   };
 
   for (const movement of facts.movements) {
@@ -417,9 +408,7 @@ export function planCardDaysChange(args: {
     if (membership.leftOn == null) addMembership(context, membership, cardId);
   }
 
-  if (context.items.length === 0 && context.writes.length === 0 && context.pastMonthShifts === 0) {
-    return EMPTY;
-  }
+  if (context.items.length === 0 && context.writes.length === 0) return EMPTY;
 
   const items = sortedByPaymentMonth(context.items);
   const fromMonth = items.reduce<Month | null>((first, item) => {
@@ -427,7 +416,7 @@ export function planCardDaysChange(args: {
     return first == null ? month : earlierMonth(first, month);
   }, null);
 
-  return { items, writes: context.writes, fromMonth, pastMonthShifts: context.pastMonthShifts };
+  return { items, writes: context.writes, fromMonth };
 }
 
 /** Deshacer: los mismos planes, al revés. */
