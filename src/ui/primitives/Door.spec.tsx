@@ -1,3 +1,4 @@
+import { Text } from 'react-native';
 import { CalendarRange } from 'lucide-react-native';
 import { fireEvent, renderWithTheme } from '@/test/render';
 import { Door } from './Door';
@@ -51,6 +52,37 @@ describe('Door', () => {
     );
     expect(view.getByTestId('door-attention')).toBeTruthy();
     expect(view.getByText('2 para revisar · 1 sin completar')).toBeTruthy();
+  });
+
+  it('N-08 · el aviso de exceso lleva borde ámbar y punto, sin rojo ni el acento de lo compartido', async () => {
+    const view = await renderWithTheme(
+      <Door
+        icon={CalendarRange}
+        title="Próximos meses"
+        attention="excess"
+        onPress={jest.fn()}
+      />,
+    );
+    const style = Object.assign({}, ...[view.getByRole('button').props.style].flat(3).filter(Boolean));
+    const dot = Object.assign(
+      {},
+      ...[view.getByTestId('door-attention').props.style].flat(3).filter(Boolean),
+    );
+
+    expect(style.borderColor).toBe('#8A5A00');
+    expect(dot.backgroundColor).toBe('#8A5A00');
+  });
+
+  it('puede llevar algo a la derecha, antes del chevron (los avatares de un espacio)', async () => {
+    const view = await renderWithTheme(
+      <Door
+        icon={CalendarRange}
+        title="Casa"
+        trailing={<Text>[avatares]</Text>}
+        onPress={jest.fn()}
+      />,
+    );
+    expect(view.getByText('[avatares]')).toBeTruthy();
   });
 
   it('el lector de pantalla lee el título y lo que dice, sin pedirle nada al ícono', async () => {

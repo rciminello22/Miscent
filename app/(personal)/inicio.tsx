@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { UserRound } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -8,48 +8,38 @@ import { useBottomPadding } from '@/ui/useBottomPadding';
 import { addMonths, monthOf } from '@domain/calendar';
 import { calculateRadar } from '@domain/radar';
 import { calculateFuture } from '@domain/future';
-import {
-  calculateUpcomingPayments,
-  upcomingForHome,
-  type UpcomingPayment,
-} from '@domain/upcoming';
-import { formatMonth } from '@/lib/format';
-import { StatementDetailSheet } from '@/features/upcoming/StatementDetailSheet';
-import { UpcomingPaymentRow } from '@/features/upcoming/UpcomingPaymentRow';
-import { canOpenPayment } from '@/features/upcoming/statementDetail';
+import { calculateUpcomingPayments, upcomingForHome } from '@domain/upcoming';
+import { formatMonth, formatPesos } from '@/lib/format';
 import { CURRENT_MONTH_PARAM, futureMonthRoute } from '@/features/future/paymentsMonth';
+import { NextMonthsDoor, UpcomingDoor } from '@/features/home/HomeDoors';
+import { nextMonthsDoorContent, upcomingDoorContent } from '@/features/home/homeDoorsCopy';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { WhereFrom, type BreakdownTarget } from '@/features/breakdown/WhereFrom';
-import { CardPurchasesThisMonth, RadarSummary } from '@/features/radar/RadarSummary';
+import { RadarSummary } from '@/features/radar/RadarSummary';
 import {
   AudienceBadge,
   EmptyState,
   ErrorState,
   IconButton,
-  Money,
-  MonthBar,
-  Pressable,
-  RadarBar,
-  RadarLegendDot,
   RadarSkeleton,
   Row,
-  RowChevron,
-  SectionHeader,
   Stack,
   Text,
-  TextLink,
 } from '@/ui/primitives';
 import { duration, stagger } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
-import { MIN_TARGET } from '@/ui/touch';
 import { SpacesOnHome } from '@/features/spaces/SpacesOnHome';
+
+/** Cuántos pagos se cuentan en "y N más": todos los de los próximos 30 días. */
+const ALL_UPCOMING = 100;
 
 /**
  * §15 · Inicio.
  *
- * Responde cuatro preguntas en un vistazo: qué pasó con mi plata este mes, qué
- * tengo comprometido, qué tengo que pagar próximamente y cómo vienen los
- * próximos meses.
+ * Responde una pregunta: qué parte de mis ingresos de este mes ya tiene
+ * destino. Es el N1 (un panel con la barra y las tres cifras) y, debajo, como
+ * mucho tres puertas: Próximos pagos, Próximos meses y Tus espacios. El detalle
+ * de cada una está en su pantalla.
  *
  * "No parece una cuenta bancaria: no hay saldo ni disponible."
  *
@@ -67,25 +57,32 @@ export default function Inicio() {
   const [refreshing, setRefreshing] = useState(false);
   // M18 · cada cifra del radar se puede abrir y ver de qué está hecha.
   const [breakdown, setBreakdown] = useState<BreakdownTarget>(null);
-  // UX-08 · el resumen estimado abierto en la hoja de detalle.
-  const [openPayment, setOpenPayment] = useState<UpcomingPayment | null>(null);
 
   const month = monthOf(today);
 
   const radar = useMemo(() => calculateRadar(expansion, month), [expansion, month]);
 
-  // §15 · P18 · los 3 primeros pagos de los próximos 30 días.
+  // §15 · P18 · los pagos de los próximos 30 días: la puerta muestra el primero.
   const upcoming = useMemo(
-    () => upcomingForHome(calculateUpcomingPayments(expansion, today, facts.paymentMethods), today),
+    () =>
+      upcomingForHome(
+        calculateUpcomingPayments(expansion, today, facts.paymentMethods),
+        today,
+        ALL_UPCOMING,
+      ),
     [expansion, today, facts.paymentMethods],
   );
+  const upcomingDoor = upcomingDoorContent(upcoming, formatPesos);
 
   // §15 · 3 meses con comprometido y una barra proporcional.
   const nextMonths = useMemo(
     () => calculateFuture(expansion, addMonths(month, 1), 3).months,
     [expansion, month],
   );
-  const maxCommitted = Math.max(...nextMonths.map((item) => item.committed), 1);
+  const nextMonthsDoor = useMemo(
+    () => nextMonthsDoorContent({ months: nextMonths, today, formatAmount: formatPesos }),
+    [nextMonths, today],
+  );
 
   const hasAnything =
     facts.movements.length > 0 || facts.recurrences.length > 0 || facts.declaredStatements.length > 0;
@@ -110,7 +107,7 @@ export default function Inicio() {
         <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={theme.colors.brand} />
       }
     >
-      <Stack gap="7">
+      <Stack gap="4">
         <Row justify="space-between" align="center">
           <Text variant="overline" tone="muted">
             {formatMonth(month, month)}
@@ -141,111 +138,45 @@ export default function Inicio() {
           />
         ) : (
           <>
-            {/* §15 · el radar del mes, extraído para poder testear su lenguaje. */}
+            {/* N1 · el radar del mes, extraído para poder testear su lenguaje. */}
             <RadarSummary radar={radar} month={month} onOpenBreakdown={setBreakdown} />
 
-            {/* §15 · "Con tarjeta este mes: $X → se paga en noviembre". */}
-            <CardPurchasesThisMonth entries={radar.cardPurchasesThisMonth} month={month} />
-
-            {/* ── §23.2 · Próximos pagos ───────────────────────────────── */}
-            {upcoming.length > 0 && (
+            {/* N2 · como mucho tres puertas. */}
+            {upcomingDoor != null && (
               <Animated.View entering={FadeInDown.delay(stagger(1, 80)).duration(duration.base)}>
-                <Stack gap="4">
-                  <SectionHeader
-                    title="Próximos pagos"
-                    action={
-                      <TextLink
-                        label="Ver todos"
-                        chevron
-                        // UX-07 · abre Futuro en el mes en curso, donde está la lista completa.
-                        onPress={() =>
-                          router.push({
-                            pathname: '/(personal)/futuro',
-                            params: { mes: CURRENT_MONTH_PARAM, n: String(Date.now()) },
-                          })
-                        }
-                      />
-                    }
-                  />
-
-                  <Stack gap="3">
-                    {upcoming.map((payment, index) => (
-                      <Animated.View
-                        key={payment.id}
-                        entering={FadeInDown.delay(stagger(index, 60)).duration(duration.base)}
-                      >
-                        {/* UX-08 · el resumen estimado se abre (§23.2, §4.10). */}
-                        <UpcomingPaymentRow
-                          payment={payment}
-                          size="body"
-                          onPress={canOpenPayment(payment) ? () => setOpenPayment(payment) : undefined}
-                        />
-                      </Animated.View>
-                    ))}
-                  </Stack>
-                </Stack>
+                <UpcomingDoor
+                  content={upcomingDoor}
+                  // UX-07 · abre Futuro en el mes en curso, donde está la lista completa.
+                  onPress={() =>
+                    router.push({
+                      pathname: '/(personal)/futuro',
+                      params: { mes: CURRENT_MONTH_PARAM, n: String(Date.now()) },
+                    })
+                  }
+                />
               </Animated.View>
             )}
 
-            {/* ── §15 · Próximos meses ─────────────────────────────────── */}
             {nextMonths.some((item) => item.committed > 0) && (
               <Animated.View entering={FadeInDown.delay(stagger(2, 80)).duration(duration.base)}>
-                <Stack gap="4">
-                  <SectionHeader
-                    title="Próximos meses"
-                    action={
-                      <TextLink
-                        label="Futuro"
-                        chevron
-                        onPress={() => router.push('/(personal)/futuro')}
-                      />
-                    }
-                  />
-
-                  {/* §15 · "tocar → Futuro": cada barra abre Futuro con SU mes elegido. */}
-                  <Stack gap="1">
-                    {nextMonths.map((item, index) => (
-                      <Pressable
-                        key={item.month}
-                        onPress={() => router.push(futureMonthRoute(item.month, Date.now()))}
-                        haptic="none"
-                        scaleOnPress={false}
-                        accessibilityRole="button"
-                        accessibilityHint="Ver este mes en Futuro"
-                        style={{ minHeight: MIN_TARGET, justifyContent: 'center' }}
-                      >
-                        <Row gap="2" align="center">
-                          <View style={{ flex: 1 }}>
-                            <MonthBar
-                              month={item.month}
-                              committed={item.committed}
-                              maxCommitted={maxCommitted}
-                              index={index}
-                            />
-                          </View>
-                          <RowChevron />
-                        </Row>
-                      </Pressable>
-                    ))}
-                  </Stack>
-
-                  <Text variant="caption" tone="muted">
-                    Comprometido de cada mes, según lo que registraste.
-                  </Text>
-                </Stack>
+                <NextMonthsDoor
+                  content={nextMonthsDoor}
+                  cardPurchases={radar.cardPurchasesThisMonth}
+                  month={month}
+                  // Con un mes en exceso abre Futuro en ese mes; si no, en el que viene.
+                  onPress={() =>
+                    router.push(futureMonthRoute(firstExcessMonth(nextMonthsDoor) ?? nextMonths[0]!.month, Date.now()))
+                  }
+                />
               </Animated.View>
             )}
 
-            {/* §15 · Tus espacios. Si no hay ninguno, el bloque no aparece. */}
-            <SpacesOnHome />
+            <Animated.View entering={FadeInDown.delay(stagger(3, 80)).duration(duration.base)}>
+              <SpacesOnHome />
+            </Animated.View>
           </>
         )}
       </Stack>
-
-      <StatementDetailSheet
-        payment={openPayment}
-        onClose={() => setOpenPayment(null)}
-      />
 
       <WhereFrom
         target={breakdown}
@@ -255,4 +186,8 @@ export default function Inicio() {
       />
     </ScrollView>
   );
+}
+
+function firstExcessMonth(content: ReturnType<typeof nextMonthsDoorContent>) {
+  return content.bars.find((bar) => bar.exceeds)?.month;
 }

@@ -24,6 +24,7 @@ export function Door({
   value,
   caption,
   attention = 'none',
+  trailing,
   onPress,
   accessibilityLabel,
   children,
@@ -33,7 +34,9 @@ export function Door({
   /** La cifra de la puerta: lo más grande del bloque. */
   value?: string | null;
   caption?: string | null;
-  attention?: 'none' | 'attention' | 'urgent';
+  attention?: 'none' | 'attention' | 'urgent' | 'excess';
+  /** Algo a la derecha, antes del chevron: los avatares de un espacio. */
+  trailing?: ReactNode;
   onPress: () => void;
   accessibilityLabel?: string;
   /** Un mini gráfico (una barra), nunca una lista. */
@@ -41,6 +44,8 @@ export function Door({
 }) {
   const theme = useTheme();
   const flagged = attention !== 'none';
+  // `excess` (N-08) es ámbar y sin alarma; el resto de la atención es el acento de lo compartido.
+  const accent = attention === 'excess' ? theme.colors.excess : theme.colors.shared;
 
   return (
     <Pressable
@@ -59,7 +64,7 @@ export function Door({
         paddingHorizontal: theme.space['4'],
         borderRadius: theme.radius.lg,
         borderWidth: flagged ? 1.5 : 1,
-        borderColor: flagged ? theme.colors.shared : theme.colors.border,
+        borderColor: flagged ? accent : theme.colors.border,
         backgroundColor: attention === 'urgent' ? theme.colors.sharedSoft : theme.colors.surface,
       }}
     >
@@ -70,10 +75,11 @@ export function Door({
           borderRadius: 11,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: flagged ? theme.colors.sharedSoft : theme.colors.surfaceSunken,
+          backgroundColor:
+            flagged && attention !== 'excess' ? theme.colors.sharedSoft : theme.colors.surfaceSunken,
         }}
       >
-        <Icon size={20} color={flagged ? theme.colors.shared : theme.colors.textSecondary} />
+        <Icon size={20} color={flagged ? accent : theme.colors.textSecondary} />
       </View>
 
       <View style={{ flex: 1, gap: 2 }}>
@@ -97,10 +103,12 @@ export function Door({
         {children}
       </View>
 
+      {trailing}
+
       {flagged && (
         <View
           testID="door-attention"
-          style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.shared }}
+          style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: accent }}
         />
       )}
       <RowChevron />
