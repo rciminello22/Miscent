@@ -23,6 +23,11 @@ describe('UX-21 · selectCards', () => {
     expect(input.map((card) => card.id)).toEqual(['visa', 'master']);
   });
 
+  it('P24 · una tarjeta eliminada no está en la lista ni en el conteo', () => {
+    const result = selectCards([{ ...visa, deleted: true }, mastercard]);
+    expect(result.map((card) => card.id)).toEqual(['master']);
+  });
+
   it('sin tarjetas, la lista está vacía', () => {
     expect(selectCards([debito])).toEqual([]);
   });

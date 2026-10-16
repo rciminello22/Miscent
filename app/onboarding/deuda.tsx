@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { addMonths, monthOf, type IsoDate } from '@domain/calendar';
-import { lastClosedStatement } from '@domain/cards';
+import { activePaymentMethods, lastClosedStatement } from '@domain/cards';
 import { alreadyInSpaces } from '@domain/duplicates';
 import { formatMonth, formatPesos } from '@/lib/format';
 import { queryKeys } from '@/data/queryClient';
@@ -58,7 +58,7 @@ export default function Deuda() {
   const feedback = useFeedback();
   const { facts } = usePersonalFacts();
 
-  const cards = facts.paymentMethods.filter((method) => method.kind === 'card');
+  const cards = activePaymentMethods(facts.paymentMethods).filter((method) => method.kind === 'card');
   const [index, setIndex] = useState(0);
   const card = cards[index];
 

@@ -5,6 +5,7 @@ import { CalendarClock, Layers, Repeat } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addMonths, monthOf, type Month } from '@domain/calendar';
+import { paymentMethodName } from '@domain/cards';
 import { activeInstallmentPlans, calculateFuture } from '@domain/future';
 import { calculateUpcomingPayments } from '@domain/upcoming';
 import { formatMonth, formatPesos } from '@/lib/format';
@@ -82,7 +83,7 @@ export default function Futuro() {
   const future = useMemo(() => calculateFuture(expansion, from, 6), [expansion, from]);
   // §23.1 · el desglose rotula el resumen estimado de cada tarjeta por su nombre.
   const cardNames = useMemo(
-    () => new Map(facts.paymentMethods.map((method) => [method.id, method.name])),
+    () => new Map(facts.paymentMethods.map((method) => [method.id, paymentMethodName(method)])),
     [facts.paymentMethods],
   );
   const hasCommitments = future.months.some((month) => month.committed > 0);

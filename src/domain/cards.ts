@@ -39,6 +39,25 @@ export function isCard(method: PaymentMethod | undefined | null): boolean {
 }
 
 /**
+ * P24 · los medios que se pueden listar y elegir: sin las tarjetas eliminadas.
+ * SOLO para listar y elegir. Los cálculos reciben todos los medios, porque lo ya
+ * registrado con una tarjeta eliminada se sigue calculando con ella.
+ *
+ * `keepId` conserva la eliminada que ya tiene lo que se está editando.
+ */
+export function activePaymentMethods(
+  methods: readonly PaymentMethod[],
+  keepId?: string | null,
+): PaymentMethod[] {
+  return methods.filter((method) => method.deleted !== true || method.id === keepId);
+}
+
+/** El nombre con que se muestra un medio: una tarjeta eliminada lo dice. */
+export function paymentMethodName(method: PaymentMethod): string {
+  return method.deleted === true ? `${method.name} (eliminada)` : method.name;
+}
+
+/**
  * G-03 · los medios "al contado" (efectivo, débito, billetera, transferencia,
  * otro) se pagan en la fecha del gasto. Solo la tarjeta diferido.
  */

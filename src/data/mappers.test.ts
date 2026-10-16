@@ -89,6 +89,7 @@ describe('toPaymentMethod · días aproximados', () => {
   it('lee las marcas cuando existen', () => {
     const method = toPaymentMethod({
       ...cardRow,
+      deleted_at: null,
       closing_day: 15,
       closing_day_approx: true,
       due_day: 2,
@@ -101,6 +102,7 @@ describe('toPaymentMethod · días aproximados', () => {
   it('un día null ("No sé") nunca queda marcado como aproximado', () => {
     const method = toPaymentMethod({
       ...cardRow,
+      deleted_at: null,
       closing_day: null,
       closing_day_approx: true,
       due_day: null,
@@ -108,6 +110,27 @@ describe('toPaymentMethod · días aproximados', () => {
     });
 
     expect(method).toMatchObject({ closingDay: null, closingApprox: false, dueApprox: false });
+  });
+});
+
+/**
+ * P24 · eliminar una tarjeta la marca (`deleted_at`). Antes de la migración la
+ * columna no existe: `undefined` es "no eliminada".
+ */
+describe('toPaymentMethod · eliminada', () => {
+  it('una fila sin la columna (el remoto sin migrar) no está eliminada', () => {
+    // @ts-expect-error — a propósito: la fila vieja no trae `deleted_at`.
+    expect(toPaymentMethod(cardRow).deleted).toBe(false);
+  });
+
+  it('deleted_at null es una tarjeta activa', () => {
+    const row = { ...cardRow, closing_day_approx: false, due_day_approx: false };
+    expect(toPaymentMethod({ ...row, deleted_at: null }).deleted).toBe(false);
+  });
+
+  it('con deleted_at, está eliminada', () => {
+    const row = { ...cardRow, closing_day_approx: false, due_day_approx: false };
+    expect(toPaymentMethod({ ...row, deleted_at: '2026-10-16T12:00:00Z' }).deleted).toBe(true);
   });
 });
 

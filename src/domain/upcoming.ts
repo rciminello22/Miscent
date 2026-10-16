@@ -14,6 +14,7 @@
  */
 
 import { compareDates, monthOf, type IsoDate, type Month } from './calendar';
+import { paymentMethodName } from './cards';
 import type { Pesos } from './money';
 import type { PersonalExpansion, PersonalOccurrence } from './occurrences';
 import type { PaymentMethod } from './types';
@@ -94,6 +95,7 @@ export function calculateUpcomingPayments(
   for (const [key, items] of statements) {
     const [cardId, month] = key.split('|') as [string, Month];
     const first = items[0]!;
+    const card = paymentMethods.find((method) => method.id === cardId);
     const amount = items.reduce((total, item) => total + item.total, 0);
     const includesOtherShare = items.reduce((total, item) => total + item.otherShare, 0);
     const otherNames = items.map((item) => item.otherMemberName).filter((name) => name != null);
@@ -101,7 +103,7 @@ export function calculateUpcomingPayments(
     payments.push({
       id: `statement:${cardId}:${month}`,
       kind: 'card-statement',
-      label: paymentMethods.find((method) => method.id === cardId)?.name ?? 'Tarjeta',
+      label: card == null ? 'Tarjeta' : paymentMethodName(card),
       cardId,
       amount,
       includesOtherShare,

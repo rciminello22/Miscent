@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CreditCard, Plus } from 'lucide-react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { isCardDateApprox, resolveCardPayment } from '@domain/cards';
+import { activePaymentMethods, isCardDateApprox, resolveCardPayment } from '@domain/cards';
 import { formatDayMonth, formatMonth } from '@/lib/format';
 import { queryKeys } from '@/data/queryClient';
 import { createPaymentMethod } from '@/data/repositories/mutations';
@@ -58,7 +58,7 @@ export default function Tarjetas() {
   const due = dayAnswerToStored(dueAnswer);
   const [adding, setAdding] = useState(standalone);
 
-  const cards = facts.paymentMethods.filter((method) => method.kind === 'card');
+  const cards = activePaymentMethods(facts.paymentMethods).filter((method) => method.kind === 'card');
   // UX-22 · la barra cuenta los pasos que de verdad se recorren: con la primera
   // tarjeta aparece el paso de Deuda y el total crece.
   const progress = onboardingProgress('tarjetas', onboardingBranches(facts, today));

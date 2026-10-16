@@ -57,6 +57,11 @@ describe('onboardingBranches · qué ramas tiene este usuario', () => {
     );
   });
 
+  it('una tarjeta eliminada no cuenta: no hay nada que declarar de ella', () => {
+    const eliminada = personalFacts({ paymentMethods: [{ ...visa, deleted: true }] });
+    expect(onboardingBranches(eliminada, today).hasCards).toBe(false);
+  });
+
   it('hasPaidByMe: gastos de un espacio que pagó él y quedaron sin medio', () => {
     const withExpense = membership({
       facts: spaceFacts({

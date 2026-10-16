@@ -39,6 +39,16 @@ describe('§17 campo 7 · efectivo, débito, billetera, transferencia o una tarj
     });
   });
 
+  it('una tarjeta eliminada no se ofrece', () => {
+    const keys = paymentOptions([{ ...visa, deleted: true }, master]).map((option) => option.key);
+    expect(keys).toEqual(['new:cash', 'new:debit', 'new:wallet', 'new:transfer', 'master']);
+  });
+
+  it('salvo la que ya tenía lo que se edita: se ve elegida y dice que está eliminada', () => {
+    const options = paymentOptions([{ ...visa, deleted: true }, master], 'visa');
+    expect(options.at(-2)).toEqual({ key: 'visa', kind: 'card', name: 'Visa (eliminada)', methodId: 'visa' });
+  });
+
   it('"otro" y los repetidos no se pierden: van antes de las tarjetas', () => {
     const none = { closingDay: null, dueDay: null, ...NO_APPROX };
     const otro: PaymentMethod = { id: 'otro', kind: 'other', name: 'Vale', ...none };

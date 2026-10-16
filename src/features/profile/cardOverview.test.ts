@@ -333,7 +333,7 @@ describe('deleteConfirmation', () => {
   it('dice qué pasa con lo pasado, con el nombre de la tarjeta', () => {
     expect(deleteConfirmation('Visa Galicia')).toEqual({
       title: '¿Eliminar Visa Galicia?',
-      message: 'Sus compras pasadas quedan en Movimientos, sin tarjeta. Tus meses pasados no cambian.',
+      message: 'Sus compras pasadas quedan en Movimientos. Tus meses pasados no cambian.',
     });
   });
 });

@@ -25,7 +25,7 @@ export function PaymentMethodField({
   onChange: (next: string | null) => void;
 }) {
   const create = useCreatePaymentMethod();
-  const options = useMemo(() => paymentOptions(methods), [methods]);
+  const options = useMemo(() => paymentOptions(methods, value), [methods, value]);
 
   async function choose(option: PaymentOption) {
     if (create.isPending) return;

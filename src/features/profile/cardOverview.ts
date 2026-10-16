@@ -242,6 +242,6 @@ export function deleteConfirmation(name: string): { title: string; message: stri
   return {
     title: `¿Eliminar ${name}?`,
     message:
-      'Sus compras pasadas quedan en Movimientos, sin tarjeta. Tus meses pasados no cambian.',
+      'Sus compras pasadas quedan en Movimientos. Tus meses pasados no cambian.',
   };
 }

@@ -5,7 +5,7 @@ import { goBack } from '@/features/shared/navigation';
 import { User, Users, X } from 'lucide-react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { addMonths, dayOf, monthOf } from '@domain/calendar';
-import { resolveCardPayment } from '@domain/cards';
+import { activePaymentMethods, resolveCardPayment } from '@domain/cards';
 import { planInstallments } from '@domain/installments';
 import { resolveShares } from '@domain/split';
 import type { Category, Split } from '@domain/types';
@@ -95,7 +95,11 @@ export default function AgregarCompartido() {
   const [split, setSplit] = useState<Split>({ mode: 'even' });
   // §17 campo 7 · "Medio de pago: Último usado" (ver app/agregar.tsx).
   const lastUsedMethodId = useMemo(
-    () => lastUsedPaymentMethodId(personalFacts.movements, personalFacts.paymentMethods),
+    () =>
+      lastUsedPaymentMethodId(
+        personalFacts.movements,
+        activePaymentMethods(personalFacts.paymentMethods),
+      ),
     [personalFacts.movements, personalFacts.paymentMethods],
   );
   const [paymentMethodId, setPaymentMethodIdState] = useState<string | null>(lastUsedMethodId);

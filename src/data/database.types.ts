@@ -259,13 +259,15 @@ export type Database = {
         ]
       }
       payment_methods: {
-        // MANUAL (migración 0019, todavía sin aplicar): `closing_day_approx` y
-        // `due_day_approx`. Regenerar con `npm run db:types` después del push.
+        // MANUAL (migración 0019, todavía sin aplicar): `closing_day_approx`,
+        // `due_day_approx` y `deleted_at`. Regenerar con `npm run db:types`
+        // después del push.
         Row: {
           archived: boolean
           closing_day: number | null
           closing_day_approx: boolean
           created_at: string
+          deleted_at: string | null
           due_day: number | null
           due_day_approx: boolean
           id: string
@@ -278,6 +280,7 @@ export type Database = {
           closing_day?: number | null
           closing_day_approx?: boolean
           created_at?: string
+          deleted_at?: string | null
           due_day?: number | null
           due_day_approx?: boolean
           id?: string
@@ -290,6 +293,7 @@ export type Database = {
           closing_day?: number | null
           closing_day_approx?: boolean
           created_at?: string
+          deleted_at?: string | null
           due_day?: number | null
           due_day_approx?: boolean
           id?: string

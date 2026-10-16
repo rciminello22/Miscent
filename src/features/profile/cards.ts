@@ -1,3 +1,4 @@
+import { activePaymentMethods } from '@domain/cards';
 import type { PaymentMethod } from '@domain/types';
 
 /**
@@ -5,7 +6,7 @@ import type { PaymentMethod } from '@domain/types';
  * número de la fila de Perfil salen de esta misma función.
  */
 export function selectCards(methods: readonly PaymentMethod[]): PaymentMethod[] {
-  return methods
+  return activePaymentMethods(methods)
     .filter((method) => method.kind === 'card')
     .sort((a, b) => a.name.localeCompare(b.name, 'es') || (a.id < b.id ? -1 : 1));
 }

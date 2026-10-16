@@ -6,7 +6,7 @@ import { User, Users, X } from 'lucide-react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { addMonths, dayOf, monthOf } from '@domain/calendar';
 import { planInstallments } from '@domain/installments';
-import { resolveCardPayment } from '@domain/cards';
+import { activePaymentMethods, resolveCardPayment } from '@domain/cards';
 import { resolveShares } from '@domain/split';
 import type { Category, Split } from '@domain/types';
 import { formatMonth, formatPesos } from '@/lib/format';
@@ -108,7 +108,7 @@ export default function Agregar() {
   // después de abrir el formulario: se propone cuando cargan, salvo que el
   // usuario ya haya elegido otro.
   const lastUsedMethodId = useMemo(
-    () => lastUsedPaymentMethodId(facts.movements, facts.paymentMethods),
+    () => lastUsedPaymentMethodId(facts.movements, activePaymentMethods(facts.paymentMethods)),
     [facts.movements, facts.paymentMethods],
   );
   const [paymentMethodId, setPaymentMethodIdState] = useState<string | null>(lastUsedMethodId);

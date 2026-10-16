@@ -55,6 +55,8 @@ export function toPaymentMethod(row: Row<'payment_methods'>): PaymentMethod {
     // aproximado.
     closingApprox: row.closing_day != null && (row.closing_day_approx ?? false),
     dueApprox: row.due_day != null && (row.due_day_approx ?? false),
+    // Migración 0019 (P24). Sin la columna llega `undefined`: no eliminada.
+    deleted: row.deleted_at != null,
   };
 }
 

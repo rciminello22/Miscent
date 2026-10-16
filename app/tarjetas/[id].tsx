@@ -3,6 +3,7 @@ import { ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { monthOf } from '@domain/calendar';
+import { activePaymentMethods } from '@domain/cards';
 import { calculateUpcomingPayments } from '@domain/upcoming';
 import { formatPesos } from '@/lib/format';
 import { queryKeys } from '@/data/queryClient';
@@ -49,7 +50,10 @@ export default function TarjetaDetalle() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { facts, expansion, today } = usePersonalFacts();
 
-  const card = facts.paymentMethods.find((method) => method.id === id && method.kind === 'card');
+  // P24 · una tarjeta eliminada se trata como si no estuviera: vuelve a la lista.
+  const card = activePaymentMethods(facts.paymentMethods).find(
+    (method) => method.id === id && method.kind === 'card',
+  );
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');

@@ -51,6 +51,12 @@ export type PaymentMethod = {
    */
   closingApprox: boolean;
   dueApprox: boolean;
+  /**
+   * P24 · la tarjeta se eliminó: desaparece de las listas y de los selectores,
+   * pero sigue entrando en los cálculos de lo que ya estaba registrado con ella
+   * (si no, los meses pasados se reescribirían). Ausente = activa.
+   */
+  deleted?: boolean;
 };
 
 /** T-07 · Resumen pendiente declarado al activar la cuenta personal. */

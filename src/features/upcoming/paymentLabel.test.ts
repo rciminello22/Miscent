@@ -13,6 +13,12 @@ describe('paymentLabel', () => {
     );
   });
 
+  it('el nombre de una tarjeta eliminada conserva su marca', () => {
+    expect(paymentLabel({ label: 'Visa Galicia (eliminada)', isEstimate: true })).toBe(
+      'Visa Galicia (eliminada) · resumen estimado',
+    );
+  });
+
   it('un fijo o una cuota se llaman como son', () => {
     expect(paymentLabel({ label: 'Alquiler', isEstimate: false })).toBe('Alquiler');
   });

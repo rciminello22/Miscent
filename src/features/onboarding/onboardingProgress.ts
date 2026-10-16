@@ -8,6 +8,7 @@
  */
 
 import type { IsoDate } from '@domain/calendar';
+import { activePaymentMethods } from '@domain/cards';
 import { paidByMeWithoutMethod } from '@domain/paidByMe';
 import type { PersonalFacts } from '@domain/types';
 
@@ -19,7 +20,7 @@ export function onboardingBranches(
   today: IsoDate,
 ): { hasCards: boolean; hasPaidByMe: boolean } {
   return {
-    hasCards: facts.paymentMethods.some((method) => method.kind === 'card'),
+    hasCards: activePaymentMethods(facts.paymentMethods).some((method) => method.kind === 'card'),
     // §11 paso 4: lo que pagó él mismo como invitado también se pregunta.
     hasPaidByMe: facts.spaces.some(
       (membership) => paidByMeWithoutMethod(membership, today, { includeOwn: true }).length > 0,

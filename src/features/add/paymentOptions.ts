@@ -1,3 +1,4 @@
+import { activePaymentMethods, paymentMethodName } from '@domain/cards';
 import type { PaymentMethod, PaymentMethodKind } from '@domain/types';
 
 /**
@@ -29,11 +30,20 @@ export type PaymentOption = {
   methodId: string | null;
 };
 
-export function paymentOptions(methods: readonly PaymentMethod[]): PaymentOption[] {
+/**
+ * P24 · las tarjetas eliminadas no se ofrecen. `keepId` es el medio que ya tiene
+ * lo que se edita: si está eliminado se queda, con su "(eliminada)", para que la
+ * edición no lo pierda sin querer.
+ */
+export function paymentOptions(
+  allMethods: readonly PaymentMethod[],
+  keepId?: string | null,
+): PaymentOption[] {
+  const methods = activePaymentMethods(allMethods, keepId);
   const used = new Set<string>();
   const existing = (method: PaymentMethod): PaymentOption => {
     used.add(method.id);
-    return { key: method.id, kind: method.kind, name: method.name, methodId: method.id };
+    return { key: method.id, kind: method.kind, name: paymentMethodName(method), methodId: method.id };
   };
 
   const cashLike = CASH_LIKE.map(({ kind, name }) => {
