@@ -142,8 +142,8 @@ describe('UX-08 · UpcomingPaymentRow tocable', () => {
     await fireEvent.press(button);
 
     expect(onPress).toHaveBeenCalledTimes(1);
-    // El texto de la fila no cambia: el rótulo de estimado sigue ahí.
-    expect(view.getByText('Estimado según lo que registraste')).toBeTruthy();
+    // El texto de la fila no cambia: el rótulo corto de estimado sigue ahí.
+    expect(view.getByText('Visa Galicia · resumen estimado')).toBeTruthy();
   });
 
   it('sin onPress es informativa: no es un botón', async () => {

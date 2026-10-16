@@ -50,7 +50,7 @@ function cardStatementPayment(args: { today: string; purchaseDate: string }) {
 }
 
 describe('§23.2 · UpcomingPaymentRow', () => {
-  it('N-10 / CA-35 · todo resumen de tarjeta se rotula "Estimado según lo que registraste"', async () => {
+  it('N-10 / CA-35 · todo resumen de tarjeta se rotula "resumen estimado" en su fila; la frase completa va una vez por bloque', async () => {
     // Caso B de §29.1: compra del 20/10 con Visa (cierre 25, vence 5).
     const payment = cardStatementPayment({ today: '2026-10-21', purchaseDate: '2026-10-20' });
 
@@ -59,7 +59,9 @@ describe('§23.2 · UpcomingPaymentRow', () => {
 
     const view = await renderWithTheme(<UpcomingPaymentRow payment={payment} />);
 
-    expect(view.getByText('Estimado según lo que registraste')).toBeTruthy();
+    expect(view.getByText('Visa Galicia · resumen estimado')).toBeTruthy();
+    // La frase completa no se repite en cada fila: va al pie de la lista (futureView).
+    expect(view.queryByText('Estimado según lo que registraste')).toBeNull();
     expect(view.getByText('5 nov')).toBeTruthy();
     expect(view.getByText('$120.000')).toBeTruthy();
   });

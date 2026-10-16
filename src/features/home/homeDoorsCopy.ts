@@ -3,6 +3,7 @@ import type { FutureMonth } from '@domain/future';
 import type { Pesos } from '@domain/money';
 import type { UpcomingPayment } from '@domain/upcoming';
 import { formatMonth, formatPaymentWhen } from '@/lib/format';
+import { paymentLabel } from '@/features/upcoming/paymentLabel';
 
 /**
  * §15 · lo que dicen las puertas (N2) de Inicio. TS puro: cada frase sale de
@@ -12,8 +13,6 @@ import { formatMonth, formatPaymentWhen } from '@/lib/format';
 /* ── Próximos pagos ───────────────────────────────────────────────────────── */
 
 export type UpcomingDoorContent = { line: string; more: string | null };
-
-const ESTIMATED_STATEMENT = 'resumen estimado';
 
 /**
  * El primer pago, en una línea, y "y N más" por los que no se ven. N-10 · un
@@ -28,9 +27,11 @@ export function upcomingDoorContent(
   const [first] = payments;
   if (first == null) return null;
 
-  const parts = [formatPaymentWhen({ date: first.date, month: first.month }), first.label];
-  if (first.isEstimate && !/resumen/i.test(first.label)) parts.push(ESTIMATED_STATEMENT);
-  parts.push(formatAmount(first.amount));
+  const parts = [
+    formatPaymentWhen({ date: first.date, month: first.month }),
+    paymentLabel(first),
+    formatAmount(first.amount),
+  ];
 
   const hidden = payments.length - 1;
   return { line: parts.join(' · '), more: hidden > 0 ? `y ${hidden} más` : null };

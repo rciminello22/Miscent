@@ -4,6 +4,7 @@ import type { UpcomingPayment } from '@domain/upcoming';
 import { formatPaymentWhen } from '@/lib/format';
 import { Money, Pressable, Row, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
+import { paymentLabel } from './paymentLabel';
 import { ESTIMATE_NOTE } from './statementDetail';
 
 /**
@@ -12,9 +13,11 @@ import { ESTIMATE_NOTE } from './statementDetail';
  * Extraída de la pantalla porque concentra tres textos que la spec declara
  * obligatorios, y los tres son fáciles de olvidar:
  *
- *   N-10 / CA-35 · "Estimado según lo que registraste" en TODO resumen de
- *                   tarjeta. No es una aclaración opcional: el resumen real
- *                   del banco va a diferir, y la app no promete conciliar
+ *   N-10 / CA-35 · todo resumen de tarjeta va rotulado como estimado: "resumen
+ *                   estimado" en cada fila (como el ejemplo de §15) y la frase
+ *                   "Estimado según lo que registraste" una vez por bloque. No
+ *                   es opcional: el resumen real del banco va a diferir, y la
+ *                   app no promete conciliar
  *   §7.3        · "incluye $X de Martina" cuando el pago lleva la parte de
  *                   otro miembro. Sin eso, el usuario leería el total como si
  *                   fuera todo suyo y las dos lentes se mezclarían
@@ -56,14 +59,8 @@ export function UpcomingPaymentRow({
       </Text>
 
       <View style={{ flex: 1, gap: 2 }}>
-        <Text variant={body ? 'bodyMedium' : 'smallMedium'}>{payment.label}</Text>
-
-        {/* N-10 / CA-35 */}
-        {payment.isEstimate && (
-          <Text variant="caption" tone="muted">
-            {UPCOMING_COPY.estimate}
-          </Text>
-        )}
+        {/* N-10 / CA-35 · el rótulo corto en CADA resumen; la frase completa, una vez por bloque. */}
+        <Text variant={body ? 'bodyMedium' : 'smallMedium'}>{paymentLabel(payment)}</Text>
 
         {/* §7.3 · la parte del otro, siempre aclarada. */}
         {payment.includesOtherShare > 0 && payment.otherMemberName != null && (
