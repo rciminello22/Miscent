@@ -16,6 +16,7 @@ export * from './money';
 export * from './types';
 export * from './split';
 export * from './cards';
+export * from './cardDays';
 export * from './installments';
 export * from './occurrences';
 export * from './radar';
