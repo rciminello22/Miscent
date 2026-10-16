@@ -10,6 +10,8 @@ export { Screen, Stack, Row, Spacer, Card, SectionHeader, Divider } from './layo
 export { RadarBar, RadarLegend, RadarLegendDot, type RadarBarProps } from './RadarBar';
 export { MonthBar, ContributionBar, type MonthBarProps } from './MonthBar';
 export { AudienceBadge, AudienceIcon, audienceLabel, type Audience } from './Audience';
+export { Avatar } from './Avatar';
+export { BalanceScale, type BalanceScaleProps } from './BalanceScale';
 export { Skeleton, RadarSkeleton, EmptyState, ErrorState } from './states';
 export { Sheet } from './Sheet';
 export { ToastProvider, useToast, type ToastInput } from './Toast';

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { ClipboardCheck, Plus } from 'lucide-react-native';
@@ -9,6 +10,7 @@ import { useSpace } from './useSpaces';
 import { useOpenSpace } from './useOpenSpace';
 import { useSpacePendings } from './useSpacePendings';
 import { balanceSentence } from './balanceCopy';
+import { SpaceBalanceScale } from './SpaceBalanceScale';
 import { pendingPill } from './spaceListCopy';
 
 /**
@@ -85,6 +87,17 @@ function SpaceCardContainer({ space }: { space: SpaceSummary }) {
   return (
     <SpaceCard
       name={space.name}
+      scale={
+        derived == null ? null : (
+          <SpaceBalanceScale
+            size="mini"
+            spaceId={space.id}
+            balance={derived.balance}
+            myName={derived.me.displayName}
+            other={derived.other}
+          />
+        )
+      }
       loading={isLoading}
       sentence={derived == null ? null : balanceSentence(derived.balance)}
       settled={derived?.balance.settled ?? false}
@@ -101,6 +114,7 @@ function SpaceCardContainer({ space }: { space: SpaceSummary }) {
  */
 export function SpaceCard({
   name,
+  scale,
   sentence,
   settled,
   pill,
@@ -109,6 +123,8 @@ export function SpaceCard({
   onPress,
 }: {
   name: string;
+  /** La balanza mini con las dos personas (`SpaceBalanceScale`); null mientras carga. */
+  scale: ReactNode;
   /** La frase del saldo (`balanceSentence`); null mientras carga. */
   sentence: string | null;
   settled: boolean;
@@ -153,6 +169,9 @@ export function SpaceCard({
               </View>
             )}
           </Row>
+
+          {/* La balanza dice el saldo con una forma; abajo, la frase que dice lo mismo. */}
+          {scale ?? <Skeleton height={64} />}
 
           <Row justify="space-between" align="center" gap="3">
             <View style={{ flex: 1, gap: 2 }}>
