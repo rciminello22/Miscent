@@ -259,8 +259,6 @@ export type Database = {
         ]
       }
       payment_method_days: {
-        // MANUAL (migración 0020, todavía sin aplicar): la tabla entera. Regenerar
-        // con `npm run db:types` después del push.
         Row: {
           closing_day: number | null
           closing_day_approx: boolean
@@ -302,9 +300,6 @@ export type Database = {
         ]
       }
       payment_methods: {
-        // MANUAL (migración 0019, todavía sin aplicar): `closing_day_approx`,
-        // `due_day_approx` y `deleted_at`. Regenerar con `npm run db:types`
-        // después del push.
         Row: {
           archived: boolean
           closing_day: number | null
@@ -500,9 +495,6 @@ export type Database = {
         ]
       }
       recurrences: {
-        // MANUAL (migración 0019, todavía sin aplicar): `day_approx` y
-        // `day_of_month` ahora admite null (solo un ingreso personal "No sé").
-        // Regenerar con `npm run db:types` después del push.
         Row: {
           amount: number
           category: Database["public"]["Enums"]["category"]
