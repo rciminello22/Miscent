@@ -4,6 +4,7 @@ import type { Month } from '@domain/calendar';
 import type { Radar } from '@domain/radar';
 import { formatMonth } from '@/lib/format';
 import {
+  Card,
   Money,
   RadarBar,
   RadarLegendDot,
@@ -14,9 +15,15 @@ import {
   Pressable,
 } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
+import { useTheme } from '@/ui/theme';
 
 /**
- * §15 · el bloque del radar del mes.
+ * §15 · el N1 de Inicio: el bloque del radar del mes.
+ *
+ * Un panel grande teñido con la respuesta —"Tus ingresos de octubre" y lo
+ * registrado—, su forma visual —la barra de hoy— y la leyenda con las tres
+ * cifras, cada una tocable (M18). La única ayuda es la de Sin asignar (CA-01),
+ * una sola vez.
  *
  * Está extraído de la pantalla por una razón concreta: es el lugar donde más
  * importa el lenguaje exacto, y así se puede renderizar en un test sin montar
@@ -30,25 +37,22 @@ import { duration } from '@/ui/motion';
 
 /** §33 · el microcopy del radar, literal. */
 export const RADAR_COPY = {
-  spent: {
-    label: 'Gastado',
-    help: 'lo que registraste como pagado en el día a día',
-  },
-  committed: {
-    label: 'Comprometido',
-    help: 'fijos, cuotas y tarjetas de este mes',
-  },
-  unassigned: {
-    label: 'Sin asignar',
-    /** CA-01 · este texto va SIEMPRE con la cifra. */
-    help: 'todavía sin destino, según lo que registraste',
-  },
+  spent: 'Gastado',
+  committed: 'Comprometido',
+  unassigned: 'Sin asignar',
+  /**
+   * CA-01 · la ayuda de Sin asignar va SIEMPRE con la cifra, y una sola vez
+   * (las de Gastado y Comprometido no son obligatorias y se quitaron).
+   */
+  unassignedHelp: 'Sin asignar: todavía sin destino, según lo que registraste.',
   /** CA-03 · sin ingresos registrados, no se calcula. */
   noIncome: 'Registrá tu ingreso para ver qué parte ya tiene destino.',
   /** N-08 / CA-02 · la frase del caso negativo, sin alarma. */
   exceeds: 'Tus gastos y compromisos superan tus ingresos registrados por',
   registered: 'registrados',
 } as const;
+
+type Figure = 'spent' | 'committed' | 'unassigned';
 
 export function RadarSummary({
   radar,
@@ -58,46 +62,36 @@ export function RadarSummary({
   radar: Radar;
   month: Month;
   /** M18 · cada cifra se puede abrir y ver de qué está hecha. */
-  onOpenBreakdown?: (target: 'spent' | 'committed' | 'unassigned') => void;
+  onOpenBreakdown?: (target: Figure) => void;
 }) {
-  const opener = (target: 'spent' | 'committed' | 'unassigned') =>
+  const theme = useTheme();
+  const opener = (target: Figure) =>
     onOpenBreakdown != null ? () => onOpenBreakdown(target) : undefined;
 
   return (
     <Animated.View entering={FadeInDown.duration(duration.deliberate)}>
-      <Stack gap="5">
-        <Stack gap="1">
-          <Text variant="small" tone="secondary">
-            Tus ingresos de {formatMonth(month, month)}
-          </Text>
-          <Row gap="2" align="baseline">
-            <Money amount={radar.registeredIncome} variant="display" animate />
-            <Text variant="small" tone="muted">
-              {RADAR_COPY.registered}
+      <Card
+        tone="brand"
+        style={{ borderRadius: theme.radius.xl, padding: theme.space['5'] }}
+      >
+        <Stack gap="4">
+          <Stack gap="1">
+            <Text variant="small" tone="secondary">
+              Tus ingresos de {formatMonth(month, month)}
             </Text>
-          </Row>
-        </Stack>
+            <Row gap="2" align="baseline">
+              <Money amount={radar.registeredIncome} variant="display" animate />
+              <Text variant="small" tone="secondary">
+                {RADAR_COPY.registered}
+              </Text>
+            </Row>
+          </Stack>
 
-        <RadarBar
-          registeredIncome={radar.registeredIncome}
-          spent={radar.spent}
-          committed={radar.committed}
-        />
-
-        <Stack gap="3">
-          <RadarRow
-            dot="spent"
-            label={RADAR_COPY.spent.label}
-            help={RADAR_COPY.spent.help}
-            amount={radar.spent}
-            onPress={opener('spent')}
-          />
-          <RadarRow
-            dot="committed"
-            label={RADAR_COPY.committed.label}
-            help={RADAR_COPY.committed.help}
-            amount={radar.committed}
-            onPress={opener('committed')}
+          <RadarBar
+            registeredIncome={radar.registeredIncome}
+            spent={radar.spent}
+            committed={radar.committed}
+            separatorColor={theme.colors.brandSoft}
           />
 
           {/*
@@ -111,6 +105,29 @@ export function RadarSummary({
                                        cuando lo que pasa es lo contrario
             normal                   → CA-01, la cifra con su ayuda
           */}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 14, rowGap: 6 }}>
+            <LegendItem
+              dot="spent"
+              label={RADAR_COPY.spent}
+              amount={radar.spent}
+              onPress={opener('spent')}
+            />
+            <LegendItem
+              dot="committed"
+              label={RADAR_COPY.committed}
+              amount={radar.committed}
+              onPress={opener('committed')}
+            />
+            {radar.unassigned != null && !radar.exceedsIncome && (
+              <LegendItem
+                dot="unassigned"
+                label={RADAR_COPY.unassigned}
+                amount={radar.unassigned}
+                onPress={opener('unassigned')}
+              />
+            )}
+          </View>
+
           {radar.unassigned == null ? (
             <Text variant="small" tone="secondary">
               {RADAR_COPY.noIncome}
@@ -127,60 +144,39 @@ export function RadarSummary({
               .
             </Text>
           ) : (
-            <RadarRow
-              dot="unassigned"
-              label={RADAR_COPY.unassigned.label}
-              help={RADAR_COPY.unassigned.help}
-              amount={radar.unassigned}
-              onPress={opener('unassigned')}
-            />
+            <Text variant="caption" tone="secondary">
+              {RADAR_COPY.unassignedHelp}
+            </Text>
           )}
         </Stack>
-      </Stack>
+      </Card>
     </Animated.View>
   );
 }
 
-function RadarRow({
+function LegendItem({
   dot,
   label,
-  help,
   amount,
   onPress,
 }: {
-  dot: 'spent' | 'committed' | 'unassigned';
+  dot: Figure;
   label: string;
-  help: string;
   amount: number;
-  /** Sin esto la fila es informativa: ni rol de botón ni chevron (UX-11). */
+  /** Sin esto el ítem es informativo: ni rol de botón ni chevron (UX-11). */
   onPress?: () => void;
 }) {
-  const row = (
-    <Row gap="3" align="flex-start">
-      <View style={{ marginTop: 6 }}>
-        <RadarLegendDot color={dot} />
-      </View>
-
-      <View style={{ flex: 1, gap: 1 }}>
-        <Row justify="space-between" align="baseline">
-          <Text variant="bodyMedium">{label}</Text>
-          <Money amount={amount} variant="bodyMedium" animate sign="never" />
-        </Row>
-        <Text variant="caption" tone="muted">
-          {help}
-        </Text>
-      </View>
-
+  const item = (
+    <Row gap="2" align="center">
+      <RadarLegendDot color={dot} />
+      <Text variant="small">{label}</Text>
+      <Money amount={amount} variant="smallMedium" sign="never" />
       {/* UX-11 · M18 · el chevron avisa que la cifra se abre: es la defensa de D1. */}
-      {onPress != null && (
-        <View style={{ marginTop: 3 }}>
-          <RowChevron />
-        </View>
-      )}
+      {onPress != null && <RowChevron size={14} />}
     </Row>
   );
 
-  if (onPress == null) return row;
+  if (onPress == null) return item;
 
   return (
     <Pressable
@@ -190,8 +186,9 @@ function RadarRow({
       accessibilityRole="button"
       accessibilityHint="Ver de dónde sale esta cifra"
       accessibilityLabel={label}
+      style={{ minHeight: 32, justifyContent: 'center' }}
     >
-      {row}
+      {item}
     </Pressable>
   );
 }

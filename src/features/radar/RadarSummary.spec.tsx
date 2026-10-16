@@ -129,7 +129,44 @@ describe('§15 · RadarSummary', () => {
 
     expect(view.getByText('Sin asignar')).toBeTruthy();
     expect(view.getByText('$400.000')).toBeTruthy();
-    expect(view.getByText('todavía sin destino, según lo que registraste')).toBeTruthy();
+    expect(
+      view.getByText('Sin asignar: todavía sin destino, según lo que registraste.'),
+    ).toBeTruthy();
+  });
+
+  it('CA-01 · la ayuda de Sin asignar va UNA sola vez, bajo la leyenda', async () => {
+    const radar = radarFor({ income: 1_200_000, spentCash: 250_000, fixed: 550_000 });
+    const view = await renderWithTheme(<RadarSummary radar={radar} month={MONTH} />);
+
+    expect(view.getAllByText(/todavía sin destino/)).toHaveLength(1);
+  });
+
+  it('las ayudas de Gastado y Comprometido no se repiten: lo único obligatorio es la de Sin asignar', async () => {
+    const radar = radarFor({ income: 1_200_000, spentCash: 250_000, fixed: 550_000 });
+    const view = await renderWithTheme(<RadarSummary radar={radar} month={MONTH} />);
+
+    expect(view.queryByText('lo que registraste como pagado en el día a día')).toBeNull();
+    expect(view.queryByText('fijos, cuotas y tarjetas de este mes')).toBeNull();
+  });
+
+  it('la leyenda trae las tres cifras: Gastado, Comprometido y Sin asignar', async () => {
+    const radar = radarFor({ income: 1_200_000, spentCash: 250_000, fixed: 550_000 });
+    const view = await renderWithTheme(<RadarSummary radar={radar} month={MONTH} />);
+
+    expect(view.getByText('Gastado')).toBeTruthy();
+    expect(view.getByText('$250.000')).toBeTruthy();
+    expect(view.getByText('Comprometido')).toBeTruthy();
+    expect(view.getByText('$550.000')).toBeTruthy();
+    expect(view.getByText('Sin asignar')).toBeTruthy();
+    expect(view.getByText('$400.000')).toBeTruthy();
+  });
+
+  it('el "con destino" descartado no aparece: la cifra grande son los ingresos registrados', async () => {
+    const radar = radarFor({ income: 1_200_000, spentCash: 250_000, fixed: 550_000 });
+    const view = await renderWithTheme(<RadarSummary radar={radar} month={MONTH} />);
+
+    expect(view.queryByText(/con destino/i)).toBeNull();
+    expect(view.getByText('$1.200.000')).toBeTruthy();
   });
 
   it('CA-00 · no aparece ninguno de los términos prohibidos', async () => {
@@ -147,17 +184,6 @@ describe('§15 · RadarSummary', () => {
     ]) {
       expect(view.queryByText(forbidden)).toBeNull();
     }
-  });
-
-  it('§33 · las tres cifras llevan su etiqueta y su ayuda', async () => {
-    const radar = radarFor({ income: 1_200_000, spentCash: 250_000, fixed: 550_000 });
-    const view = await renderWithTheme(<RadarSummary radar={radar} month={MONTH} />);
-
-    expect(view.getByText('Gastado')).toBeTruthy();
-    expect(view.getByText('lo que registraste como pagado en el día a día')).toBeTruthy();
-
-    expect(view.getByText('Comprometido')).toBeTruthy();
-    expect(view.getByText('fijos, cuotas y tarjetas de este mes')).toBeTruthy();
   });
 
   it('§15 · el total se rotula "registrados", no como plata que se tiene', async () => {
