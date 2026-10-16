@@ -21,20 +21,31 @@ import { Text } from './Text';
  * Uno a la vez: el nuevo reemplaza al anterior, nunca se apilan.
  */
 
+export type ToastAction = { label: string; onPress: () => void };
+
 export type ToastInput = {
   title: string;
   detail?: string | null;
   tone?: 'default' | 'error';
-  action?: { label: string; onPress: () => void };
+  /** Una acción (atajo de `actions`). */
+  action?: ToastAction;
+  /** Varias, de izquierda a derecha: "Ver en Futuro" y "Deshacer". */
+  actions?: readonly ToastAction[];
 };
 
 type ToastContextValue = { show: (input: ToastInput) => void };
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
+/** Las acciones del aviso, sea que vengan sueltas o en lista. */
+function actionsOf(input: ToastInput): readonly ToastAction[] {
+  if (input.actions != null) return input.actions;
+  return input.action != null ? [input.action] : [];
+}
+
 /** Con una acción hay que dar tiempo a leer y decidir. */
 function durationOf(input: ToastInput): number {
-  return input.action != null || input.tone === 'error' ? 6_000 : 4_000;
+  return actionsOf(input).length > 0 || input.tone === 'error' ? 6_000 : 4_000;
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -137,24 +148,25 @@ function ToastView({ toast, onDismiss }: { toast: ToastInput; onDismiss: () => v
           )}
         </View>
 
-        {toast.action != null && (
+        {actionsOf(toast).map((action) => (
           <Pressable
+            key={action.label}
             accessibilityRole="button"
-            accessibilityLabel={toast.action.label}
+            accessibilityLabel={action.label}
             // UX-12 · 8 + 20 + 8 = 36 de alto: el toque llega a 44.
             hitSlop={hitSlopFor(MIN_TARGET, 36)}
             haptic="light"
             onPress={() => {
-              toast.action?.onPress();
+              action.onPress();
               onDismiss();
             }}
             style={{ paddingVertical: theme.space['2'], paddingHorizontal: theme.space['2'] }}
           >
             <Text variant="smallMedium" style={{ color: theme.colors.brandSoft }}>
-              {toast.action.label}
+              {action.label}
             </Text>
           </Pressable>
-        )}
+        ))}
       </View>
     </Animated.View>
   );

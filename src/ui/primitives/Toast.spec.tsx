@@ -60,6 +60,64 @@ describe('Toast', () => {
     expect(view.queryByText('Agregado a Casa · Martina lo ve')).toBeNull();
   });
 
+  it('con dos acciones, cada una corre lo suyo y cierra el aviso', async () => {
+    const onSeeFuture = jest.fn();
+    const onUndo = jest.fn();
+    const input: ToastInput = {
+      title: 'Guardado · Solo vos lo ves',
+      detail: '6 cuotas de $50.000 · la primera suma a noviembre',
+      actions: [
+        { label: 'Ver en Futuro', onPress: onSeeFuture },
+        { label: 'Deshacer', onPress: onUndo },
+      ],
+    };
+    const view = await renderTrigger({ input });
+
+    await fireEvent.press(view.getByRole('button', { name: 'Mostrar' }));
+    expect(view.getByRole('button', { name: 'Ver en Futuro' })).toBeTruthy();
+    expect(view.getByRole('button', { name: 'Deshacer' })).toBeTruthy();
+
+    await fireEvent.press(view.getByRole('button', { name: 'Ver en Futuro' }));
+    expect(onSeeFuture).toHaveBeenCalledTimes(1);
+    expect(onUndo).not.toHaveBeenCalled();
+    expect(view.queryByText('Guardado · Solo vos lo ves')).toBeNull();
+  });
+
+  it('con dos acciones, la otra también se puede tocar', async () => {
+    const onUndo = jest.fn();
+    const view = await renderTrigger({
+      input: {
+        title: 'Guardado · Solo vos lo ves',
+        actions: [
+          { label: 'Ver en Futuro', onPress: jest.fn() },
+          { label: 'Deshacer', onPress: onUndo },
+        ],
+      },
+    });
+
+    await fireEvent.press(view.getByRole('button', { name: 'Mostrar' }));
+    await fireEvent.press(view.getByRole('button', { name: 'Deshacer' }));
+
+    expect(onUndo).toHaveBeenCalledTimes(1);
+  });
+
+  it('con acciones se queda el tiempo de leer y decidir (más que uno sin ellas)', async () => {
+    const view = await renderTrigger({
+      input: {
+        title: 'Con acciones',
+        actions: [
+          { label: 'Ver en Futuro', onPress: jest.fn() },
+          { label: 'Deshacer', onPress: jest.fn() },
+        ],
+      },
+    });
+
+    await fireEvent.press(view.getByRole('button', { name: 'Mostrar' }));
+    await act(() => jest.advanceTimersByTime(5_000));
+
+    expect(view.getByText('Con acciones')).toBeTruthy();
+  });
+
   it('se va solo después de unos segundos', async () => {
     const view = await renderTrigger({ input: { title: 'Guardado · Solo vos lo ves' } });
 

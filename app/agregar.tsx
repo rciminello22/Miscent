@@ -9,7 +9,8 @@ import { planInstallments } from '@domain/installments';
 import { resolveCardPayment } from '@domain/cards';
 import { resolveShares } from '@domain/split';
 import type { Category, Split } from '@domain/types';
-import { formatMonth } from '@/lib/format';
+import { formatMonth, formatPesos } from '@/lib/format';
+import { installmentsNotice } from '@/features/shared/installmentsNotice';
 import { useSession } from '@/features/auth/SessionProvider';
 import {
   useCreateMovement,
@@ -267,6 +268,15 @@ export default function Agregar() {
 
     setSaving(true);
 
+    // §17 · una compra en cuotas: el aviso dice dónde aterrizó y lleva a Futuro.
+    const notice = installmentsNotice({
+      total: amount,
+      count: installmentCount,
+      firstMonth: plan?.firstMonth ?? null,
+      today,
+      formatAmount: formatPesos,
+    });
+
     try {
       // M3 · con un espacio elegido, es un gasto compartido (§18).
       if (isShared && space != null && kind === 'expense') {
@@ -312,8 +322,9 @@ export default function Agregar() {
           });
           feedback.saved({
             audience,
-            detail: savedDetail(balanceDetail, effect),
+            detail: savedDetail(balanceDetail, notice?.detail ?? effect),
             undo: { kind: 'shared-expense', id, spaceId },
+            futureMonth: notice?.month,
           });
         }
         goBack(router);
@@ -344,7 +355,12 @@ export default function Agregar() {
           installmentCount,
           pinnedFirstMonth: null,
         });
-        feedback.saved({ audience: PRIVATE, detail: effect, undo: { kind: 'movement', id } });
+        feedback.saved({
+          audience: PRIVATE,
+          detail: notice?.detail ?? effect,
+          undo: { kind: 'movement', id },
+          futureMonth: notice?.month,
+        });
       }
 
       goBack(router);

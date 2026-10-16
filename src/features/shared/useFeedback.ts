@@ -1,10 +1,13 @@
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
+import type { Month } from '@domain/calendar';
 import type { Member } from '@domain/types';
+import { futureMonthRoute } from '@/features/future/paymentsMonth';
 import { queryKeys } from '@/data/queryClient';
 import { deletePersonalMovement, deleteRecurrence } from '@/data/repositories/mutations';
 import { deleteMemberPayment, deleteSharedExpense } from '@/data/repositories/spaces';
 import { useSession } from '@/features/auth/SessionProvider';
-import { useToast } from '@/ui/primitives';
+import { useToast, type ToastAction } from '@/ui/primitives';
 import { deletedTitle, savedTitle, type FeedbackAudience } from './feedbackCopy';
 
 /**
@@ -71,6 +74,7 @@ function messageOf(error: unknown): string {
 
 export function useFeedback() {
   const toast = useToast();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { session } = useSession();
   const userId = session?.user.id ?? 'anon';
@@ -83,23 +87,37 @@ export function useFeedback() {
     error,
 
     /** Regla 1 · "Guardado · Solo vos lo ves" / "Agregado a Casa · Martina lo ve · Deshacer". */
-    saved(args: { audience: FeedbackAudience; detail?: string | null; undo?: Created }) {
-      const { undo } = args;
-      toast.show({
-        title: savedTitle(args.audience),
-        detail: args.detail,
-        action:
-          undo == null
-            ? undefined
-            : {
-                label: 'Deshacer',
-                onPress: () => {
-                  undoCreation(queryClient, userId, undo)
-                    .then(() => toast.show({ title: 'Listo, no se guardó' }))
-                    .catch((cause: unknown) => error('No pudimos deshacerlo', cause));
-                },
-              },
-      });
+    saved(args: {
+      audience: FeedbackAudience;
+      detail?: string | null;
+      undo?: Created;
+      /**
+       * §17 · una compra en cuotas: el mes de su primera cuota. Suma "Ver en
+       * Futuro", que abre Futuro con ese mes elegido (solo con cuenta personal).
+       */
+      futureMonth?: Month;
+    }) {
+      const { undo, futureMonth } = args;
+      const actions: ToastAction[] = [];
+
+      if (futureMonth != null) {
+        actions.push({
+          label: 'Ver en Futuro',
+          onPress: () => router.push(futureMonthRoute(futureMonth, Date.now())),
+        });
+      }
+      if (undo != null) {
+        actions.push({
+          label: 'Deshacer',
+          onPress: () => {
+            undoCreation(queryClient, userId, undo)
+              .then(() => toast.show({ title: 'Listo, no se guardó' }))
+              .catch((cause: unknown) => error('No pudimos deshacerlo', cause));
+          },
+        });
+      }
+
+      toast.show({ title: savedTitle(args.audience), detail: args.detail, actions });
     },
 
     /** Regla 2. */

@@ -9,7 +9,8 @@ import { resolveCardPayment } from '@domain/cards';
 import { planInstallments } from '@domain/installments';
 import { resolveShares } from '@domain/split';
 import type { Category, Split } from '@domain/types';
-import { formatDayMonth, formatMonth } from '@/lib/format';
+import { formatDayMonth, formatMonth, formatPesos } from '@/lib/format';
+import { installmentsNotice } from '@/features/shared/installmentsNotice';
 import { AmountInput } from '@/features/add/AmountInput';
 import { CategoryGrid } from '@/features/add/CategoryGrid';
 import { EXPENSE_CATEGORIES, orderByUsage } from '@/features/add/categories';
@@ -255,6 +256,15 @@ export default function AgregarCompartido() {
 
     setSaving(true);
 
+    // §17 · una compra en cuotas: el aviso dice dónde aterrizó.
+    const notice = installmentsNotice({
+      total: amount,
+      count: installmentCount,
+      firstMonth: plan?.firstMonth ?? null,
+      today,
+      formatAmount: formatPesos,
+    });
+
     try {
       const audience = spaceAudience(derived!.facts.space.name, other);
       if (repeats) {
@@ -294,8 +304,10 @@ export default function AgregarCompartido() {
         });
         feedback.saved({
           audience,
-          detail: savedDetail(balanceDetail, effect),
+          detail: savedDetail(balanceDetail, notice?.detail ?? effect),
           undo: { kind: 'shared-expense', id, spaceId },
+          // Futuro es de la cuenta personal: el invitado no lo tiene (CA-06).
+          futureMonth: accountState === 'personal' ? notice?.month : undefined,
         });
       }
       goBack(router);

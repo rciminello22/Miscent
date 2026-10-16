@@ -15,4 +15,4 @@ export { Door } from './Door';
 export { BalanceScale, type BalanceScaleProps } from './BalanceScale';
 export { Skeleton, RadarSkeleton, EmptyState, ErrorState } from './states';
 export { Sheet } from './Sheet';
-export { ToastProvider, useToast, type ToastInput } from './Toast';
+export { ToastProvider, useToast, type ToastAction, type ToastInput } from './Toast';
