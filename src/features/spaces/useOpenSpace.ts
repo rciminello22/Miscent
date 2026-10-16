@@ -3,6 +3,7 @@ import { useRouter, type Href } from 'expo-router';
 import { useSession } from '@/features/auth/SessionProvider';
 import { spaceHref, spaceSubHref, type SpaceDetailScreen } from './spaceNavigation';
 import { resetTo } from '@/features/shared/navigation';
+import { rememberSpaceOpened } from './useSpaceOpenTimes';
 
 /**
  * Abre un espacio donde corresponde según quién lo abre (spaceHref): con
@@ -21,6 +22,9 @@ export function useOpenSpace() {
       mode: 'push' | 'replace' | 'reset' = 'push',
     ) => {
       const href = spaceHref({ accountState: state, spaceId }) as Href;
+
+      // 3ii · la lista de Compartidos ordena por el último abierto.
+      void rememberSpaceOpened(spaceId);
 
       if (mode === 'reset') resetTo(router, href);
       else if (mode === 'replace') router.replace(href);

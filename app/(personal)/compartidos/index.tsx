@@ -17,10 +17,11 @@ import { useBottomPadding } from '@/ui/useBottomPadding';
  * la lista, aunque haya un solo espacio. Antes, con uno solo, entraba directo
  * al espacio: la pestaña no mostraba quién era el otro ni cómo estaban las
  * cuentas sin entrar, y "Volver" no tenía a dónde ir. Con la lista, cada espacio
- * es una tarjeta con las dos personas, el saldo y lo que está pendiente.
+ * es una fila (la puerta de "Tus espacios") con la balanza, las dos personas, el
+ * saldo y lo que está pendiente; del abierto más recientemente al menos reciente.
  *
  * K1 sigue valiendo ("poco protagonismo en la UX"): con uno solo la pantalla
- * queda sobria a propósito, una tarjeta y "Crear otro espacio" con borde punteado.
+ * queda sobria a propósito, una fila y "Crear otro espacio" con borde punteado.
  */
 export default function Compartidos() {
   const theme = useTheme();
@@ -62,8 +63,8 @@ export default function Compartidos() {
 
         {isLoading ? (
           <Stack gap="3">
-            <Skeleton height={130} />
-            <Skeleton height={130} />
+            <Skeleton height={72} />
+            <Skeleton height={72} />
           </Stack>
         ) : isError ? (
           <ErrorState onRetry={() => void refetch()} />

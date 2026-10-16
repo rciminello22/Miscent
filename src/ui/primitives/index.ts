@@ -14,6 +14,8 @@ export { AudienceBadge, AudienceIcon, audienceLabel, type Audience } from './Aud
 export { Avatar } from './Avatar';
 export { Door } from './Door';
 export { BalanceScale, type BalanceScaleProps } from './BalanceScale';
+export { BalanceGlyph } from './BalanceGlyph';
+export { Segmented } from './Segmented';
 export { Skeleton, RadarSkeleton, EmptyState, ErrorState } from './states';
 export { Sheet } from './Sheet';
 export { ToastProvider, useToast, type ToastAction, type ToastInput } from './Toast';

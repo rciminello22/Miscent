@@ -85,6 +85,40 @@ describe('Door', () => {
     expect(view.getByText('[avatares]')).toBeTruthy();
   });
 
+  it('3ii · en lugar del ícono puede llevar su propio dibujo (la balanza de un espacio)', async () => {
+    const view = await renderWithTheme(
+      <Door glyph={<Text>[balanza]</Text>} title="Casa" onPress={jest.fn()} />,
+    );
+    expect(view.getByText('[balanza]')).toBeTruthy();
+  });
+
+  it('3ii · puede llevar algo junto al título (la pastilla de pendientes)', async () => {
+    const view = await renderWithTheme(
+      <Door
+        icon={CalendarRange}
+        title="Casa"
+        titleAside={<Text>[2 por revisar]</Text>}
+        onPress={jest.fn()}
+      />,
+    );
+    expect(view.getByText('Casa')).toBeTruthy();
+    expect(view.getByText('[2 por revisar]')).toBeTruthy();
+  });
+
+  it('3ii · una puerta punteada lleva el borde punteado, y la común no', async () => {
+    const dashed = await renderWithTheme(
+      <Door icon={CalendarRange} title="Gimnasio" dashed onPress={jest.fn()} />,
+    );
+    const plain = await renderWithTheme(
+      <Door icon={CalendarRange} title="Casa" onPress={jest.fn()} />,
+    );
+    const styleOf = (view: typeof dashed) =>
+      Object.assign({}, ...[view.getByRole('button').props.style].flat(3).filter(Boolean));
+
+    expect(styleOf(dashed).borderStyle).toBe('dashed');
+    expect(styleOf(plain).borderStyle).not.toBe('dashed');
+  });
+
   it('el lector de pantalla lee el título y lo que dice, sin pedirle nada al ícono', async () => {
     const view = await renderWithTheme(
       <Door

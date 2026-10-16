@@ -1,95 +1,86 @@
-import type { ReactNode } from 'react';
 import { View } from 'react-native';
-import { ClipboardCheck, Plus } from 'lucide-react-native';
-import { Card, Pressable, Row, RowChevron, Skeleton, Stack, Text } from '@/ui/primitives';
+import { ClipboardCheck, Plus, Users } from 'lucide-react-native';
+import { BalanceGlyph, Door, Pressable, Skeleton, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
+import { PairAvatars } from './PairAvatars';
+import type { SpaceRowModel } from './spaceRow';
 
 /**
- * La tarjeta de un espacio en la lista de Compartidos: una puerta N2 (blanca,
- * con borde y chevron). Presentacional: recibe todo por props; el container
- * (`SpaceList`) trae el saldo y los pendientes.
+ * 3ii · la fila de un espacio en la lista de Compartidos: la misma puerta (N2)
+ * que "Tus espacios" de Inicio. En la caja del ícono, la balanza mini (inclinada
+ * hacia quien puso de más, o nivelada con tilde); después el nombre, la pastilla
+ * "N por revisar", la frase del saldo, los avatares superpuestos y el chevron.
+ *
+ * Presentacional: recibe la fila armada (`buildSpaceRow`); el container
+ * (`SpaceList`) trae los datos.
  */
-export function SpaceCard({
-  name,
-  scale,
-  sentence,
-  settled,
-  pill,
-  note,
-  loading = false,
-  onPress,
-}: {
-  name: string;
-  /** La balanza mini con las dos personas (`SpaceBalanceScale`); null mientras carga. */
-  scale: ReactNode;
-  /** La frase del saldo (`balanceSentence`); null mientras carga. */
-  sentence: string | null;
-  settled: boolean;
-  /** "2 por revisar", si hay algo pendiente. */
-  pill: string | null;
-  /** "Martina todavía no entró" / "Martina · ex miembro". */
-  note: string | null;
-  loading?: boolean;
-  onPress: () => void;
-}) {
+export function SpaceCard({ row, onPress }: { row: SpaceRowModel; onPress: () => void }) {
+  return (
+    <Door
+      // Un ex miembro: la fila con borde punteado y la balanza apagada.
+      dashed={row.former}
+      iconTone={row.former ? 'neutral' : 'shared'}
+      icon={row.glyph == null ? Users : undefined}
+      glyph={
+        row.glyph == null ? undefined : (
+          <BalanceGlyph
+            direction={row.glyph.direction}
+            showCheck={row.glyph.showCheck}
+            label={row.glyph.label}
+            muted={row.former}
+          />
+        )
+      }
+      title={row.name}
+      titleAside={row.pill == null ? undefined : <PendingPill text={row.pill} />}
+      accessibilityLabel={row.accessibilityLabel}
+      trailing={
+        <PairAvatars
+          myName={row.myName}
+          otherName={row.otherName}
+          otherDashed={row.otherDashed}
+          size={28}
+        />
+      }
+      onPress={onPress}
+    >
+      {row.loading || row.sentence == null ? (
+        <Skeleton width={140} height={14} />
+      ) : (
+        <Text variant="caption" tone={row.settled ? 'muted' : 'shared'}>
+          {row.sentence}
+        </Text>
+      )}
+      {row.note != null && (
+        <Text variant="caption" tone="muted">
+          {row.note}
+        </Text>
+      )}
+    </Door>
+  );
+}
+
+/** "2 por revisar": la pastilla junto al nombre. */
+function PendingPill({ text }: { text: string }) {
   const theme = useTheme();
 
   return (
-    <Pressable
-      onPress={onPress}
-      scaleOnPress={false}
-      accessibilityRole="button"
-      accessibilityLabel={[name, sentence, pill, note].filter((part) => part != null).join('. ')}
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.space['1'],
+        paddingHorizontal: theme.space['2'],
+        paddingVertical: 2,
+        borderRadius: theme.radius.pill,
+        backgroundColor: theme.colors.sharedSoft,
+      }}
     >
-      <Card>
-        <Stack gap="3">
-          <Row justify="space-between" align="center" gap="3">
-            <Text variant="heading" numberOfLines={1} style={{ flex: 1 }}>
-              {name}
-            </Text>
-            {pill != null && (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: theme.space['1'],
-                  paddingHorizontal: theme.space['2'],
-                  paddingVertical: 3,
-                  borderRadius: theme.radius.pill,
-                  backgroundColor: theme.colors.sharedSoft,
-                }}
-              >
-                <ClipboardCheck size={13} color={theme.colors.shared} />
-                <Text variant="caption" tone="shared">
-                  {pill}
-                </Text>
-              </View>
-            )}
-          </Row>
-
-          {/* La balanza dice el saldo con una forma; abajo, la frase que dice lo mismo. */}
-          {scale ?? <Skeleton height={64} />}
-
-          <Row justify="space-between" align="center" gap="3">
-            <View style={{ flex: 1, gap: 2 }}>
-              {loading || sentence == null ? (
-                <Skeleton width={140} height={16} />
-              ) : (
-                <Text variant="bodyMedium" tone={settled ? 'muted' : 'shared'}>
-                  {sentence}
-                </Text>
-              )}
-              {note != null && (
-                <Text variant="caption" tone="muted">
-                  {note}
-                </Text>
-              )}
-            </View>
-            <RowChevron />
-          </Row>
-        </Stack>
-      </Card>
-    </Pressable>
+      <ClipboardCheck size={12} color={theme.colors.shared} />
+      <Text variant="caption" tone="shared">
+        {text}
+      </Text>
+    </View>
   );
 }
 
