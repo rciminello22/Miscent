@@ -4,7 +4,7 @@ import { installmentAmounts } from '@domain/installments';
 import type { Pesos } from '@domain/money';
 import { pendingReview } from '@domain/review';
 import { resolveShares, shareOf } from '@domain/split';
-import type { PaymentMethod, PersonalFacts } from '@domain/types';
+import type { Category, PaymentMethod, PersonalFacts } from '@domain/types';
 import { reviewTag } from '@/features/spaces/reviewCopy';
 import { spaceContext } from '@/features/spaces/departureCopy';
 
@@ -39,8 +39,16 @@ export type MovementRow = {
   total: Pesos | null;
   /** §16 · "Casa · pagó Martina" */
   context: string | null;
+  /** La categoría, que da el ícono de la fila. `null` en un pago entre miembros. */
+  category: Category | null;
+  /** "Casa" o "Casa · ya no sos miembro". `null` en lo personal. */
+  spaceName: string | null;
+  /** "pagó vos" / "pagó Martina". `null` si no es un gasto compartido. */
+  payerLabel: string | null;
   /** §16 · "Se paga en noviembre", "6 cuotas de $30.000", "Ingreso registrado". */
   effect: string | null;
+  /** Qué clase de efecto es, para elegir su ícono. `method` es solo el nombre del medio. */
+  effectKind: 'installments' | 'card' | 'income' | 'method' | null;
   /** §12 · el ícono de una o dos personas en cada fila. */
   audience: { kind: 'private' } | { kind: 'shared'; otherMemberName: string };
   spaceId: string | null;
@@ -84,13 +92,18 @@ export function buildMovementList(args: {
     const method = facts.paymentMethods.find((item) => item.id === movement.paymentMethodId);
 
     let effect: string | null = null;
+    let effectKind: MovementRow['effectKind'] = null;
     if (movement.kind === 'income') {
       effect = 'Ingreso registrado';
+      effectKind = 'income';
     } else if (movement.installments != null) {
       const [first] = installmentAmounts(movement.amount, movement.installments.count);
       effect = `${movement.installments.count} cuotas de ${formatAmount(first ?? 0)}`;
+      effectKind = 'installments';
     } else {
-      effect = cardEffect(method, movement.date, monthName) ?? method?.name ?? null;
+      const onCard = cardEffect(method, movement.date, monthName);
+      effect = onCard ?? method?.name ?? null;
+      effectKind = onCard != null ? 'card' : method != null ? 'method' : null;
     }
 
     rows.push({
@@ -101,7 +114,11 @@ export function buildMovementList(args: {
       amount: movement.amount,
       total: null,
       context: null,
+      category: movement.category,
+      spaceName: null,
+      payerLabel: null,
       effect,
+      effectKind,
       audience: { kind: 'private' },
       spaceId: null,
       note: null,
@@ -144,12 +161,16 @@ export function buildMovementList(args: {
       const method = facts.paymentMethods.find((item) => item.id === detail?.paymentMethodId);
 
       let effect: string | null = null;
+      let effectKind: MovementRow['effectKind'] = null;
       if (expense.installments != null) {
         const [first] = installmentAmounts(expense.amount, expense.installments.count);
         effect = `${expense.installments.count} cuotas de ${formatAmount(first ?? 0)}`;
+        effectKind = 'installments';
       } else if (iPaid) {
         effect = cardEffect(method, expense.date, monthName);
+        effectKind = effect != null ? 'card' : null;
       }
+      const payerLabel = `pagó ${iPaid ? 'vos' : other.displayName}`;
 
       rows.push({
         id: `shared:${expense.id}`,
@@ -160,8 +181,12 @@ export function buildMovementList(args: {
         amount: myShare,
         total: expense.amount,
         // §16 · "Casa · pagó Martina"
-        context: `${spaceName} · pagó ${iPaid ? 'vos' : other.displayName}`,
+        context: `${spaceName} · ${payerLabel}`,
+        category: expense.category,
+        spaceName,
+        payerLabel,
         effect,
+        effectKind,
         audience: { kind: 'shared', otherMemberName: other.displayName },
         spaceId: spaceFacts.space.id,
         note: null,
@@ -187,7 +212,11 @@ export function buildMovementList(args: {
         amount: payment.amount,
         total: null,
         context: spaceName,
+        category: null,
+        spaceName,
+        payerLabel: null,
         effect: null,
+        effectKind: null,
         audience: { kind: 'shared', otherMemberName: other.displayName },
         spaceId: spaceFacts.space.id,
         // P-04 · la nota que evita el malentendido.
@@ -209,6 +238,8 @@ export function filterMovements(
 ): MovementRow[] {
   if (filter === 'all') return [...rows];
   if (filter === 'personal') return rows.filter((row) => row.spaceId == null);
+  // Todos los espacios juntos (la puerta que los resume, con dos o más).
+  if (filter === 'shared') return rows.filter((row) => row.spaceId != null);
   return rows.filter((row) => row.spaceId === filter);
 }
 

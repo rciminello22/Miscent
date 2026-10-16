@@ -301,7 +301,67 @@ describe('SA-05 · un espacio del que saliste', () => {
     expect(rows[0]?.context).toBe('Casa · ya no sos miembro · pagó Martina');
   });
 
+  it('el espacio y quién pagó quedan separados, para mostrarlos por separado', () => {
+    expect(rows[0]).toMatchObject({
+      spaceName: 'Casa · ya no sos miembro',
+      payerLabel: 'pagó Martina',
+    });
+  });
+
   it('no se puede abrir: ya no hay acceso (SA-02)', () => {
     expect(rows[0]?.formerSpace).toBe(true);
+  });
+});
+
+describe('§16 · lo que la fila necesita para ordenarse por día con su ícono', () => {
+  const casa = spaceFacts({
+    expenses: [sharedExpense({ amount: 100_000, date: '2026-10-05', payerSlot: RENZO, category: 'hogar' })],
+    payments: [memberPayment({ fromSlot: MARTINA, toSlot: RENZO, amount: 20_000, date: '2026-10-10' })],
+  });
+  const rows = buildMovementList({
+    facts: personalFacts({
+      movements: [
+        movement({ amount: 4_500, date: '2026-10-13', category: 'gastronomia' }),
+        movement({ amount: 80_000, date: '2026-10-14', category: 'ropa', paymentMethodId: visa.id }),
+        movement({
+          amount: 600_000,
+          date: '2026-10-15',
+          category: 'hogar',
+          paymentMethodId: visa.id,
+          installments: { count: 6, card: visa },
+        }),
+        movement({ kind: 'income', amount: 1_200_000, date: '2026-10-01', category: 'sueldo' }),
+        movement({ amount: 9_000, date: '2026-10-02', paymentMethodId: debito.id }),
+      ],
+      spaces: [membership({ facts: casa, mySlot: RENZO })],
+    }),
+    ...options,
+  });
+  const byDate = (date: string) => rows.find((row) => row.date === date)!;
+
+  it('cada fila lleva su categoría (el ícono guía); un pago entre miembros, ninguna', () => {
+    expect(byDate('2026-10-13').category).toBe('gastronomia');
+    expect(byDate('2026-10-05').category).toBe('hogar');
+    expect(byDate('2026-10-10').category).toBeNull();
+  });
+
+  it('el efecto dice de qué tipo es, para elegir su ícono', () => {
+    expect(byDate('2026-10-15').effectKind).toBe('installments');
+    expect(byDate('2026-10-14').effectKind).toBe('card');
+    expect(byDate('2026-10-01').effectKind).toBe('income');
+    expect(byDate('2026-10-02').effectKind).toBe('method');
+    expect(byDate('2026-10-13').effectKind).toBeNull();
+  });
+
+  it('un gasto compartido separa el espacio de quién pagó', () => {
+    expect(byDate('2026-10-05')).toMatchObject({ spaceName: 'Casa', payerLabel: 'pagó vos' });
+  });
+
+  it('un pago entre miembros trae el espacio y ningún "pagó"', () => {
+    expect(byDate('2026-10-10')).toMatchObject({ spaceName: 'Casa', payerLabel: null });
+  });
+
+  it('lo personal no trae espacio ni "pagó"', () => {
+    expect(byDate('2026-10-13')).toMatchObject({ spaceName: null, payerLabel: null });
   });
 });
