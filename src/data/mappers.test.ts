@@ -1,5 +1,33 @@
 import { describe, it, expect } from 'vitest';
-import { cardDayColumns, recurrenceDayColumns, toPaymentMethod, toRecurrence } from './mappers';
+import {
+  cardDayColumns,
+  installmentDayColumns,
+  recurrenceDayColumns,
+  toPaymentMethod,
+  toRecurrence,
+} from './mappers';
+
+describe('installmentDayColumns', () => {
+  it('solo el primer mes, el día de impacto y lo aproximado: nunca la cantidad de cuotas', () => {
+    expect(
+      installmentDayColumns({ count: 6, firstMonth: '2026-10', impactDay: 5, approximate: false }),
+    ).toEqual({
+      first_installment_month: '2026-10',
+      installment_impact_day: 5,
+      installments_approximate: false,
+    });
+  });
+
+  it('sin día de impacto (T-05): null y aproximado', () => {
+    expect(
+      installmentDayColumns({ count: 6, firstMonth: '2026-11', impactDay: null, approximate: true }),
+    ).toEqual({
+      first_installment_month: '2026-11',
+      installment_impact_day: null,
+      installments_approximate: true,
+    });
+  });
+});
 
 /**
  * Las escrituras solo mandan las columnas de aproximado cuando valen true: así,

@@ -334,6 +334,19 @@ export function installmentColumns(plan: InstallmentPlan | null) {
   };
 }
 
+/**
+ * Corregir los días de una tarjeta: del plan solo cambian el primer mes, el día
+ * de impacto y la marca de aproximado. La cantidad de cuotas NO se manda: si
+ * otra edición la cambió en el medio, no se pisa.
+ */
+export function installmentDayColumns(plan: InstallmentPlan) {
+  return {
+    first_installment_month: plan.firstMonth,
+    installment_impact_day: plan.impactDay,
+    installments_approximate: plan.approximate,
+  };
+}
+
 /** C-02 · las partes se guardan explícitas y el CHECK de la base las valida. */
 export function splitColumns(amount: number, split: Split) {
   if (split.mode === 'even') {
