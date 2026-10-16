@@ -1,33 +1,25 @@
 import { useState } from 'react';
 import { RefreshControl, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Plus } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSpaces } from '@/features/spaces/useSpaces';
-import { SpaceList } from '@/features/spaces/SpaceList';
+import { CreateSpaceCard, SpaceList } from '@/features/spaces/SpaceList';
 import { FormerSpaces } from '@/features/spaces/FormerSpaces';
-import { SpaceScreen } from '@/features/spaces/SpaceScreen';
-import {
-  Button,
-  EmptyState,
-  ErrorState,
-  Row,
-  Skeleton,
-  Stack,
-  Text,
-} from '@/ui/primitives';
+import { EmptyState, ErrorState, Row, Skeleton, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 import { useBottomPadding } from '@/ui/useBottomPadding';
 
 /**
  * §14 · Compartidos.
  *
- * "Lista de espacios → cada espacio; con uno solo, entra directo."
+ * "Lista de espacios → cada espacio." P23 (15/10): la pestaña abre SIEMPRE en
+ * la lista, aunque haya un solo espacio. Antes, con uno solo, entraba directo
+ * al espacio: la pestaña no mostraba quién era el otro ni cómo estaban las
+ * cuentas sin entrar, y "Volver" no tenía a dónde ir. Con la lista, cada espacio
+ * es una tarjeta con las dos personas, el saldo y lo que está pendiente.
  *
- * Esa última parte importa: K1 dice que los espacios tienen "poco
- * protagonismo en la UX". Si alguien tiene un solo espacio —el caso de
- * referencia de §2, una pareja— no tiene sentido obligarlo a pasar por una
- * lista de un elemento cada vez.
+ * K1 sigue valiendo ("poco protagonismo en la UX"): con uno solo la pantalla
+ * queda sobria a propósito, una tarjeta y "Crear otro espacio" con borde punteado.
  */
 export default function Compartidos() {
   const theme = useTheme();
@@ -36,31 +28,6 @@ export default function Compartidos() {
   const bottomPad = useBottomPadding({ tabs: true, fab: true });
   const { data: spaces, isLoading, isError, refetch } = useSpaces();
   const [refreshing, setRefreshing] = useState(false);
-
-  // §14 · con un solo espacio, entra directo. Se MUESTRA acá, en la misma
-  // pestaña, en vez de redirigir: el redirect sacaba de las pestañas y,
-  // al volver, entraba otra vez (un loop).
-  const only = spaces?.length === 1 ? spaces[0] : undefined;
-  if (only != null) {
-    return (
-      <SpaceScreen
-        spaceId={only.id}
-        inTabs
-        leading={{ kind: 'back', onPress: () => router.navigate('/(personal)/inicio') }}
-        footer={
-          // K1 · se pueden tener varios espacios. Con el redirect de antes,
-          // con uno solo este botón no aparecía nunca.
-          <Button
-            label="Crear otro espacio"
-            variant="ghost"
-            fullWidth
-            icon={<Plus size={16} color={theme.colors.textSecondary} />}
-            onPress={() => router.push('/space/nuevo')}
-          />
-        }
-      />
-    );
-  }
 
   async function onRefresh() {
     setRefreshing(true);
@@ -94,8 +61,8 @@ export default function Compartidos() {
 
         {isLoading ? (
           <Stack gap="3">
-            <Skeleton height={86} />
-            <Skeleton height={86} />
+            <Skeleton height={130} />
+            <Skeleton height={130} />
           </Stack>
         ) : isError ? (
           <ErrorState onRetry={() => void refetch()} />
@@ -107,22 +74,12 @@ export default function Compartidos() {
             onAction={() => router.push('/space/nuevo')}
           />
         ) : (
-          <>
+          <Stack gap="3">
+            {/* Caso 17 · cada tarjeta lleva sus propias cuentas y no hay total
+                entre espacios: la forma lo dice, sin un cartel que lo explique. */}
             <SpaceList spaces={spaces ?? []} />
-
-            <Button
-              label="Crear otro espacio"
-              variant="secondary"
-              fullWidth
-              icon={<Plus size={16} color={theme.colors.text} />}
-              onPress={() => router.push('/space/nuevo')}
-            />
-
-            {/* Caso 17 · los saldos no se compensan entre espacios. */}
-            <Text variant="caption" tone="muted">
-              Cada espacio lleva sus propias cuentas. No se mezclan entre sí.
-            </Text>
-          </>
+            <CreateSpaceCard onPress={() => router.push('/space/nuevo')} />
+          </Stack>
         )}
 
         {/* P6 · el resumen fijo de los espacios de los que salió. */}

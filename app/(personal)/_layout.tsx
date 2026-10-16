@@ -1,6 +1,5 @@
 import { View } from 'react-native';
 import { Tabs, usePathname, useRouter } from 'expo-router';
-import { useSpaces } from '@/features/spaces/useSpaces';
 import { isInsideSpace } from '@/features/spaces/spaceNavigation';
 import { CalendarRange, House, Plus, ReceiptText, Users } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -85,11 +84,10 @@ function AddButton() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
-  const { data: spaces } = useSpaces();
 
   // Dentro de un espacio queda solo su propio "Agregar", que carga en el
   // espacio. Decisión del 9/10 (ver isInsideSpace).
-  if (isInsideSpace(pathname, spaces?.length ?? null)) return null;
+  if (isInsideSpace(pathname)) return null;
 
   return (
     <Pressable

@@ -69,7 +69,7 @@ export function PendingInvitation() {
       await refreshProfile();
       await queryClient.invalidateQueries({ queryKey: queryKeys.spaces });
       // Llega desde el login (bienvenida, pegar la invitación): que no quede debajo.
-      openSpace(result.spaceId, 'reset', true);
+      openSpace(result.spaceId, 'reset');
     })();
   }, [session, profile, refreshProfile, queryClient, openSpace]);
 

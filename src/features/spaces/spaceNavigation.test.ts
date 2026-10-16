@@ -1,30 +1,34 @@
 import { describe, it, expect } from 'vitest';
-import { isInsideSpace, spaceBackTarget, spaceHref } from './spaceNavigation';
+import { isInsideSpace, spaceBackTarget, spaceHref, spaceSubHref } from './spaceNavigation';
 
 /**
  * Decisión del 9/10 · dentro de un espacio se oculta el "Agregar" flotante
  * (que abre con "Solo yo", CA-10) y queda solo el del espacio. Dos botones
  * parecidos con destinos distintos es el riesgo que §32 marca como "rompe
  * privacidad".
+ *
+ * P23 (15/10) · la pestaña Compartidos abre SIEMPRE en la lista, aunque haya un
+ * solo espacio. La lista no es "adentro de un espacio": ahí el botón Agregar
+ * personal sí está.
  */
 describe('isInsideSpace', () => {
   it('un espacio dentro de la pestaña', () => {
-    expect(isInsideSpace('/compartidos/abc-123', 2)).toBe(true);
+    expect(isInsideSpace('/compartidos/abc-123')).toBe(true);
   });
 
-  it('la pestaña con un solo espacio lo muestra: también es estar adentro', () => {
-    expect(isInsideSpace('/compartidos', 1)).toBe(true);
+  it('las pantallas de detalle de un espacio también son estar adentro', () => {
+    expect(isInsideSpace('/compartidos/abc-123/mes')).toBe(true);
+    expect(isInsideSpace('/compartidos/abc-123/movimientos')).toBe(true);
+    expect(isInsideSpace('/compartidos/abc-123/pendientes')).toBe(true);
   });
 
-  it('la lista de varios espacios no es un espacio', () => {
-    expect(isInsideSpace('/compartidos', 3)).toBe(false);
-    expect(isInsideSpace('/compartidos', 0)).toBe(false);
-    expect(isInsideSpace('/compartidos', null)).toBe(false);
+  it('P23 · la lista no es un espacio, tenga uno solo o varios', () => {
+    expect(isInsideSpace('/compartidos')).toBe(false);
   });
 
   it('el resto de las pestañas', () => {
-    expect(isInsideSpace('/inicio', 1)).toBe(false);
-    expect(isInsideSpace('/movimientos', 1)).toBe(false);
+    expect(isInsideSpace('/inicio')).toBe(false);
+    expect(isInsideSpace('/movimientos')).toBe(false);
   });
 });
 
@@ -33,27 +37,51 @@ describe('isInsideSpace', () => {
  * (la barra queda visible); el invitado, en su pantalla sin pestañas (CA-06).
  */
 describe('spaceHref', () => {
-  it('personal con un solo espacio: la pestaña, que ya lo muestra', () => {
-    expect(spaceHref({ accountState: 'personal', spaceId: 'casa', spaceCount: 1 })).toBe(
-      '/(personal)/compartidos',
-    );
-  });
-
-  it('personal con varios: el espacio dentro de la pestaña', () => {
-    expect(spaceHref({ accountState: 'personal', spaceId: 'casa', spaceCount: 2 })).toBe(
-      '/(personal)/compartidos/casa',
-    );
-  });
-
-  it('si todavía no se sabe cuántos hay, el espacio concreto: nunca otro distinto', () => {
-    expect(spaceHref({ accountState: 'personal', spaceId: 'casa', spaceCount: null })).toBe(
+  it('P23 · personal: siempre el espacio concreto dentro de la pestaña, aunque sea el único', () => {
+    expect(spaceHref({ accountState: 'personal', spaceId: 'casa' })).toBe(
       '/(personal)/compartidos/casa',
     );
   });
 
   it('invitado: siempre su pantalla sin pestañas', () => {
-    expect(spaceHref({ accountState: 'guest', spaceId: 'casa', spaceCount: 1 })).toBe('/space/casa');
-    expect(spaceHref({ accountState: 'guest', spaceId: 'casa', spaceCount: 3 })).toBe('/space/casa');
+    expect(spaceHref({ accountState: 'guest', spaceId: 'casa' })).toBe('/space/casa');
+  });
+});
+
+/**
+ * Las pantallas de detalle del espacio (N3) viven en los DOS árboles: con
+ * cuenta personal, adentro de la pestaña (la barra queda visible); el invitado,
+ * en /space/[id], sin pestañas.
+ */
+describe('spaceSubHref', () => {
+  it('personal: adentro de la pestaña Compartidos', () => {
+    expect(spaceSubHref({ accountState: 'personal', spaceId: 'casa', screen: 'mes' })).toBe(
+      '/(personal)/compartidos/casa/mes',
+    );
+    expect(
+      spaceSubHref({ accountState: 'personal', spaceId: 'casa', screen: 'movimientos' }),
+    ).toBe('/(personal)/compartidos/casa/movimientos');
+    expect(spaceSubHref({ accountState: 'personal', spaceId: 'casa', screen: 'pendientes' })).toBe(
+      '/(personal)/compartidos/casa/pendientes',
+    );
+  });
+
+  it('invitado: bajo /space/[id], sin pestañas', () => {
+    expect(spaceSubHref({ accountState: 'guest', spaceId: 'casa', screen: 'mes' })).toBe(
+      '/space/casa/mes',
+    );
+    expect(spaceSubHref({ accountState: 'guest', spaceId: 'casa', screen: 'pendientes' })).toBe(
+      '/space/casa/pendientes',
+    );
+  });
+
+  it('lleva el mes elegido como parámetro', () => {
+    expect(
+      spaceSubHref({ accountState: 'personal', spaceId: 'casa', screen: 'mes', month: '2026-11' }),
+    ).toBe('/(personal)/compartidos/casa/mes?mes=2026-11');
+    expect(
+      spaceSubHref({ accountState: 'guest', spaceId: 'casa', screen: 'mes', month: '2026-11' }),
+    ).toBe('/space/casa/mes?mes=2026-11');
   });
 });
 
@@ -66,11 +94,8 @@ describe('spaceHref', () => {
  * otra vez. Un loop que parecía "no puedo salir".
  */
 describe('spaceBackTarget', () => {
-  it('con cuenta personal y un solo espacio: Inicio (Compartidos entraría directo otra vez)', () => {
-    expect(spaceBackTarget({ accountState: 'personal', spaceCount: 1 })).toBe('/(personal)/inicio');
-  });
-
-  it('con cuenta personal y varios espacios: la lista de Compartidos', () => {
+  it('P23 · con cuenta personal, la lista de Compartidos, con uno o con varios espacios', () => {
+    expect(spaceBackTarget({ accountState: 'personal', spaceCount: 1 })).toBe('/(personal)/compartidos');
     expect(spaceBackTarget({ accountState: 'personal', spaceCount: 3 })).toBe('/(personal)/compartidos');
   });
 
@@ -82,8 +107,8 @@ describe('spaceBackTarget', () => {
     expect(spaceBackTarget({ accountState: 'guest', spaceCount: 2 })).toBe('/(guest)/espacios');
   });
 
-  it('mientras no se sabe cuántos espacios hay, como si fuera uno: nunca un destino que rebote', () => {
-    expect(spaceBackTarget({ accountState: 'personal', spaceCount: null })).toBe('/(personal)/inicio');
+  it('mientras no se sabe cuántos espacios hay: la lista de Compartidos o nada, nunca un destino que rebote', () => {
+    expect(spaceBackTarget({ accountState: 'personal', spaceCount: null })).toBe('/(personal)/compartidos');
     expect(spaceBackTarget({ accountState: 'guest', spaceCount: null })).toBeNull();
   });
 });

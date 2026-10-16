@@ -93,7 +93,7 @@ export default function Invite() {
     // I-07 · no se activa ninguna cuenta personal. El RouteGuard la lleva al
     // Estado B, que es donde corresponde.
     await refreshProfile();
-    openSpace(result.spaceId, 'replace', true);
+    openSpace(result.spaceId, 'replace');
   }
 
   if (failure != null) {

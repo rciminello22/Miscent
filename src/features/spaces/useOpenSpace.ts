@@ -1,8 +1,7 @@
 import { useCallback } from 'react';
 import { useRouter, type Href } from 'expo-router';
 import { useSession } from '@/features/auth/SessionProvider';
-import { useSpaces } from './useSpaces';
-import { spaceHref } from './spaceNavigation';
+import { spaceHref, spaceSubHref, type SpaceDetailScreen } from './spaceNavigation';
 import { resetTo } from '@/features/shared/navigation';
 
 /**
@@ -13,31 +12,37 @@ import { resetTo } from '@/features/shared/navigation';
 export function useOpenSpace() {
   const router = useRouter();
   const { accountState } = useSession();
-  const { data: spaces } = useSpaces();
-  const spaceCount = spaces?.length ?? null;
+  const state = accountState === 'personal' ? 'personal' : 'guest';
 
   return useCallback(
     (
       spaceId: string,
       /** 'reset' limpia el historial: al entrar, el login no queda debajo. */
       mode: 'push' | 'replace' | 'reset' = 'push',
-      /**
-       * true justo después de crear o sumarse a un espacio: la lista en caché
-       * todavía tiene la cantidad vieja. Se va al espacio concreto, y su ruta
-       * se acomoda sola si resulta ser el único.
-       */
-      justChanged = false,
     ) => {
-      const href = spaceHref({
-        accountState: accountState === 'personal' ? 'personal' : 'guest',
-        spaceId,
-        spaceCount: justChanged ? null : spaceCount,
-      }) as Href;
+      const href = spaceHref({ accountState: state, spaceId }) as Href;
 
       if (mode === 'reset') resetTo(router, href);
       else if (mode === 'replace') router.replace(href);
       else router.push(href);
     },
-    [router, accountState, spaceCount],
+    [router, state],
+  );
+}
+
+/**
+ * Abre una pantalla de detalle del espacio (Detalle del mes, Movimientos,
+ * Pendientes) en el árbol que corresponde: dentro de la pestaña, o sin ella.
+ */
+export function useOpenSpaceDetail() {
+  const router = useRouter();
+  const { accountState } = useSession();
+  const state = accountState === 'personal' ? 'personal' : 'guest';
+
+  return useCallback(
+    (spaceId: string, screen: SpaceDetailScreen, month?: string) => {
+      router.push(spaceSubHref({ accountState: state, spaceId, screen, month }) as Href);
+    },
+    [router, state],
   );
 }

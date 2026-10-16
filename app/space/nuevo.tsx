@@ -58,7 +58,7 @@ export default function NuevoEspacio() {
         initialBalance: favors === 'even' ? 0 : initialAmount,
         initialBalanceFavors: favors === 'other' ? 'other' : 'me',
       });
-      openSpace(spaceId, 'replace', true);
+      openSpace(spaceId, 'replace');
     } catch (error) {
       feedback.error('No pudimos crearlo', error);
     }
