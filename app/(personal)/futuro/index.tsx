@@ -113,7 +113,7 @@ export default function Futuro() {
       ? {
           kind: 'month',
           committed: selected.committed,
-          line: futureHeroLine(selected.unassigned, formatPesos),
+          line: futureHeroLine(selected.unassigned, selected.expectedIncome, formatPesos),
         }
       : { kind: 'current', headline: currentMonthHeadline(paymentsView.payments.length) };
 

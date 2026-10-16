@@ -38,30 +38,49 @@ function payment(overrides: Partial<UpcomingPayment> & { id: string }): Upcoming
 }
 
 describe('futureHeroLine · bajo la cifra comprometida del mes', () => {
-  it('§33 · Sin asignar con "según tus ingresos previstos"', () => {
-    expect(futureHeroLine(580_000, formatPesos)).toEqual({
+  it('CA-38 · el ingreso previsto y Sin asignar, con "según tus ingresos previstos"', () => {
+    expect(futureHeroLine(580_000, 1_200_000, formatPesos)).toEqual({
       kind: 'unassigned',
-      text: 'Sin asignar $580.000 · según tus ingresos previstos',
+      text: 'Ingreso previsto $1.200.000 · Sin asignar $580.000 · según tus ingresos previstos',
     });
   });
 
   it('en cero sigue siendo una cifra, no un exceso', () => {
-    expect(futureHeroLine(0, formatPesos).kind).toBe('unassigned');
+    expect(futureHeroLine(0, 620_000, formatPesos)).toEqual({
+      kind: 'unassigned',
+      text: 'Ingreso previsto $620.000 · Sin asignar $0 · según tus ingresos previstos',
+    });
   });
 
-  it('N-08 · negativo: la frase, con el exceso en positivo y sin signo', () => {
-    expect(futureHeroLine(-35_000, formatPesos)).toEqual({
+  it('N-08 · negativo: la frase con el exceso sin signo; la línea queda solo con el ingreso previsto', () => {
+    expect(futureHeroLine(-35_000, 1_200_000, formatPesos)).toEqual({
       kind: 'exceeds',
       text: 'Tus gastos y compromisos superan tus ingresos previstos por',
       amount: 35_000,
+      incomeText: 'Ingreso previsto $1.200.000',
     });
   });
 
-  it('N-04 · sin ingreso previsto no se calcula', () => {
-    expect(futureHeroLine(null, formatPesos)).toEqual({
+  it('N-08 · con el negativo la línea no repite Sin asignar ni la cifra con signo', () => {
+    const line = futureHeroLine(-35_000, 1_200_000, formatPesos);
+
+    expect(JSON.stringify(line)).not.toMatch(/Sin asignar|-35|−35/);
+  });
+
+  it('N-04 · sin ingreso previsto no se calcula: "Sin ingreso registrado"', () => {
+    expect(futureHeroLine(null, 0, formatPesos)).toEqual({
       kind: 'noIncome',
       text: 'Sin ingreso registrado',
     });
+  });
+
+  it('CA-00 · ninguna de las frases usa términos prohibidos', () => {
+    const lines = [
+      futureHeroLine(580_000, 1_200_000, formatPesos),
+      futureHeroLine(-35_000, 1_200_000, formatPesos),
+      futureHeroLine(null, 0, formatPesos),
+    ];
+    expect(JSON.stringify(lines)).not.toMatch(/disponible|te queda|libre|podés gastar|por día|saldo/i);
   });
 });
 

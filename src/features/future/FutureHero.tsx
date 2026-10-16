@@ -6,9 +6,9 @@ import type { FutureHeroLine } from './futureView';
 /**
  * El N1 de Futuro (§23.1): la respuesta a "¿cómo vienen mis próximos meses?".
  *
- * Un panel teñido con el mes elegido —su comprometido en grande, con Sin
- * asignar y "según tus ingresos previstos" debajo, o la frase de N-08 si es
- * negativo—, las barras de los meses como selector (su forma visual) y la línea
+ * Un panel teñido con el mes elegido —su comprometido en grande, con el ingreso
+ * previsto y Sin asignar "según tus ingresos previstos" debajo (CA-38), o la
+ * frase de N-08 y solo el ingreso previsto si es negativo—, las barras de los meses como selector (su forma visual) y la línea
  * de cuotas que terminan. Con el mes en curso elegido, que solo muestra los
  * pagos que faltan, la respuesta es cuántos.
  *
@@ -27,7 +27,11 @@ export function FutureHero({
 }: {
   monthLabel: string;
   hero: FutureHeroContent;
-  /** Tocar la cifra abre su detalle (§23.1: comprometido, ingreso previsto y sin asignar). */
+  /**
+   * Tocar la cifra abre su detalle (§4.10: cada número se puede abrir). Sigue
+   * hecho para la cifra comprometida aunque el ingreso previsto y Sin asignar
+   * ya estén a la vista: es la puerta al desglose de §23.1.
+   */
   onOpenDetail: (() => void) | null;
   /** El selector de mes: la pastilla del mes en curso y las barras. */
   selector: ReactNode;
@@ -97,10 +101,16 @@ function FigureTap({ onPress, children }: { onPress: (() => void) | null; childr
 function HeroLine({ line }: { line: FutureHeroLine }) {
   if (line.kind === 'exceeds') {
     return (
-      <Text variant="small" tone="excess">
-        {line.text}{' '}
-        <Money amount={line.amount} sign="never" variant="smallMedium" tone="excess" />.
-      </Text>
+      <Stack gap="1">
+        <Text variant="small" tone="excess">
+          {line.text}{' '}
+          <Money amount={line.amount} sign="never" variant="smallMedium" tone="excess" />.
+        </Text>
+        {/* CA-38 · con Sin asignar negativo la línea queda solo con el ingreso previsto. */}
+        <Text variant="caption" tone="secondary">
+          {line.incomeText}
+        </Text>
+      </Stack>
     );
   }
 

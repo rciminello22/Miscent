@@ -19,6 +19,9 @@ function month(overrides: Partial<FutureMonth> & { month: string }): FutureMonth
   };
 }
 
+const INCOME_LINE =
+  'Ingreso previsto $1.200.000 · Sin asignar $580.000 · según tus ingresos previstos';
+
 describe('FutureHero', () => {
   it('el mes, su comprometido grande y Sin asignar "según tus ingresos previstos"', async () => {
     const view = await renderWithTheme(
@@ -27,7 +30,7 @@ describe('FutureHero', () => {
         hero={{
           kind: 'month',
           committed: 620_000,
-          line: { kind: 'unassigned', text: 'Sin asignar $580.000 · según tus ingresos previstos' },
+          line: { kind: 'unassigned', text: INCOME_LINE },
         }}
         onOpenDetail={null}
         selector={null}
@@ -38,10 +41,11 @@ describe('FutureHero', () => {
     expect(view.getByText('Noviembre')).toBeTruthy();
     expect(view.getByText('$620.000')).toBeTruthy();
     expect(view.getByText('comprometidos')).toBeTruthy();
-    expect(view.getByText('Sin asignar $580.000 · según tus ingresos previstos')).toBeTruthy();
+    // CA-38 · el ingreso previsto y Sin asignar a la vista, sin abrir nada.
+    expect(view.getByText(INCOME_LINE)).toBeTruthy();
   });
 
-  it('N-08 · con Sin asignar negativo, la frase con el exceso sin signo y sin la cifra', async () => {
+  it('N-08 · con Sin asignar negativo, la frase con el exceso sin signo; la línea, solo el ingreso previsto', async () => {
     const view = await renderWithTheme(
       <FutureHero
         monthLabel="Noviembre"
@@ -52,6 +56,7 @@ describe('FutureHero', () => {
             kind: 'exceeds',
             text: 'Tus gastos y compromisos superan tus ingresos previstos por',
             amount: 35_000,
+            incomeText: 'Ingreso previsto $1.200.000',
           },
         }}
         onOpenDetail={null}
@@ -64,6 +69,7 @@ describe('FutureHero', () => {
       view.getByText(/Tus gastos y compromisos superan tus ingresos previstos por/),
     ).toBeTruthy();
     expect(view.getByText('$35.000')).toBeTruthy();
+    expect(view.getByText('Ingreso previsto $1.200.000')).toBeTruthy();
     expect(view.queryByText(/Sin asignar/)).toBeNull();
   });
 
@@ -98,6 +104,8 @@ describe('FutureHero', () => {
 
     expect(view.getByText('3 pagos desde hoy')).toBeTruthy();
     expect(view.queryByText('comprometidos')).toBeNull();
+    // §7.3 · el mes en curso no mezcla lentes: ni ingreso previsto ni Sin asignar.
+    expect(view.queryByText(/Ingreso previsto|Sin asignar/)).toBeNull();
   });
 
   it('CA-38 · la línea de cuotas que terminan', async () => {
@@ -123,7 +131,7 @@ describe('FutureHero', () => {
         hero={{
           kind: 'month',
           committed: 620_000,
-          line: { kind: 'unassigned', text: 'Sin asignar $580.000 · según tus ingresos previstos' },
+          line: { kind: 'unassigned', text: INCOME_LINE },
         }}
         onOpenDetail={onOpenDetail}
         selector={null}
@@ -143,7 +151,7 @@ describe('FutureHero', () => {
         hero={{
           kind: 'month',
           committed: 620_000,
-          line: { kind: 'unassigned', text: 'Sin asignar $580.000 · según tus ingresos previstos' },
+          line: { kind: 'unassigned', text: INCOME_LINE },
         }}
         onOpenDetail={null}
         selector={null}

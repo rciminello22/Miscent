@@ -12,6 +12,8 @@ export const FUTURE_COPY = {
     /** §33 · "Sin asignar · según tus ingresos previstos". */
     help: 'todavía sin destino, según tus ingresos previstos',
   },
+  /** CA-38 · el ingreso previsto del mes, a la vista bajo la cifra comprometida. */
+  incomePlanned: 'Ingreso previsto',
   /** N-08 adaptada a un mes futuro. Sin alarma. */
   exceeds: 'Tus gastos y compromisos superan tus ingresos previstos por',
   /** §23.1 · sin ingreso previsto no se calcula. */

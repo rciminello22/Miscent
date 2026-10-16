@@ -15,24 +15,31 @@ import { FUTURE_COPY } from './futureMonthCopy';
 
 export type FutureHeroLine =
   | { kind: 'unassigned'; text: string }
-  | { kind: 'exceeds'; text: string; amount: Pesos }
+  | { kind: 'exceeds'; text: string; amount: Pesos; incomeText: string }
   | { kind: 'noIncome'; text: string };
 
 /**
- * §33 · "Sin asignar $X · según tus ingresos previstos" (D1: la cifra siempre
- * con su ayuda). Con Sin asignar negativo no hay "−$X": es la frase de N-08 con
- * el exceso en positivo. Sin ingreso previsto no se calcula (N-04).
+ * CA-38 · §23.1 · §33 · "Ingreso previsto $X · Sin asignar $Y · según tus
+ * ingresos previstos" (D1: la cifra siempre con su ayuda). Con Sin asignar
+ * negativo no hay "−$Y": es la frase de N-08 con el exceso en positivo, y la
+ * línea queda solo con el ingreso previsto. Sin ingreso previsto no se calcula
+ * (N-04).
  */
 export function futureHeroLine(
   unassigned: Pesos | null,
+  expectedIncome: Pesos,
   formatAmount: (amount: Pesos) => string,
 ): FutureHeroLine {
   if (unassigned == null) return { kind: 'noIncome', text: FUTURE_COPY.noIncome };
-  if (unassigned < 0) return { kind: 'exceeds', text: FUTURE_COPY.exceeds, amount: -unassigned };
+
+  const income = `${FUTURE_COPY.incomePlanned} ${formatAmount(expectedIncome)}`;
+  if (unassigned < 0) {
+    return { kind: 'exceeds', text: FUTURE_COPY.exceeds, amount: -unassigned, incomeText: income };
+  }
 
   return {
     kind: 'unassigned',
-    text: `${FUTURE_COPY.unassigned.label} ${formatAmount(unassigned)} · según tus ingresos previstos`,
+    text: `${income} · ${FUTURE_COPY.unassigned.label} ${formatAmount(unassigned)} · según tus ingresos previstos`,
   };
 }
 
