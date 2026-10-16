@@ -26,7 +26,7 @@ import {
   type IsoDate,
   type Month,
 } from './calendar';
-import { resolveCardPayment } from './cards';
+import { hasApproxDay, isCardDateApprox, resolveCardPayment } from './cards';
 import { scheduleInstallments } from './installments';
 import type { Pesos } from './money';
 import { otherSlot, resolveShares, shareOf, splitInstallmentShares, type Shares } from './split';
@@ -246,7 +246,12 @@ function expandSharedRecurrence(
         amount,
         shares: proportionalShares(amount, terms.amount, split),
         payerSlot,
-        balanceDate: dateInMonth(month, recurrence.dayOfMonth), // S-02 · su día del mes
+        // S-02 · su día del mes. Un fijo compartido siempre lo tiene (la base lo
+        // exige); sin día se ubica al cierre del mes, como todo día desconocido.
+        balanceDate:
+          recurrence.dayOfMonth == null
+            ? endOfMonth(month)
+            : dateInMonth(month, recurrence.dayOfMonth),
         month,
         installment: null,
         isRecurrence: true,
@@ -295,7 +300,14 @@ export type PersonalOccurrence = {
   payerIsMe: boolean;
   /** Tarjeta propia con la que se paga: agrupa el resumen estimado (N-10). */
   cardId: string | null;
+  /** T-05 · falta algún día: la interfaz avisa "Fechas aproximadas". */
   approximate: boolean;
+  /**
+   * T-02 · la fecha existe pero sale de un día que el usuario marcó "Más o
+   * menos": se muestra "~15 nov". Distinto de `approximate` (T-05), que es la
+   * fecha que NO se conoce y se muestra como mes.
+   */
+  dateApprox: boolean;
   /** Mes en que se hizo la compra, para "Con tarjeta este mes" (§15). */
   purchaseMonth: Month;
   spaceId: string | null;
@@ -312,7 +324,8 @@ export type PersonalIncome = {
   label: string;
   amount: Pesos;
   month: Month;
-  date: IsoDate;
+  /** `null` cuando el día de cobro es "No sé": el ingreso se cuenta en el mes. */
+  date: IsoDate | null;
   isRecurrence: boolean;
 };
 
@@ -333,6 +346,7 @@ function ownOccurrence(
     payerIsMe: true,
     cardId: null,
     approximate: false,
+    dateApprox: false,
     purchaseMonth: fields.month,
     spaceId: null,
     spaceName: null,
@@ -384,6 +398,7 @@ function expandPersonalMovement(
         paymentDate: item.date,
         cardId: card?.id ?? null,
         approximate: item.approximate,
+        dateApprox: card != null && item.date != null && hasApproxDay(card),
         purchaseMonth,
         installment: { index: item.index, count: item.count },
       }),
@@ -407,6 +422,7 @@ function expandPersonalMovement(
           paymentDate: schedule.dueDate,
           cardId: card.id,
           approximate: schedule.approximate,
+          dateApprox: isCardDateApprox(card, schedule),
           purchaseMonth,
         }),
       ],
@@ -444,7 +460,9 @@ function expandPersonalRecurrence(
   for (const month of monthsIn(horizon)) {
     if (!recurrenceActiveIn(recurrence, month)) continue;
     const amount = recurrenceAmountIn(recurrence, month, overrides);
-    const date = dateInMonth(month, recurrence.dayOfMonth);
+    // "No sé" (solo un ingreso): se conoce el mes, no el día.
+    const date =
+      recurrence.dayOfMonth == null ? null : dateInMonth(month, recurrence.dayOfMonth);
 
     if (recurrence.kind === 'income') {
       // N-01 · los ingresos recurrentes son la base de "Ingresos registrados"
@@ -461,7 +479,8 @@ function expandPersonalRecurrence(
     }
 
     // F-01 · con tarjeta, cada ocurrencia entra en el resumen que corresponde.
-    const schedule = card != null ? resolveCardPayment(card, date) : null;
+    // Un gasto fijo siempre tiene día (la base lo exige); sin él, al cierre del mes.
+    const schedule = card != null ? resolveCardPayment(card, date ?? endOfMonth(month)) : null;
 
     occurrences.push(
       ownOccurrence({
@@ -476,6 +495,7 @@ function expandPersonalRecurrence(
         paymentDate: schedule != null ? schedule.dueDate : date,
         cardId: card?.id ?? null,
         approximate: schedule?.approximate ?? false,
+        dateApprox: card != null && schedule != null && isCardDateApprox(card, schedule),
         purchaseMonth: month,
         isRecurrence: true,
       }),
@@ -572,6 +592,7 @@ function projectSpaceOccurrence(args: {
     payerIsMe,
     cardId: payerIsMe ? (card?.id ?? null) : null,
     approximate: schedule?.approximate ?? false,
+    dateApprox: payerIsMe && card != null && paymentDate != null && hasApproxDay(card),
     purchaseMonth: occurrence.month,
     spaceId,
     spaceName,

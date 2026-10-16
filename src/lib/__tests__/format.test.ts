@@ -76,6 +76,12 @@ describe('formato de fechas', () => {
     expect(formatPaymentWhen({ date: '2026-11-05', month: '2026-11' })).toBe('5 nov');
     expect(formatPaymentWhen({ date: null, month: '2026-11' })).toBe('noviembre');
   });
+
+  it('T-02 · una fecha que sale de un "Más o menos" lleva "~"; el mes solo, nunca', () => {
+    expect(formatPaymentWhen({ date: '2026-11-15', month: '2026-11', approx: true })).toBe('~15 nov');
+    expect(formatPaymentWhen({ date: null, month: '2026-11', approx: true })).toBe('noviembre');
+    expect(formatPaymentWhen({ date: '2026-11-15', month: '2026-11', approx: false })).toBe('15 nov');
+  });
 });
 
 describe('cuotas', () => {

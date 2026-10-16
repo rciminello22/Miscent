@@ -19,6 +19,8 @@ const VISA = {
   name: 'Visa Galicia',
   closingDay: 25,
   dueDay: 5,
+  closingApprox: false,
+  dueApprox: false,
 };
 
 const FACTS: PersonalFacts = {

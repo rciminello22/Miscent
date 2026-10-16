@@ -42,6 +42,34 @@ describe('UX-01 · FixedIncomesList', () => {
     expect(view.getByText('$300.000')).toBeTruthy();
   });
 
+  it('T-02 · un día "Más o menos" se dice "cada ~28 · aprox."; "No sé", sin día', async () => {
+    const aprox = personalRecurrence({
+      id: 'aprox',
+      kind: 'income',
+      amount: 500_000,
+      dayOfMonth: 28,
+      dayApprox: true,
+      startMonth: '2026-01',
+      category: 'sueldo',
+      description: 'Changas',
+    });
+    const sinDia = personalRecurrence({
+      id: 'sin-dia',
+      kind: 'income',
+      amount: 90_000,
+      dayOfMonth: null,
+      startMonth: '2026-01',
+      category: 'sueldo',
+      description: 'Alquiler cobrado',
+    });
+    const view = await renderWithTheme(
+      <FixedIncomesList incomes={[aprox, sinDia]} onOpen={() => {}} onAdd={() => {}} />,
+    );
+
+    expect(view.getByText('cada ~28 · aprox.')).toBeTruthy();
+    expect(view.getByText('sin día')).toBeTruthy();
+  });
+
   it('tocar una fila abre ESE ingreso (para editarlo o ajustar un mes)', async () => {
     const onOpen = jest.fn();
     const view = await renderWithTheme(

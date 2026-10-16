@@ -9,7 +9,8 @@ import { StepShell } from '@/features/onboarding/StepShell';
 import { onboardingBranches, onboardingProgress } from '@/features/onboarding/onboardingProgress';
 import { useCreateRecurrence, usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { useToday } from '@/features/shared/useToday';
-import { DayPicker } from '@/features/onboarding/DayPicker';
+import { DayAnswerField } from '@/features/onboarding/DayAnswerField';
+import { dayAnswerToStored, emptyAnswer } from '@/features/onboarding/dayAnswer';
 import { Card, Stack, Text } from '@/ui/primitives';
 
 /**
@@ -37,7 +38,8 @@ export default function Ingreso() {
   const progress = onboardingProgress('ingreso', onboardingBranches(facts, today));
 
   const [amount, setAmount] = useState(0);
-  const [day, setDay] = useState(1);
+  // T-02 · sin respuesta de antemano: nadie queda con un día que no eligió.
+  const [dayAnswer, setDayAnswer] = useState(emptyAnswer());
   const [saving, setSaving] = useState(false);
 
   async function save() {
@@ -45,11 +47,13 @@ export default function Ingreso() {
     setSaving(true);
 
     try {
+      const stored = dayAnswerToStored(dayAnswer);
       await createRecurrence.mutateAsync({
         kind: 'income',
         amount,
         category: 'sueldo',
-        dayOfMonth: day,
+        dayOfMonth: stored.day,
+        dayApprox: stored.approx,
         startMonth: monthOf(today),
         endMonth: null,
         paymentMethodId: null,
@@ -81,7 +85,12 @@ export default function Ingreso() {
         </View>
 
         <Field label="¿Qué día lo cobrás?">
-          <DayPicker value={day} onChange={(next) => setDay(next ?? 1)} />
+          <DayAnswerField
+            label="Día de cobro"
+            value={dayAnswer}
+            onChange={setDayAnswer}
+            unknownHelp="Lo contamos en el mes en que cobrás, sin día."
+          />
         </Field>
 
         <Card tone="sunken">

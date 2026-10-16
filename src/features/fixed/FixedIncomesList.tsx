@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 import type { Recurrence } from '@domain/types';
 import { prettyLabel } from '@/features/add/categories';
+import { incomeDayPhrase } from '@/features/onboarding/dayAnswer';
 import {
   Button,
   Card,
@@ -69,7 +70,7 @@ export function FixedIncomesList({
                       {income.description ?? prettyLabel(income.category)}
                     </Text>
                     <Text variant="caption" tone="muted">
-                      cada día {income.dayOfMonth}
+                      {incomeDayPhrase({ day: income.dayOfMonth, approx: income.dayApprox })}
                     </Text>
                   </View>
                   <Money amount={income.amount} variant="bodyMedium" />

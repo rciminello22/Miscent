@@ -101,8 +101,14 @@ export function formatLongDate(date: IsoDate): string {
  * §22 · "Se paga en noviembre". T-05 · cuando no se conoce el día, se muestra
  * el mes y NUNCA se inventa una fecha.
  */
-export function formatPaymentWhen(args: { date: IsoDate | null; month: Month }): string {
-  return args.date != null ? formatDayMonth(args.date) : formatMonth(args.month);
+export function formatPaymentWhen(args: {
+  date: IsoDate | null;
+  month: Month;
+  /** T-02 · la fecha sale de un día "Más o menos": "~15 nov". */
+  approx?: boolean;
+}): string {
+  if (args.date == null) return formatMonth(args.month);
+  return `${args.approx === true ? '~' : ''}${formatDayMonth(args.date)}`;
 }
 
 /** "3 de 6" · §20. */

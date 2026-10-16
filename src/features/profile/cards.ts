@@ -15,7 +15,11 @@ export function selectCards(methods: readonly PaymentMethod[]): PaymentMethod[] 
  * y la app lo dice: nunca se inventa un día.
  */
 export function cardScheduleLine(card: PaymentMethod): string {
-  return card.closingDay != null && card.dueDay != null
-    ? `Cierra el ${card.closingDay}, vence el ${card.dueDay}`
-    : 'Fechas aproximadas';
+  if (card.closingDay == null || card.dueDay == null) return 'Fechas aproximadas';
+
+  // T-02 · un día de "Más o menos" va con "~", y la línea lo dice una vez.
+  const closing = `${card.closingApprox ? '~' : ''}${card.closingDay}`;
+  const due = `${card.dueApprox ? '~' : ''}${card.dueDay}`;
+  const line = `Cierra el ${closing}, vence el ${due}`;
+  return card.closingApprox || card.dueApprox ? `${line} · aprox.` : line;
 }

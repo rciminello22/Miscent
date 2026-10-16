@@ -30,6 +30,7 @@ function payment(overrides: Partial<UpcomingPayment> & { id: string }): Upcoming
     date: '2026-11-01',
     month: '2026-11',
     approximate: false,
+    dateApprox: false,
     hasPassed: false,
     items: [],
     isEstimate: false,
@@ -242,5 +243,17 @@ describe('paymentsFootnotes · el pie de la lista de pagos', () => {
     ]);
 
     expect(notes.filter((note) => note === 'Fechas aproximadas')).toHaveLength(1);
+  });
+
+  it('T-02 · una fecha de "Más o menos" también pide "Fechas aproximadas", una sola vez', () => {
+    const notes = paymentsFootnotes([
+      payment({ id: 'a', dateApprox: true }),
+      payment({ id: 'b', approximate: true }),
+    ]);
+
+    expect(notes.filter((note) => note === 'Fechas aproximadas')).toHaveLength(1);
+    expect(paymentsFootnotes([payment({ id: 'c', dateApprox: true })])).toContain(
+      'Fechas aproximadas',
+    );
   });
 });

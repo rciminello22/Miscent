@@ -44,6 +44,13 @@ export type PaymentMethod = {
   /** Solo tarjetas. `null` significa "No sé" → modo aproximado (T-05). */
   closingDay: number | null;
   dueDay: number | null;
+  /**
+   * T-02 · el día salió de un "Más o menos" (2, 15 o 28), no de un "Sé el día".
+   * No cambia ningún cálculo: solo decide si la fecha se muestra como "~15 nov".
+   * Siempre `false` si el día es `null`.
+   */
+  closingApprox: boolean;
+  dueApprox: boolean;
 };
 
 /** T-07 · Resumen pendiente declarado al activar la cuenta personal. */
@@ -180,8 +187,14 @@ export type Recurrence = {
   category: Category;
   /** "Luz", "Monotributo". `null` → se muestra por su categoría. */
   description: string | null;
-  /** Día del mes en que ocurre. T-04 aplicado al expandir. */
-  dayOfMonth: number;
+  /**
+   * Día del mes en que ocurre. T-04 aplicado al expandir. `null` ("No sé") solo
+   * en un ingreso personal: el día de cobro no mueve ningún total, porque el
+   * radar y Futuro cuentan los ingresos por mes.
+   */
+  dayOfMonth: number | null;
+  /** El día salió de un "Más o menos" (2, 15 o 28). Solo cambia cómo se muestra. */
+  dayApprox: boolean;
   startMonth: Month;
   /** `null` = sin fin. F-03 "Dejar de pagarlo desde…" lo fija. */
   endMonth: Month | null;

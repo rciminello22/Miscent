@@ -30,6 +30,8 @@ import { ESTIMATE_NOTE } from './statementDetail';
 export const UPCOMING_COPY = {
   estimate: ESTIMATE_NOTE,
   approximate: 'Fechas aproximadas',
+  /** T-02 · la marca de una fecha que sale de un "Más o menos". */
+  approxMark: 'aprox.',
   /** G-06 · el estado correcto. "Pagado" está prohibido (CA-45). */
   past: 'Ya pasó',
   includes: 'incluye',
@@ -55,7 +57,11 @@ export function UpcomingPaymentRow({
   const row = (
     <Row gap="3" align="flex-start">
       <Text variant="small" tone="muted" tabular style={{ width: body ? 54 : 58 }}>
-        {formatPaymentWhen({ date: payment.date, month: payment.month })}
+        {formatPaymentWhen({
+          date: payment.date,
+          month: payment.month,
+          approx: payment.dateApprox,
+        })}
       </Text>
 
       <View style={{ flex: 1, gap: 2 }}>
@@ -75,10 +81,10 @@ export function UpcomingPaymentRow({
           </Text>
         )}
 
-        {/* T-05 */}
-        {payment.approximate && (
+        {/* T-02 · solo lo que salió de un "Más o menos". T-05 ("Fechas aproximadas") va una vez, al pie de la lista. */}
+        {payment.dateApprox && (
           <Text variant="caption" tone="muted">
-            {UPCOMING_COPY.approximate}
+            {UPCOMING_COPY.approxMark}
           </Text>
         )}
 

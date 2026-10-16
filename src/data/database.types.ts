@@ -259,11 +259,15 @@ export type Database = {
         ]
       }
       payment_methods: {
+        // MANUAL (migración 0019, todavía sin aplicar): `closing_day_approx` y
+        // `due_day_approx`. Regenerar con `npm run db:types` después del push.
         Row: {
           archived: boolean
           closing_day: number | null
+          closing_day_approx: boolean
           created_at: string
           due_day: number | null
+          due_day_approx: boolean
           id: string
           kind: Database["public"]["Enums"]["payment_method_kind"]
           name: string
@@ -272,8 +276,10 @@ export type Database = {
         Insert: {
           archived?: boolean
           closing_day?: number | null
+          closing_day_approx?: boolean
           created_at?: string
           due_day?: number | null
+          due_day_approx?: boolean
           id?: string
           kind: Database["public"]["Enums"]["payment_method_kind"]
           name: string
@@ -282,8 +288,10 @@ export type Database = {
         Update: {
           archived?: boolean
           closing_day?: number | null
+          closing_day_approx?: boolean
           created_at?: string
           due_day?: number | null
+          due_day_approx?: boolean
           id?: string
           kind?: Database["public"]["Enums"]["payment_method_kind"]
           name?: string
@@ -445,12 +453,16 @@ export type Database = {
         ]
       }
       recurrences: {
+        // MANUAL (migración 0019, todavía sin aplicar): `day_approx` y
+        // `day_of_month` ahora admite null (solo un ingreso personal "No sé").
+        // Regenerar con `npm run db:types` después del push.
         Row: {
           amount: number
           category: Database["public"]["Enums"]["category"]
           created_at: string
           created_by_slot: number | null
-          day_of_month: number
+          day_approx: boolean
+          day_of_month: number | null
           departure_resolution: string | null
           description: string | null
           end_month: string | null
@@ -474,7 +486,8 @@ export type Database = {
           category: Database["public"]["Enums"]["category"]
           created_at?: string
           created_by_slot?: number | null
-          day_of_month: number
+          day_approx?: boolean
+          day_of_month?: number | null
           departure_resolution?: string | null
           description?: string | null
           end_month?: string | null
@@ -498,7 +511,8 @@ export type Database = {
           category?: Database["public"]["Enums"]["category"]
           created_at?: string
           created_by_slot?: number | null
-          day_of_month?: number
+          day_approx?: boolean
+          day_of_month?: number | null
           departure_resolution?: string | null
           description?: string | null
           end_month?: string | null

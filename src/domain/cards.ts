@@ -109,6 +109,25 @@ function lastPurchaseOfClosedStatement(card: PaymentMethod, today: IsoDate): Iso
 }
 
 /**
+ * T-02 · alguno de los días que la tarjeta SÍ tiene salió de un "Más o menos".
+ * Un día `null` ("No sé") no cuenta: no es un día aproximado, es ningún día.
+ */
+export function hasApproxDay(card: PaymentMethod): boolean {
+  return (
+    (card.closingDay != null && card.closingApprox) || (card.dueDay != null && card.dueApprox)
+  );
+}
+
+/**
+ * Si la fecha de un resumen se muestra como "~15 nov". Solo cuando hay fecha y
+ * alguno de los días que la producen salió de un "Más o menos". Con "No sé" no
+ * hay fecha: se muestra el mes (T-05) y no se le pega un "~" encima.
+ */
+export function isCardDateApprox(card: PaymentMethod, schedule: CardPaymentSchedule): boolean {
+  return schedule.dueDate != null && hasApproxDay(card);
+}
+
+/**
  * El vencimiento de un mes dado para una tarjeta. Se usa para ubicar las
  * cuotas 2..n, que caen mes a mes después de la primera (Q-02), y para armar
  * el resumen estimado de cada vencimiento (N-10).

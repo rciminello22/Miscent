@@ -18,6 +18,8 @@ const VISA: PaymentMethod = {
   name: 'Visa Galicia',
   closingDay: 25,
   dueDay: 5,
+  closingApprox: false,
+  dueApprox: false,
 };
 
 function occ(
@@ -34,6 +36,7 @@ function occ(
     payerIsMe: true,
     cardId: VISA.id,
     approximate: false,
+    dateApprox: false,
     purchaseMonth: '2026-10',
     spaceId: null,
     spaceName: null,
@@ -60,6 +63,7 @@ function statement(
     date: '2026-11-05',
     month: '2026-11',
     approximate: false,
+    dateApprox: false,
     hasPassed: false,
     items,
     isEstimate: true,

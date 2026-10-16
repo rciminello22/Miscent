@@ -1,3 +1,4 @@
+import { CalendarDays } from 'lucide-react-native';
 import { fireEvent, renderWithTheme } from '@/test/render';
 import { Segmented } from './Segmented';
 
@@ -31,6 +32,22 @@ describe('Segmented', () => {
 
     await fireEvent.press(view.getByLabelText('A mano'));
     expect(onChange).toHaveBeenCalledWith('even');
+  });
+
+  it('una opción puede llevar un ícono, y las demás no', async () => {
+    const view = await renderWithTheme(
+      <Segmented
+        label="Mostrar"
+        options={[
+          { key: 'a', label: 'Con ícono', icon: CalendarDays },
+          { key: 'b', label: 'Sin ícono' },
+        ]}
+        value="a"
+        onChange={jest.fn()}
+      />,
+    );
+
+    expect(view.getAllByTestId('segment-icon', { includeHiddenElements: true })).toHaveLength(1);
   });
 
   it('es un grupo de opciones para el lector de pantalla', async () => {

@@ -21,6 +21,8 @@ const VISA = {
   name: 'Visa Galicia',
   closingDay: 25,
   dueDay: 5,
+  closingApprox: false,
+  dueApprox: false,
 };
 
 function cardStatementPayment(args: { today: string; purchaseDate: string }) {
@@ -101,7 +103,15 @@ describe('§23.2 · UpcomingPaymentRow', () => {
       userId: 'test',
       // Una tarjeta sin cierre ni vencimiento: modo aproximado.
       paymentMethods: [
-        { id: 'tarjeta', kind: 'card', name: 'Tarjeta', closingDay: null, dueDay: null },
+        {
+          id: 'tarjeta',
+          kind: 'card',
+          name: 'Tarjeta',
+          closingDay: null,
+          dueDay: null,
+          closingApprox: false,
+          dueApprox: false,
+        },
       ],
       movements: [
         {
@@ -131,7 +141,22 @@ describe('§23.2 · UpcomingPaymentRow', () => {
     const view = await renderWithTheme(<UpcomingPaymentRow payment={payment} />);
 
     expect(view.getByText('noviembre')).toBeTruthy();
-    expect(view.getByText('Fechas aproximadas')).toBeTruthy();
+    // "Fechas aproximadas" se dice UNA vez por pantalla (al pie de la lista), no en cada fila.
+    expect(view.queryByText('Fechas aproximadas')).toBeNull();
+    expect(view.queryByText('aprox.')).toBeNull();
+  });
+
+  it('T-02 · una fecha de "Más o menos" se muestra "~15 nov" con la marca "aprox."', async () => {
+    const payment = {
+      ...cardStatementPayment({ today: '2026-10-21', purchaseDate: '2026-10-20' }),
+      date: '2026-11-15',
+      dateApprox: true,
+    };
+
+    const view = await renderWithTheme(<UpcomingPaymentRow payment={payment} />);
+
+    expect(view.getByText('~15 nov')).toBeTruthy();
+    expect(view.getByText('aprox.')).toBeTruthy();
   });
 
   it('CA-00 · ningún término prohibido en una fila de pago', async () => {

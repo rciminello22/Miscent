@@ -4,8 +4,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CreditCard, Plus } from 'lucide-react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { resolveCardPayment } from '@domain/cards';
-import { formatMonth } from '@/lib/format';
+import { isCardDateApprox, resolveCardPayment } from '@domain/cards';
+import { formatDayMonth, formatMonth } from '@/lib/format';
 import { queryKeys } from '@/data/queryClient';
 import { createPaymentMethod } from '@/data/repositories/mutations';
 import { useSession } from '@/features/auth/SessionProvider';
@@ -13,7 +13,8 @@ import { useFeedback } from '@/features/shared/useFeedback';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { useToday } from '@/features/shared/useToday';
 import { Field } from '@/features/add/fields';
-import { DayNote, DayPicker } from '@/features/onboarding/DayPicker';
+import { DayAnswerField } from '@/features/onboarding/DayAnswerField';
+import { dayAnswerToStored, emptyAnswer, isAnswered } from '@/features/onboarding/dayAnswer';
 import { StepShell } from '@/features/onboarding/StepShell';
 import { onboardingBranches, onboardingProgress } from '@/features/onboarding/onboardingProgress';
 import { cardScheduleLine } from '@/features/profile/cards';
@@ -50,8 +51,11 @@ export default function Tarjetas() {
   const standalone = desde === 'perfil';
 
   const [name, setName] = useState('');
-  const [closingDay, setClosingDay] = useState<number | null>(null);
-  const [dueDay, setDueDay] = useState<number | null>(null);
+  // T-02 · sin respuesta de antemano; "No sé" y sin responder guardan lo mismo.
+  const [closingAnswer, setClosingAnswer] = useState(emptyAnswer());
+  const [dueAnswer, setDueAnswer] = useState(emptyAnswer());
+  const closing = dayAnswerToStored(closingAnswer);
+  const due = dayAnswerToStored(dueAnswer);
   const [adding, setAdding] = useState(standalone);
 
   const cards = facts.paymentMethods.filter((method) => method.kind === 'card');
@@ -64,13 +68,15 @@ export default function Tarjetas() {
       createPaymentMethod(session!.user.id, {
         kind: 'card',
         name: name.trim(),
-        closingDay,
-        dueDay,
+        closingDay: closing.day,
+        closingApprox: closing.approx,
+        dueDay: due.day,
+        dueApprox: due.approx,
       }),
     onSuccess: async () => {
       setName('');
-      setClosingDay(null);
-      setDueDay(null);
+      setClosingAnswer(emptyAnswer());
+      setDueAnswer(emptyAnswer());
       setAdding(false);
       await queryClient.invalidateQueries({
         queryKey: queryKeys.personalFacts(session?.user.id ?? 'anon'),
@@ -81,13 +87,17 @@ export default function Tarjetas() {
   });
 
   /** La explicación concreta de lo que acaban de cargar. */
-  const preview =
-    closingDay != null || dueDay != null
-      ? resolveCardPayment(
-          { id: 'preview', kind: 'card', name: 'preview', closingDay, dueDay },
-          today,
-        )
-      : null;
+  const answered = isAnswered(closingAnswer) || isAnswered(dueAnswer);
+  const previewCard = {
+    id: 'preview',
+    kind: 'card' as const,
+    name: 'preview',
+    closingDay: closing.day,
+    dueDay: due.day,
+    closingApprox: closing.approx,
+    dueApprox: due.approx,
+  };
+  const preview = answered ? resolveCardPayment(previewCard, today) : null;
 
   const canAdd = name.trim().length > 0 && !addCard.isPending;
 
@@ -160,13 +170,19 @@ export default function Tarjetas() {
                 </Field>
 
                 <Field label="Día de cierre">
-                  <DayPicker value={closingDay} onChange={setClosingDay} nullable />
-                  <DayNote day={closingDay} />
+                  <DayAnswerField
+                    label="Día de cierre"
+                    value={closingAnswer}
+                    onChange={setClosingAnswer}
+                  />
                 </Field>
 
                 <Field label="Día de vencimiento">
-                  <DayPicker value={dueDay} onChange={setDueDay} nullable />
-                  <DayNote day={dueDay} />
+                  <DayAnswerField
+                    label="Día de vencimiento"
+                    value={dueAnswer}
+                    onChange={setDueAnswer}
+                  />
                 </Field>
 
                 {preview != null && (
@@ -175,8 +191,17 @@ export default function Tarjetas() {
                     <Text variant="small" tone="secondary">
                       Una compra de hoy se pagaría en{' '}
                       <Text variant="smallMedium">{formatMonth(preview.month)}</Text>
-                      {preview.approximate ? ' (fechas aproximadas)' : ''}.
+                      {isCardDateApprox(previewCard, preview) && preview.dueDate != null
+                        ? `, alrededor del ${formatDayMonth(preview.dueDate)} aprox.`
+                        : ''}
+                      .
                     </Text>
+                    {preview.approximate && !isCardDateApprox(previewCard, preview) && (
+                      <Text variant="caption" tone="muted">
+                        Fechas aproximadas. No inventamos ningún día. Cuando lo sepas, lo cambiás
+                        desde la tarjeta, en Perfil.
+                      </Text>
+                    )}
                   </>
                 )}
 

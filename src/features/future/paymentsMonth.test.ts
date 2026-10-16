@@ -30,6 +30,7 @@ function payment(overrides: Partial<UpcomingPayment> & Pick<UpcomingPayment, 'id
     date: '2026-10-20',
     month: '2026-10',
     approximate: false,
+    dateApprox: false,
     hasPassed: false,
     items: [],
     isEstimate: false,

@@ -50,7 +50,68 @@ export function toPaymentMethod(row: Row<'payment_methods'>): PaymentMethod {
     name: row.name,
     closingDay: row.closing_day,
     dueDay: row.due_day,
+    // Migración 0019. Mientras el remoto no la tenga, la columna llega
+    // `undefined`: se toma como día exacto. Y un día `null` ("No sé") nunca es
+    // aproximado.
+    closingApprox: row.closing_day != null && (row.closing_day_approx ?? false),
+    dueApprox: row.due_day != null && (row.due_day_approx ?? false),
   };
+}
+
+type DayColumns = Record<string, number | boolean | null>;
+
+/**
+ * El día y, si corresponde, su marca de aproximado. La marca solo se manda
+ * cuando vale true (o, al EDITAR, para apagarla): una columna que el remoto
+ * todavía no conoce (migración 0019 sin aplicar) haría fallar el insert, y un
+ * día exacto tiene que seguir guardándose.
+ */
+function dayWithMark(
+  columns: DayColumns,
+  dayKey: string,
+  markKey: string,
+  day: number | null | undefined,
+  approx: boolean | undefined,
+  clearOnExact: boolean,
+): void {
+  if (day === undefined) return;
+  columns[dayKey] = day;
+  const marked = day != null && approx === true;
+  if (marked || clearOnExact) columns[markKey] = marked;
+}
+
+/** T-02 · las columnas de cierre y vencimiento de una tarjeta. */
+export function cardDayColumns(
+  input: {
+    closingDay?: number | null;
+    closingApprox?: boolean;
+    dueDay?: number | null;
+    dueApprox?: boolean;
+  },
+  options?: { clearOnExact?: boolean },
+): DayColumns {
+  const columns: DayColumns = {};
+  const clear = options?.clearOnExact === true;
+  dayWithMark(columns, 'closing_day', 'closing_day_approx', input.closingDay, input.closingApprox, clear);
+  dayWithMark(columns, 'due_day', 'due_day_approx', input.dueDay, input.dueApprox, clear);
+  return columns;
+}
+
+/** El día de un fijo o de un ingreso, y su marca. */
+export function recurrenceDayColumns(
+  input: { dayOfMonth?: number | null; dayApprox?: boolean },
+  options?: { clearOnExact?: boolean },
+): DayColumns {
+  const columns: DayColumns = {};
+  dayWithMark(
+    columns,
+    'day_of_month',
+    'day_approx',
+    input.dayOfMonth,
+    input.dayApprox,
+    options?.clearOnExact === true,
+  );
+  return columns;
 }
 
 export function toDeclaredStatement(row: Row<'declared_statements'>): DeclaredStatement {
@@ -155,6 +216,8 @@ export function toRecurrence(row: Row<'recurrences'>): Recurrence {
     category: row.category,
     description: row.description,
     dayOfMonth: row.day_of_month,
+    // Migración 0019: `undefined` mientras el remoto no la tenga → día exacto.
+    dayApprox: row.day_of_month != null && (row.day_approx ?? false),
     startMonth: row.start_month,
     endMonth: row.end_month,
     ownerUserId: row.owner_user_id,

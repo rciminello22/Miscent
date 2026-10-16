@@ -24,7 +24,15 @@ const MONTH = '2026-10';
 const FACTS: PersonalFacts = {
   userId: 'test',
   paymentMethods: [
-    { id: 'debito', kind: 'debit', name: 'Débito', closingDay: null, dueDay: null },
+    {
+      id: 'debito',
+      kind: 'debit',
+      name: 'Débito',
+      closingDay: null,
+      dueDay: null,
+      closingApprox: false,
+      dueApprox: false,
+    },
   ],
   movements: [
     {
@@ -63,6 +71,7 @@ const FACTS: PersonalFacts = {
       createdAt: '2026-01-01T00:00:00+00:00',
       pastTerms: [],
       dayOfMonth: 1,
+      dayApprox: false,
       startMonth: '2026-01',
       endMonth: null,
       ownerUserId: 'test',

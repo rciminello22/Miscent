@@ -20,6 +20,7 @@ function payment(overrides: Partial<UpcomingPayment> & { id: string }): Upcoming
     date: '2026-11-01',
     month: '2026-11',
     approximate: false,
+    dateApprox: false,
     hasPassed: false,
     items: [],
     isEstimate: false,
@@ -55,6 +56,45 @@ describe('upcomingDoorContent · la puerta de Próximos pagos', () => {
     );
 
     expect(content?.line).toBe('20 oct · Visa Galicia · resumen estimado · $120.000');
+  });
+
+  it('T-02 · una fecha de "Más o menos" lleva "~" y "(aprox.)"; la frase "Fechas aproximadas" no va acá', () => {
+    const content = upcomingDoorContent(
+      [
+        payment({
+          id: 'visa',
+          kind: 'card-statement',
+          label: 'Visa Galicia',
+          amount: 180_000,
+          date: '2026-11-15',
+          month: '2026-11',
+          isEstimate: true,
+          dateApprox: true,
+        }),
+      ],
+      formatPesos,
+    );
+
+    expect(content?.line).toBe('~15 nov · Visa Galicia · resumen estimado (aprox.) · $180.000');
+  });
+
+  it('T-05 · un "No sé" muestra el mes, sin "~" ni "(aprox.)"', () => {
+    const content = upcomingDoorContent(
+      [
+        payment({
+          id: 'mc',
+          kind: 'card-statement',
+          label: 'Mastercard Santander',
+          amount: 60_000,
+          date: null,
+          approximate: true,
+          isEstimate: true,
+        }),
+      ],
+      formatPesos,
+    );
+
+    expect(content?.line).toBe('noviembre · Mastercard Santander · resumen estimado · $60.000');
   });
 
   it('"y N más" cuenta los que no se ven', () => {

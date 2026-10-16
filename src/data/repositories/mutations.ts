@@ -12,7 +12,7 @@ import type { IsoDate, Month } from '@domain/calendar';
 import type { Category, PaymentMethod, PaymentMethodKind, Slot, Split } from '@domain/types';
 import type { Pesos } from '@domain/money';
 import { supabase } from '../supabase';
-import { installmentColumns, splitColumns } from '../mappers';
+import { cardDayColumns, installmentColumns, recurrenceDayColumns, splitColumns } from '../mappers';
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /*  Movimientos personales                                                   */
@@ -81,6 +81,9 @@ export type NewPaymentMethod = {
   /** T-02 · `null` es "No sé" y activa el modo aproximado (T-05). */
   closingDay: number | null;
   dueDay: number | null;
+  /** T-02 · el día salió de un "Más o menos" (2, 15 o 28). */
+  closingApprox?: boolean;
+  dueApprox?: boolean;
 };
 
 export async function createPaymentMethod(
@@ -94,8 +97,11 @@ export async function createPaymentMethod(
       kind: input.kind,
       name: input.name.trim(),
       // El esquema solo acepta días en tarjetas.
-      closing_day: input.kind === 'card' ? input.closingDay : null,
-      due_day: input.kind === 'card' ? input.dueDay : null,
+      ...cardDayColumns(
+        input.kind === 'card'
+          ? input
+          : { closingDay: null, dueDay: null },
+      ),
     })
     .select('id')
     .single();
@@ -116,8 +122,8 @@ export async function updatePaymentMethod(
     .from('payment_methods')
     .update({
       ...(input.name != null ? { name: input.name.trim() } : {}),
-      ...(input.closingDay !== undefined ? { closing_day: input.closingDay } : {}),
-      ...(input.dueDay !== undefined ? { due_day: input.dueDay } : {}),
+      // Al editar, un día exacto apaga la marca de aproximado que tenía.
+      ...cardDayColumns(input, { clearOnExact: true }),
     })
     .eq('id', id);
 
@@ -151,7 +157,10 @@ export type NewRecurrence = {
   kind: 'expense' | 'income';
   amount: Pesos;
   category: Category;
-  dayOfMonth: number;
+  /** `null` ("No sé") solo en un ingreso personal. */
+  dayOfMonth: number | null;
+  /** El día salió de un "Más o menos" (2, 15 o 28). */
+  dayApprox?: boolean;
   startMonth: Month;
   endMonth: Month | null;
   paymentMethodId: string | null;
@@ -182,7 +191,7 @@ export async function createRecurrence(
       amount: input.amount,
       category: input.category,
       description: cleanDescription(input.description),
-      day_of_month: input.dayOfMonth,
+      ...recurrenceDayColumns({ dayOfMonth: input.dayOfMonth, dayApprox: input.dayApprox }),
       start_month: input.startMonth,
       end_month: input.endMonth,
       // El esquema exige exactamente uno de los dos (CHECK personal_xor_shared).

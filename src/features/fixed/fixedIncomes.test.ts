@@ -53,6 +53,15 @@ describe('UX-01 · selectFixedIncomes', () => {
     expect(result.map((item) => item.id)).toEqual(['grande', 'chico', 'tarde']);
   });
 
+  it('T-05 · un ingreso sin día ("No sé") va al final de la lista', () => {
+    const result = selectFixedIncomes(
+      [sueldo({ id: 'sin-dia', dayOfMonth: null }), sueldo({ id: 'tarde', dayOfMonth: 28 })],
+      '2026-10',
+    );
+
+    expect(result.map((item) => item.id)).toEqual(['tarde', 'sin-dia']);
+  });
+
   it('no incluye los que ya terminaron antes del mes en curso', () => {
     const result = selectFixedIncomes(
       [

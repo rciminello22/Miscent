@@ -17,6 +17,8 @@ const visa: PaymentMethod = {
   name: 'Visa Galicia',
   closingDay: 25,
   dueDay: 5,
+  closingApprox: false,
+  dueApprox: false,
 };
 
 describe('cuotas · Q-01 a Q-07', () => {

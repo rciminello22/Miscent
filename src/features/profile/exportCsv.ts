@@ -70,7 +70,12 @@ export function buildExportCsv(
       '',
       methodName(recurrence.paymentMethodId),
       '',
-      [`día ${recurrence.dayOfMonth}`, recurrence.endMonth != null ? `hasta ${recurrence.endMonth}` : null]
+      [
+        recurrence.dayOfMonth == null
+          ? null
+          : `día ${recurrence.dayApprox ? '~' : ''}${recurrence.dayOfMonth}`,
+        recurrence.endMonth != null ? `hasta ${recurrence.endMonth}` : null,
+      ]
         .filter((part) => part != null)
         .join(' · '),
     ]);

@@ -22,7 +22,15 @@ import { fixedWording } from './fixedCopy';
 import { AmountInput } from '@/features/add/AmountInput';
 import { prettyLabel } from '@/features/add/categories';
 import { Chip, Field } from '@/features/add/fields';
+import { DayAnswerField } from '@/features/onboarding/DayAnswerField';
 import { DayNote, DayPicker } from '@/features/onboarding/DayPicker';
+import {
+  answerFromStored,
+  dayAnswerToStored,
+  incomeDayPhrase,
+  isAnswered,
+  type DayAnswer,
+} from '@/features/onboarding/dayAnswer';
 import {
   AudienceBadge,
   type Audience,
@@ -112,7 +120,11 @@ export function FixedDetail({
   const [mode, setMode] = useState<Mode>('view');
   const [amount, setAmount] = useState(recurrence?.amount ?? 0);
   const [targetMonth, setTargetMonth] = useState<Month>(currentMonth);
+  // Un gasto fijo siempre tiene día. Un ingreso puede ser "Más o menos" o "No sé".
   const [day, setDay] = useState(recurrence?.dayOfMonth ?? 1);
+  const [dayAnswer, setDayAnswer] = useState<DayAnswer>(() =>
+    answerFromStored({ day: recurrence?.dayOfMonth ?? null, approx: recurrence?.dayApprox ?? false }),
+  );
 
   /** Los ajustes de un mes que ya existen, para poder quitarlos. */
   const overrides = useMemo(
@@ -138,7 +150,15 @@ export function FixedDetail({
           await changeRecurrenceAmount(recurrence, amount, currentMonth);
           break;
         case 'correct':
-          await correctRecurrence(recurrence.id, { dayOfMonth: day });
+          if (recurrence.kind === 'income') {
+            const stored = dayAnswerToStored(dayAnswer);
+            await correctRecurrence(recurrence.id, {
+              dayOfMonth: stored.day,
+              dayApprox: stored.approx,
+            });
+          } else {
+            await correctRecurrence(recurrence.id, { dayOfMonth: day });
+          }
           break;
         case 'stop':
           await stopRecurrenceFrom(recurrence.id, targetMonth);
@@ -220,7 +240,10 @@ export function FixedDetail({
               size="lg"
               fullWidth
               haptic="success"
-              disabled={(mode === 'this-month' || mode === 'from-now') && amount <= 0}
+              disabled={
+                ((mode === 'this-month' || mode === 'from-now') && amount <= 0) ||
+                (mode === 'correct' && recurrence?.kind === 'income' && !isAnswered(dayAnswer))
+              }
               loading={apply.isPending}
               onPress={() => apply.mutate()}
             />
@@ -276,7 +299,7 @@ export function FixedDetail({
           <Text variant="small" tone="secondary">
             {[
               isIncome ? 'Ingreso fijo' : 'Fijo',
-              `cada día ${recurrence.dayOfMonth}`,
+              incomeDayPhrase({ day: recurrence.dayOfMonth, approx: recurrence.dayApprox }),
               methodName,
               recurrence.endMonth != null
                 ? `hasta ${formatMonth(recurrence.endMonth, currentMonth)}`
@@ -285,6 +308,22 @@ export function FixedDetail({
               .filter((part) => part != null && part !== '')
               .join(' · ')}
           </Text>
+          {/* T-02 · discreto, sin recordatorios: abre el selector con "Sé el día". */}
+          {isIncome && recurrence.dayApprox && mode === 'view' && (
+            <TextLink
+              label="Ya sé el día exacto"
+              variant="caption"
+              onPress={() => {
+                setDayAnswer(
+                  answerFromStored(
+                    { day: recurrence.dayOfMonth, approx: recurrence.dayApprox },
+                    { knowExactDay: true },
+                  ),
+                );
+                setMode('correct');
+              }}
+            />
+          )}
         </Stack>
 
         {/* Los ajustes de un mes que ya existen. */}
@@ -352,7 +391,10 @@ export function FixedDetail({
               variant="secondary"
               fullWidth
               onPress={() => {
-                setDay(recurrence.dayOfMonth);
+                setDay(recurrence.dayOfMonth ?? 1);
+                setDayAnswer(
+                  answerFromStored({ day: recurrence.dayOfMonth, approx: recurrence.dayApprox }),
+                );
                 setMode('correct');
               }}
             />
@@ -418,8 +460,19 @@ export function FixedDetail({
               {mode === 'correct' && (
                 <Stack gap="5">
                   <Field label={wording.dayQuestion}>
-                    <DayPicker value={day} onChange={(next) => setDay(next ?? 1)} />
-                    <DayNote day={day} />
+                    {isIncome ? (
+                      <DayAnswerField
+                        label="Día de cobro"
+                        value={dayAnswer}
+                        onChange={setDayAnswer}
+                        unknownHelp="Lo contamos en el mes en que cobrás, sin día."
+                      />
+                    ) : (
+                      <>
+                        <DayPicker value={day} onChange={(next) => setDay(next ?? 1)} />
+                        <DayNote day={day} />
+                      </>
+                    )}
                   </Field>
                 </Stack>
               )}

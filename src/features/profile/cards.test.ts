@@ -33,6 +33,13 @@ describe('cardScheduleLine · T-02', () => {
     expect(cardScheduleLine(visa)).toBe('Cierra el 25, vence el 5');
   });
 
+  it('T-02 · un día "Más o menos" va con "~" y la línea dice "aprox."', () => {
+    const aprox: PaymentMethod = { ...visa, closingDay: 15, closingApprox: true };
+    expect(cardScheduleLine(aprox)).toBe('Cierra el ~15, vence el 5 · aprox.');
+    const ambos: PaymentMethod = { ...aprox, dueDay: 2, dueApprox: true };
+    expect(cardScheduleLine(ambos)).toBe('Cierra el ~15, vence el ~2 · aprox.');
+  });
+
   it('con algún día en "No sé", la fecha es aproximada y nunca se inventa un día', () => {
     const sinDias: PaymentMethod = { ...visa, closingDay: null, dueDay: null };
     const soloCierre: PaymentMethod = { ...visa, dueDay: null };

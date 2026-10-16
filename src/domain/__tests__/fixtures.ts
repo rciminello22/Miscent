@@ -35,6 +35,8 @@ export const visa: PaymentMethod = {
   name: 'Visa Galicia',
   closingDay: 25,
   dueDay: 5,
+  closingApprox: false,
+  dueApprox: false,
 };
 
 export const mastercard: PaymentMethod = {
@@ -43,6 +45,8 @@ export const mastercard: PaymentMethod = {
   name: 'Mastercard',
   closingDay: 20,
   dueDay: 2,
+  closingApprox: false,
+  dueApprox: false,
 };
 
 export const debito: PaymentMethod = {
@@ -51,6 +55,8 @@ export const debito: PaymentMethod = {
   name: 'Débito',
   closingDay: null,
   dueDay: null,
+  closingApprox: false,
+  dueApprox: false,
 };
 
 export const transferencia: PaymentMethod = {
@@ -59,6 +65,8 @@ export const transferencia: PaymentMethod = {
   name: 'Transferencia',
   closingDay: null,
   dueDay: null,
+  closingApprox: false,
+  dueApprox: false,
 };
 
 function member(slot: Slot, displayName: string, overrides: Partial<Member> = {}): Member {
@@ -161,6 +169,7 @@ export function sharedRecurrence(args: {
     createdAt: '2026-01-01T00:00:00+00:00',
     pastTerms: [],
     dayOfMonth: args.dayOfMonth,
+    dayApprox: false,
     startMonth: args.startMonth,
     endMonth: args.endMonth ?? null,
     ownerUserId: null,
@@ -174,7 +183,9 @@ export function sharedRecurrence(args: {
 export function personalRecurrence(args: {
   kind: 'expense' | 'income';
   amount: Pesos;
-  dayOfMonth: number;
+  /** `null` es "No sé": solo un ingreso puede quedar sin día. */
+  dayOfMonth: number | null;
+  dayApprox?: boolean;
   startMonth: Month;
   category: Recurrence['category'];
   paymentMethodId?: string | null;
@@ -196,6 +207,7 @@ export function personalRecurrence(args: {
     createdAt: '2026-01-01T00:00:00+00:00',
     pastTerms: [],
     dayOfMonth: args.dayOfMonth,
+    dayApprox: args.dayApprox ?? false,
     startMonth: args.startMonth,
     endMonth: args.endMonth ?? null,
     ownerUserId: 'user-1',

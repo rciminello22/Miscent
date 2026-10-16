@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vitest';
 import type { PaymentMethod } from '@domain/types';
 import { paymentOptions } from './paymentOptions';
 
-const visa: PaymentMethod = { id: 'visa', kind: 'card', name: 'Visa', closingDay: 25, dueDay: 5 };
-const master: PaymentMethod = { id: 'master', kind: 'card', name: 'Master', closingDay: 20, dueDay: 2 };
+const NO_APPROX = { closingApprox: false, dueApprox: false } as const;
+const visa: PaymentMethod = { id: 'visa', kind: 'card', name: 'Visa', closingDay: 25, dueDay: 5, ...NO_APPROX };
+const master: PaymentMethod = { id: 'master', kind: 'card', name: 'Master', closingDay: 20, dueDay: 2, ...NO_APPROX };
 
 describe('§17 campo 7 · efectivo, débito, billetera, transferencia o una tarjeta', () => {
   it('sin ningún medio cargado, igual ofrece los cuatro al contado', () => {
@@ -27,6 +28,7 @@ describe('§17 campo 7 · efectivo, débito, billetera, transferencia o una tarj
       name: 'Mercado Pago',
       closingDay: null,
       dueDay: null,
+      ...NO_APPROX,
     };
 
     expect(paymentOptions([visa, billetera])[2]).toEqual({
@@ -38,9 +40,10 @@ describe('§17 campo 7 · efectivo, débito, billetera, transferencia o una tarj
   });
 
   it('"otro" y los repetidos no se pierden: van antes de las tarjetas', () => {
-    const otro: PaymentMethod = { id: 'otro', kind: 'other', name: 'Vale', closingDay: null, dueDay: null };
-    const debito1: PaymentMethod = { id: 'd1', kind: 'debit', name: 'Débito', closingDay: null, dueDay: null };
-    const debito2: PaymentMethod = { id: 'd2', kind: 'debit', name: 'Débito BBVA', closingDay: null, dueDay: null };
+    const none = { closingDay: null, dueDay: null, ...NO_APPROX };
+    const otro: PaymentMethod = { id: 'otro', kind: 'other', name: 'Vale', ...none };
+    const debito1: PaymentMethod = { id: 'd1', kind: 'debit', name: 'Débito', ...none };
+    const debito2: PaymentMethod = { id: 'd2', kind: 'debit', name: 'Débito BBVA', ...none };
 
     const keys = paymentOptions([visa, otro, debito1, debito2]).map((option) => option.key);
     expect(keys).toEqual(['new:cash', 'd1', 'new:wallet', 'new:transfer', 'otro', 'd2', 'visa']);

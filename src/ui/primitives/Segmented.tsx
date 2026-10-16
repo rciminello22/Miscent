@@ -1,4 +1,5 @@
 import { View } from 'react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { useTheme } from '../theme';
 import { Pressable } from './Pressable';
 import { Text } from './Text';
@@ -17,8 +18,9 @@ export function Segmented<K extends string>({
 }: {
   /** Qué elige el control, para el lector de pantalla. */
   label: string;
-  options: readonly { key: K; label: string }[];
-  value: K;
+  options: readonly { key: K; label: string; icon?: LucideIcon }[];
+  /** `null`: todavía no se eligió ninguna. */
+  value: K | null;
   onChange: (next: K) => void;
 }) {
   const theme = useTheme();
@@ -50,8 +52,10 @@ export function Segmented<K extends string>({
             style={{
               flex: 1,
               minHeight: 38,
+              flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
+              gap: theme.space['1'],
               paddingHorizontal: theme.space['2'],
               borderRadius: theme.radius.sm + 1,
               borderWidth: 1,
@@ -59,6 +63,7 @@ export function Segmented<K extends string>({
               backgroundColor: selected ? theme.colors.surface : 'transparent',
             }}
           >
+            {option.icon != null && <option.icon size={14} color={color} testID="segment-icon" />}
             <Text variant={selected ? 'smallMedium' : 'small'} numberOfLines={1} style={{ color }}>
               {option.label}
             </Text>

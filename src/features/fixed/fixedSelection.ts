@@ -24,6 +24,9 @@ export function selectPersonalFixed(
     )
     .sort(
       (a, b) =>
-        a.dayOfMonth - b.dayOfMonth || b.amount - a.amount || (a.id < b.id ? -1 : 1),
+        // Sin día ("No sé", solo un ingreso) va al final.
+        (a.dayOfMonth ?? 32) - (b.dayOfMonth ?? 32) ||
+        b.amount - a.amount ||
+        (a.id < b.id ? -1 : 1),
     );
 }

@@ -27,7 +27,7 @@ import type {
 } from '@domain/types';
 import { changeAmountFrom } from '@domain/fixedChanges';
 import { supabase } from '../supabase';
-import { installmentColumns, splitColumns } from '../mappers';
+import { installmentColumns, recurrenceDayColumns, splitColumns } from '../mappers';
 import { fromPastTerms } from '../pastTerms';
 
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -445,12 +445,22 @@ export async function stopRecurrenceFrom(
 /** F-03 · "Corregir": el día del mes y la categoría. */
 export async function correctRecurrence(
   recurrenceId: string,
-  input: { dayOfMonth?: number; category?: Category; paymentMethodId?: string | null },
+  input: {
+    /** `null` ("No sé") solo en un ingreso personal. */
+    dayOfMonth?: number | null;
+    dayApprox?: boolean;
+    category?: Category;
+    paymentMethodId?: string | null;
+  },
 ): Promise<void> {
   const { error } = await supabase
     .from('recurrences')
     .update({
-      ...(input.dayOfMonth != null ? { day_of_month: input.dayOfMonth } : {}),
+      // Un día exacto apaga la marca de aproximado que tenía.
+      ...recurrenceDayColumns(
+        { dayOfMonth: input.dayOfMonth, dayApprox: input.dayApprox },
+        { clearOnExact: true },
+      ),
       ...(input.category != null ? { category: input.category } : {}),
       ...(input.paymentMethodId !== undefined
         ? { payment_method_id: input.paymentMethodId }

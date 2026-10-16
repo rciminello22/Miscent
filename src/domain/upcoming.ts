@@ -37,6 +37,11 @@ export type UpcomingPayment = {
   month: Month;
   /** T-05 · la interfaz muestra "Fechas aproximadas". */
   approximate: boolean;
+  /**
+   * T-02 · la fecha sale de un día "Más o menos": "~15 nov" y la marca "aprox.".
+   * Solo con fecha: un pago sin día (T-05) muestra el mes, sin "~".
+   */
+  dateApprox: boolean;
   /** G-06 · "Ya pasó". NUNCA "Pagado" (CA-37, CA-45). */
   hasPassed: boolean;
   /** Para el detalle del resumen estimado: qué lo compone. */
@@ -104,6 +109,7 @@ export function calculateUpcomingPayments(
       date: first.paymentDate,
       month,
       approximate: items.some((item) => item.approximate),
+      dateApprox: first.paymentDate != null && items.some((item) => item.dateApprox),
       hasPassed: first.paymentDate != null && first.paymentDate <= today,
       items,
       // N-10 · siempre rotulado "Estimado según lo que registraste".
@@ -131,6 +137,7 @@ export function calculateUpcomingPayments(
       date: occurrence.paymentDate,
       month: occurrence.month,
       approximate: occurrence.approximate,
+      dateApprox: occurrence.dateApprox,
       hasPassed: occurrence.paymentDate != null && occurrence.paymentDate <= today,
       items: [occurrence],
       isEstimate: false,
@@ -152,6 +159,7 @@ export function calculateUpcomingPayments(
       date: occurrence.paymentDate,
       month: occurrence.month,
       approximate: false,
+      dateApprox: false,
       hasPassed: occurrence.paymentDate != null && occurrence.paymentDate <= today,
       items: [occurrence],
       isEstimate: true,

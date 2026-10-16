@@ -129,7 +129,9 @@ export function paymentsFootnotes(payments: readonly UpcomingPayment[]): string[
   if (payments.some((payment) => payment.isEstimate)) {
     notes.push(`Los resúmenes de tarjeta son "${ESTIMATE_NOTE}".`);
   }
-  if (payments.some((payment) => payment.approximate)) notes.push('Fechas aproximadas');
+  if (payments.some((payment) => payment.approximate || payment.dateApprox)) {
+    notes.push('Fechas aproximadas');
+  }
   notes.push(OWN_PAYMENTS);
 
   return notes;

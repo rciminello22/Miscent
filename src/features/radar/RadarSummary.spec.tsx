@@ -28,9 +28,25 @@ function factsFor(input: {
   return {
     userId: 'test',
     paymentMethods: [
-      { id: 'debito', kind: 'debit', name: 'Débito', closingDay: null, dueDay: null },
+      {
+        id: 'debito',
+        kind: 'debit',
+        name: 'Débito',
+        closingDay: null,
+        dueDay: null,
+        closingApprox: false,
+        dueApprox: false,
+      },
       // Cierra 25, vence 5: una compra de octubre se paga en noviembre (T-03).
-      { id: 'visa', kind: 'card', name: 'Visa', closingDay: 25, dueDay: 5 },
+      {
+        id: 'visa',
+        kind: 'card',
+        name: 'Visa',
+        closingDay: 25,
+        dueDay: 5,
+        closingApprox: false,
+        dueApprox: false,
+      },
     ],
     movements: [
       ...(input.income != null
@@ -93,6 +109,7 @@ function factsFor(input: {
               createdAt: '2026-01-01T00:00:00+00:00',
               pastTerms: [],
               dayOfMonth: 1,
+              dayApprox: false,
               startMonth: '2026-01',
               endMonth: null,
               ownerUserId: 'test',

@@ -28,8 +28,9 @@ export function upcomingDoorContent(
   if (first == null) return null;
 
   const parts = [
-    formatPaymentWhen({ date: first.date, month: first.month }),
-    paymentLabel(first),
+    formatPaymentWhen({ date: first.date, month: first.month, approx: first.dateApprox }),
+    // T-02 · solo lo que salió de un "Más o menos" lleva la marca.
+    first.dateApprox ? `${paymentLabel(first)} (aprox.)` : paymentLabel(first),
     formatAmount(first.amount),
   ];
 

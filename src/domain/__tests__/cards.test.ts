@@ -4,7 +4,15 @@ import { addMonths } from '../calendar';
 import type { PaymentMethod } from '../types';
 
 function card(closingDay: number | null, dueDay: number | null): PaymentMethod {
-  return { id: 'visa', kind: 'card', name: 'Visa Galicia', closingDay, dueDay };
+  return {
+    id: 'visa',
+    kind: 'card',
+    name: 'Visa Galicia',
+    closingDay,
+    dueDay,
+    closingApprox: false,
+    dueApprox: false,
+  };
 }
 
 describe('tarjetas · T-03, T-05', () => {
