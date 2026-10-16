@@ -31,6 +31,7 @@ import {
 import { SpaceHero } from './SpaceHero';
 import { SpaceBalanceScale } from './SpaceBalanceScale';
 import { PutSplitBar } from './SpaceRows';
+import { guestHomeBlocks } from './guestHome';
 import { planSpaceLayout } from './spaceLayout';
 import { contributionSplit, monthDoorCopy } from './spaceMonth';
 import { buildSpaceMovements, movementsDoorCaption, paymentTitle } from './spaceMovements';
@@ -113,6 +114,7 @@ export function SpaceScreen({
   const isGuestHome = accountState === 'guest' && leading.kind === 'profile';
   const [welcomed, markWelcomed] = useRememberedFlag(`radar.u1.welcome.${spaceId}`);
   const [notNow, markNotNow] = useRememberedFlag(PERSONAL_CARD_NOT_NOW);
+  const guest = guestHomeBlocks({ isGuestHome, welcomed, notNow });
 
   /**
    * §24 / §25 · los movimientos del espacio: gastos Y pagos entre miembros.
@@ -346,7 +348,7 @@ export function SpaceScreen({
         </Row>
 
         {/* §33 U1 · "Bienvenida única". */}
-        {isGuestHome && welcomed === false && (
+        {guest.welcome && (
           <GuestWelcome
             spaceName={derived.facts.space.name}
             otherName={other.displayName}
@@ -394,11 +396,11 @@ export function SpaceScreen({
         )}
 
         {/* §33 U1 · "Tarjeta fija 'Tu plata personal'". */}
-        {isGuestHome && notNow != null && (
+        {guest.personalCard != null && (
           <PersonalMoneyCard
             spaceName={derived.facts.space.name}
             otherName={other.displayName}
-            reduced={notNow}
+            reduced={guest.personalCard === 'line'}
             onCreate={() => router.push('/onboarding/cuenta-personal')}
             onNotNow={markNotNow}
           />

@@ -1,14 +1,16 @@
+import { View } from 'react-native';
 import { Button, Card, Stack, Text, TextLink } from '@/ui/primitives';
+import { useTheme } from '@/ui/theme';
 
 /**
  * §33 U1 · la pantalla principal del invitado: "que entienda en segundos que
  * está en un espacio compartido y que sus finanzas personales son otra cosa".
  *
  * Presentacionales: cuándo se muestran (una sola vez, "Ahora no") lo decide
- * la pantalla, con una marca que sobrevive cerrar la app.
+ * `guestHomeBlocks`, con una marca que sobrevive cerrar la app.
  */
 
-/** "Bienvenida única". */
+/** "Bienvenida única": compacta, arriba del N1. La pantalla ya es usable detrás. */
 export function GuestWelcome({
   spaceName,
   otherName,
@@ -18,9 +20,11 @@ export function GuestWelcome({
   otherName: string;
   onDismiss: () => void;
 }) {
+  const theme = useTheme();
+
   return (
-    <Card tone="shared">
-      <Stack gap="3">
+    <Card tone="shared" style={{ padding: theme.space['4'] }}>
+      <Stack gap="2">
         <Text variant="bodyMedium">Estás en {spaceName}.</Text>
         <Text variant="small">
           Acá anotan lo que pagan entre los dos y la app hace las cuentas. Lo que cargues acá
@@ -35,6 +39,9 @@ export function GuestWelcome({
 /**
  * "Tarjeta fija 'Tu plata personal'… [Crear mi cuenta personal] · [Ahora no]
  * ('Ahora no' la reduce a una línea; nunca insiste)". Nunca un candado.
+ *
+ * Va al pie, después de las puertas, y no compite con el N1: superficie hundida
+ * y el botón es secundario.
  */
 export function PersonalMoneyCard({
   spaceName,
@@ -50,6 +57,8 @@ export function PersonalMoneyCard({
   onCreate: () => void;
   onNotNow: () => void;
 }) {
+  const theme = useTheme();
+
   if (reduced) {
     return (
       <TextLink label="Crear mi cuenta personal" onPress={onCreate} />
@@ -58,7 +67,7 @@ export function PersonalMoneyCard({
 
   return (
     <Card tone="sunken">
-      <Stack gap="4">
+      <Stack gap="3">
         <Stack gap="2">
           <Text variant="bodyMedium">Tu plata personal</Text>
           <Text variant="small" tone="secondary">
@@ -66,10 +75,10 @@ export function PersonalMoneyCard({
             son otra cosa: si querés, podés ordenarlos acá, en privado.
           </Text>
         </Stack>
-        <Stack gap="2">
-          <Button label="Crear mi cuenta personal" fullWidth onPress={onCreate} />
-          <Button label="Ahora no" variant="ghost" fullWidth haptic="none" onPress={onNotNow} />
-        </Stack>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.space['2'] }}>
+          <Button label="Crear mi cuenta personal" variant="secondary" onPress={onCreate} />
+          <Button label="Ahora no" variant="ghost" haptic="none" onPress={onNotNow} />
+        </View>
       </Stack>
     </Card>
   );
