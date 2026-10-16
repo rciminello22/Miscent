@@ -22,6 +22,8 @@ const SEPARATOR_WIDTH = 2;
 const MARK_WIDTH = 6;
 const MARK_HALO = 2;
 const MARK_OVERHANG = 3;
+/** El grosor del contorno de Sin asignar: el mismo anillo que su leyenda. */
+const UNASSIGNED_OUTLINE = 1.5;
 
 /**
  * La barra del radar (§15).
@@ -29,8 +31,9 @@ const MARK_OVERHANG = 3;
  * Es "la forma visual principal de la pantalla", y su lectura es literal:
  * **lo lleno es lo que ya tiene destino; lo vacío es lo que todavía no.**
  *
- * Por eso Sin asignar no tiene color propio: es el track. No hay semáforo, no
- * hay verde de "bien" ni rojo de "mal". La app no juzga, muestra.
+ * Por eso Sin asignar no tiene relleno: se dibuja con contorno, el mismo anillo
+ * hueco de su leyenda, y cierra la barra. No hay semáforo, no hay verde de
+ * "bien" ni rojo de "mal". La app no juzga, muestra.
  *
  * N-08 · cuando lo asignado supera los ingresos registrados, la barra se llena
  * entera y aparece una marca en el punto de los ingresos, para que se vea
@@ -98,7 +101,9 @@ export function RadarBar({
         style={{
           flex: 1,
           borderRadius: height / 2,
-          backgroundColor: theme.colors.unassignedTrack,
+          // Con proporciones el vacío se dibuja con contorno (abajo); sin
+          // ingresos (CA-03) no hay nada que dibujar y queda el track neutro.
+          backgroundColor: ratios == null ? theme.colors.unassignedTrack : 'transparent',
           overflow: 'hidden',
           flexDirection: 'row',
         }}
@@ -115,8 +120,25 @@ export function RadarBar({
               style={[{ backgroundColor: theme.colors.committed }, committedStyle]}
             />
             {separators.assignedUnassigned && gap}
-            {/* El resto del flex queda vacío: eso es Sin asignar. */}
-            <View style={{ flexGrow: ratios.unassigned }} />
+            {/*
+              Sin asignar: lo que todavía no tiene destino se dibuja con CONTORNO,
+              el mismo anillo hueco de su leyenda. Cierra la barra por la derecha y
+              no lleva borde del lado de los tramos llenos. Con exceso (N-08) no
+              queda nada sin asignar y no hay contorno.
+            */}
+            {ratios.unassigned > 0 && (
+              <View
+                testID="radar-bar-unassigned"
+                style={{
+                  flexGrow: ratios.unassigned,
+                  borderWidth: UNASSIGNED_OUTLINE,
+                  borderLeftWidth: 0,
+                  borderColor: theme.colors.textMuted,
+                  borderTopRightRadius: height / 2,
+                  borderBottomRightRadius: height / 2,
+                }}
+              />
+            )}
           </>
         )}
       </View>
