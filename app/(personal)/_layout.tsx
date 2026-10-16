@@ -6,6 +6,7 @@ import { CalendarRange, House, Plus, ReceiptText, Users } from 'lucide-react-nat
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Pressable, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
+import { FAB_HEIGHT, fabBottom } from '@/ui/layout';
 
 /**
  * §14 Estado A · usuario con cuenta personal.
@@ -98,8 +99,9 @@ function AddButton() {
       style={{
         position: 'absolute',
         right: theme.space['5'],
-        bottom: insets.bottom + 72,
-        height: 52,
+        // Apoyado sobre la barra de pestañas (49 + inset), no a ojo.
+        bottom: fabBottom(insets.bottom),
+        height: FAB_HEIGHT,
         paddingHorizontal: theme.space['5'],
         borderRadius: theme.radius.pill,
         backgroundColor: theme.colors.brand,

@@ -33,6 +33,7 @@ import {
 } from '@/ui/primitives';
 import { duration, stagger } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
+import { useBottomPadding } from '@/ui/useBottomPadding';
 
 /**
  * §16 · Movimientos. "Ver qué se registró en un mes y corregir errores."
@@ -54,6 +55,7 @@ export default function Movimientos() {
   const router = useRouter();
   const openSpace = useOpenSpace();
   const insets = useSafeAreaInsets();
+  const bottomPad = useBottomPadding({ tabs: true, fab: true });
   const { facts, today, isLoading, refetch } = usePersonalFacts();
   const deleteMovement = useDeleteMovement();
   const feedback = useFeedback();
@@ -107,7 +109,7 @@ export default function Movimientos() {
       style={{ flex: 1, backgroundColor: theme.colors.background }}
       contentContainerStyle={{
         paddingTop: insets.top + theme.space['3'],
-        paddingBottom: insets.bottom + 140,
+        paddingBottom: bottomPad,
         paddingHorizontal: theme.space['5'],
       }}
       showsVerticalScrollIndicator={false}

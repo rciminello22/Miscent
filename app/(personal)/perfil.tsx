@@ -44,7 +44,7 @@ export default function Perfil() {
   const incomes = selectFixedIncomes(facts.recurrences, monthOf(today));
 
   return (
-    <Screen>
+    <Screen inTabs>
       <Stack gap="7">
         <Text variant="overline" tone="muted">
           Perfil

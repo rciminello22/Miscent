@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { UserRound } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomPadding } from '@/ui/useBottomPadding';
 import { addMonths, monthOf } from '@domain/calendar';
 import { calculateRadar } from '@domain/radar';
 import { calculateFuture } from '@domain/future';
@@ -61,6 +62,7 @@ export default function Inicio() {
   const theme = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const bottomPad = useBottomPadding({ tabs: true, fab: true });
   const { facts, expansion, today, isLoading, isError, refetch } = usePersonalFacts();
   const [refreshing, setRefreshing] = useState(false);
   // M18 · cada cifra del radar se puede abrir y ver de qué está hecha.
@@ -100,7 +102,7 @@ export default function Inicio() {
       style={{ flex: 1, backgroundColor: theme.colors.background }}
       contentContainerStyle={{
         paddingTop: insets.top + theme.space['3'],
-        paddingBottom: insets.bottom + 140,
+        paddingBottom: bottomPad,
         paddingHorizontal: theme.space['5'],
       }}
       showsVerticalScrollIndicator={false}

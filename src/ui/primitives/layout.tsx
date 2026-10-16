@@ -8,6 +8,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { bottomPadding } from '../layout';
 import { useTheme } from '../theme';
 import { useKeyboardVisible } from '../useKeyboardVisible';
 import { Text } from './Text';
@@ -33,21 +34,31 @@ export function Screen({
   style,
   contentStyle,
   footer,
+  inTabs = false,
 }: {
   children: ReactNode;
   scroll?: boolean;
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
   footer?: ReactNode;
+  /**
+   * La pantalla vive dentro de la barra de pestañas (con el botón Agregar a la
+   * vista): la barra ya lleva el inset de abajo, no se suma otra vez.
+   */
+  inTabs?: boolean;
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const keyboardVisible = useKeyboardVisible();
 
+  const bottomWithoutFooter = inTabs
+    ? bottomPadding({ insetBottom: insets.bottom, tabs: true, fab: true })
+    : insets.bottom + theme.space['9'];
+
   const padding = {
     paddingTop: insets.top + theme.space['3'],
     // Con footer, el margen de abajo lo pone el footer.
-    paddingBottom: footer != null ? theme.space['6'] : insets.bottom + theme.space['9'],
+    paddingBottom: footer != null ? theme.space['6'] : bottomWithoutFooter,
     paddingHorizontal: theme.space['5'],
   };
 

@@ -56,6 +56,7 @@ import { SpaceMonthCard } from './SpaceMonthCard';
 import { limitMovements, pendingGroupTitle, planSpaceLayout } from './spaceLayout';
 import { duration, stagger } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
+import { useBottomPadding } from '@/ui/useBottomPadding';
 
 /**
  * §24 · la pantalla del espacio compartido.
@@ -98,15 +99,22 @@ export function SpaceScreen({
   spaceId,
   leading,
   footer,
+  inTabs = false,
 }: {
   spaceId: string;
   leading: SpaceLeading;
   /** Lo que la ruta quiera sumar al final (p. ej. "Crear otro espacio"). */
   footer?: ReactNode;
+  /**
+   * Dentro de la barra de pestañas (Estado A): la barra ya lleva el inset de
+   * abajo y el botón Agregar flotante está oculto adentro de un espacio.
+   */
+  inTabs?: boolean;
 }) {
   const theme = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const bottomPad = useBottomPadding({ tabs: inTabs, fab: false });
 
   const { derived, today, isLoading, isError, refetch } = useSpace(spaceId);
   const [refreshing, setRefreshing] = useState(false);
@@ -617,7 +625,7 @@ export function SpaceScreen({
       style={{ flex: 1, backgroundColor: theme.colors.background }}
       contentContainerStyle={{
         paddingTop: insets.top + theme.space['3'],
-        paddingBottom: insets.bottom + 120,
+        paddingBottom: bottomPad,
         paddingHorizontal: theme.space['5'],
       }}
       showsVerticalScrollIndicator={false}

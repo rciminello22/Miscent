@@ -21,6 +21,7 @@ export default function CompartidoRoute() {
   return (
     <SpaceScreen
       spaceId={id ?? ''}
+      inTabs
       leading={{
         kind: 'back',
         onPress: () =>

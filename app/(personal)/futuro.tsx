@@ -32,6 +32,7 @@ import {
 } from '@/ui/primitives';
 import { duration, stagger } from '@/ui/motion';
 import { useTheme } from '@/ui/theme';
+import { useBottomPadding } from '@/ui/useBottomPadding';
 import { MIN_TARGET, hitSlopFor } from '@/ui/touch';
 import { spaceContext } from '@/features/spaces/departureCopy';
 
@@ -55,6 +56,7 @@ const SELECTABLE_HIT_SLOP = hitSlopFor(MIN_TARGET, 39);
 export default function Futuro() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const bottomPad = useBottomPadding({ tabs: true, fab: true });
   const router = useRouter();
   const { facts, expansion, today, isLoading, refetch } = usePersonalFacts();
 
@@ -121,7 +123,7 @@ export default function Futuro() {
       style={{ flex: 1, backgroundColor: theme.colors.background }}
       contentContainerStyle={{
         paddingTop: insets.top + theme.space['3'],
-        paddingBottom: insets.bottom + 140,
+        paddingBottom: bottomPad,
         paddingHorizontal: theme.space['5'],
       }}
       showsVerticalScrollIndicator={false}

@@ -17,6 +17,7 @@ import {
   Text,
 } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
+import { useBottomPadding } from '@/ui/useBottomPadding';
 
 /**
  * §14 · Compartidos.
@@ -32,6 +33,7 @@ export default function Compartidos() {
   const theme = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const bottomPad = useBottomPadding({ tabs: true, fab: true });
   const { data: spaces, isLoading, isError, refetch } = useSpaces();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -43,6 +45,7 @@ export default function Compartidos() {
     return (
       <SpaceScreen
         spaceId={only.id}
+        inTabs
         leading={{ kind: 'back', onPress: () => router.navigate('/(personal)/inicio') }}
         footer={
           // K1 · se pueden tener varios espacios. Con el redirect de antes,
@@ -70,7 +73,7 @@ export default function Compartidos() {
       style={{ flex: 1, backgroundColor: theme.colors.background }}
       contentContainerStyle={{
         paddingTop: insets.top + theme.space['3'],
-        paddingBottom: insets.bottom + 140,
+        paddingBottom: bottomPad,
         paddingHorizontal: theme.space['5'],
       }}
       showsVerticalScrollIndicator={false}
