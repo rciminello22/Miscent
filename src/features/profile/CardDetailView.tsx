@@ -3,7 +3,6 @@ import { CreditCard, Pencil, X } from 'lucide-react-native';
 import type { PaymentMethod } from '@domain/types';
 import type { UpcomingPayment } from '@domain/upcoming';
 import { formatMonthShort, formatPesos } from '@/lib/format';
-import { Field } from '@/features/add/fields';
 import { ESTIMATE_NOTE } from '@/features/upcoming/statementDetail';
 import {
   AudienceBadge,
@@ -16,10 +15,10 @@ import {
   Screen,
   Stack,
   Text,
-  TextField,
   TextLink,
 } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
+import { CardEditForm, type CardEditFormProps } from './CardEditForm';
 import type { CardGroupDoor, StatementBar } from './cardOverview';
 
 /** El alto de la barra del mayor vencimiento, en px. */
@@ -28,8 +27,10 @@ const BAR_HEIGHT = 56;
 /**
  * P24 · el detalle de una tarjeta: N1 con su próximo resumen estimado (N-10) y
  * las barras de los próximos vencimientos, el cierre y el vencimiento como
- * pastillas, y las puertas Compras, Cuotas y Fijos. El lápiz corrige el nombre;
- * "Eliminar tarjeta" va al pie. Presentacional: el container arma todo.
+ * pastillas, y las puertas Compras, Cuotas y Fijos. El lápiz (y "Ya sé el día
+ * exacto", cuando hay días aproximados) abre la misma edición del nombre, el
+ * cierre y el vencimiento; "Eliminar tarjeta" va al pie. Presentacional: el
+ * container arma todo.
  *
  * C-05 · solo en lo personal ("Solo vos"). T-01 · nunca número, límite, pago
  * mínimo ni intereses.
@@ -42,10 +43,10 @@ export function CardDetailView({
   bars,
   doors,
   editing,
-  name,
+  form,
   canSave,
   saving,
-  onNameChange,
+  onKnowExactDay,
   onEdit,
   onCancelEdit,
   onSave,
@@ -62,10 +63,12 @@ export function CardDetailView({
   bars: readonly StatementBar[];
   doors: readonly CardGroupDoor[];
   editing: boolean;
-  name: string;
+  /** El formulario de edición; solo se muestra con `editing`. */
+  form: CardEditFormProps;
   canSave: boolean;
   saving: boolean;
-  onNameChange: (name: string) => void;
+  /** "Ya sé el día exacto": solo cuando algún día es aproximado. */
+  onKnowExactDay?: () => void;
   onEdit: () => void;
   onCancelEdit: () => void;
   onSave: () => void;
@@ -82,7 +85,7 @@ export function CardDetailView({
         editing ? (
           <Stack gap="2">
             <Button
-              label="Guardar"
+              label="Guardar cambios"
               size="lg"
               fullWidth
               haptic="success"
@@ -127,24 +130,12 @@ export function CardDetailView({
           ))}
         </Row>
 
+        {!editing && onKnowExactDay != null && (
+          <TextLink label="Ya sé el día exacto" onPress={onKnowExactDay} />
+        )}
+
         {editing ? (
-          <Stack gap="5">
-            <Field label="Nombre">
-              <TextField
-                value={name}
-                onChangeText={onNameChange}
-                maxLength={60}
-                autoFocus
-                accessibilityLabel="Nombre de la tarjeta"
-              />
-            </Field>
-            <Card tone="sunken">
-              <Text variant="small" tone="secondary">
-                Cierre y vencimiento no se cambian desde acá: cambiarlos movería las compras de
-                esta tarjeta que ya están en cuotas.
-              </Text>
-            </Card>
-          </Stack>
+          <CardEditForm {...form} />
         ) : (
           <>
             <Card>

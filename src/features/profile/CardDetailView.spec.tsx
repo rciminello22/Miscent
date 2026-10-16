@@ -40,10 +40,19 @@ const base = {
     { kind: 'installment' as const, title: 'Cuotas', count: 3, subtotal: 80_000 },
   ],
   editing: false,
-  name: 'Visa Galicia',
+  form: {
+    name: 'Visa Galicia',
+    onNameChange: jest.fn(),
+    closing: { mode: 'exact' as const, day: 25 },
+    due: { mode: 'exact' as const, day: 5 },
+    onClosingChange: jest.fn(),
+    onDueChange: jest.fn(),
+    closingBefore: null,
+    dueBefore: null,
+    note: 'Al cambiar los días se recalculan los pagos de este mes en adelante. Los meses pasados no cambian.',
+  },
   canSave: false,
   saving: false,
-  onNameChange: jest.fn(),
   onEdit: jest.fn(),
   onCancelEdit: jest.fn(),
   onSave: jest.fn(),
@@ -126,15 +135,15 @@ describe('CardDetailView', () => {
     expect(onDelete).toHaveBeenCalledTimes(1);
   });
 
-  it('editando: el nombre se corrige y los días quedan de solo lectura, con su nota', async () => {
+  it('editando: el nombre, el cierre y el vencimiento se corrigen, con su nota', async () => {
     const onNameChange = jest.fn();
     const onSave = jest.fn();
     const view = await renderWithTheme(
       <CardDetailView
         {...base}
+        form={{ ...base.form, onNameChange }}
         editing
         canSave
-        onNameChange={onNameChange}
         onSave={onSave}
       />,
     );
@@ -142,19 +151,93 @@ describe('CardDetailView', () => {
     await fireEvent.changeText(view.getByLabelText('Nombre de la tarjeta'), 'Visa Plata');
     expect(onNameChange).toHaveBeenCalledWith('Visa Plata');
 
-    expect(view.getByText(/Cierre y vencimiento no se cambian desde acá/)).toBeTruthy();
+    expect(view.getByText('Día de cierre')).toBeTruthy();
+    expect(view.getByText('Día de vencimiento')).toBeTruthy();
+    expect(view.getByText(/Los meses pasados no cambian/)).toBeTruthy();
+    expect(view.getByText('Solo vos')).toBeTruthy();
     expect(view.queryByRole('button', { name: 'Eliminar tarjeta' })).toBeNull();
 
-    await fireEvent.press(view.getByRole('button', { name: 'Guardar' }));
+    await fireEvent.press(view.getByRole('button', { name: 'Guardar cambios' }));
     expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
+  it('editando: el cierre y el vencimiento usan el patrón Sé el día / Más o menos / No sé', async () => {
+    const onClosingChange = jest.fn();
+    const onDueChange = jest.fn();
+    const view = await renderWithTheme(
+      <CardDetailView
+        {...base}
+        form={{ ...base.form, onClosingChange, onDueChange }}
+        editing
+        canSave
+      />,
+    );
+
+    expect(view.getAllByLabelText('Más o menos')).toHaveLength(2);
+    expect(view.getAllByLabelText('No sé')).toHaveLength(2);
+
+    // El primer "20" es el del cierre; el segundo, el del vencimiento.
+    const twenty = view.getAllByLabelText('20');
+    await fireEvent.press(twenty[0]!);
+    expect(onClosingChange).toHaveBeenCalledWith({ mode: 'exact', day: 20 });
+    await fireEvent.press(twenty[1]!);
+    expect(onDueChange).toHaveBeenCalledWith({ mode: 'exact', day: 20 });
+  });
+
+  it('editando: "Antes: ~15" debajo del día que cambió, y nada debajo del que no', async () => {
+    const view = await renderWithTheme(
+      <CardDetailView
+        {...base}
+        form={{ ...base.form, closingBefore: 'Antes: ~15', dueBefore: null }}
+        editing
+        canSave
+      />,
+    );
+
+    expect(view.getByText('Antes: ~15')).toBeTruthy();
+    expect(view.queryAllByText(/^Antes:/)).toHaveLength(1);
+  });
+
+  it('editando: [Cancelar] vuelve sin guardar', async () => {
+    const onCancelEdit = jest.fn();
+    const view = await renderWithTheme(
+      <CardDetailView {...base} editing canSave onCancelEdit={onCancelEdit} />,
+    );
+
+    await fireEvent.press(view.getByRole('button', { name: 'Cancelar' }));
+    expect(onCancelEdit).toHaveBeenCalledTimes(1);
   });
 
   it('editando sin cambios no se puede guardar', async () => {
     const view = await renderWithTheme(<CardDetailView {...base} editing canSave={false} />);
 
-    expect(view.getByRole('button', { name: 'Guardar' }).props.accessibilityState).toMatchObject({
-      disabled: true,
-    });
+    expect(
+      view.getByRole('button', { name: 'Guardar cambios' }).props.accessibilityState,
+    ).toMatchObject({ disabled: true });
+  });
+
+  it('con días aproximados, "Ya sé el día exacto" abre la misma edición', async () => {
+    const onKnowExactDay = jest.fn();
+    const view = await renderWithTheme(
+      <CardDetailView
+        {...base}
+        pills={['Cierra el ~15 · aprox.', 'Vence el ~2 · aprox.']}
+        onKnowExactDay={onKnowExactDay}
+      />,
+    );
+
+    await fireEvent.press(view.getByText('Ya sé el día exacto'));
+    expect(onKnowExactDay).toHaveBeenCalledTimes(1);
+  });
+
+  it('sin días aproximados no hay "Ya sé el día exacto", y tampoco mientras se edita', async () => {
+    const sin = await renderWithTheme(<CardDetailView {...base} />);
+    expect(sin.queryByText('Ya sé el día exacto')).toBeNull();
+
+    const editando = await renderWithTheme(
+      <CardDetailView {...base} editing canSave onKnowExactDay={jest.fn()} />,
+    );
+    expect(editando.queryByText('Ya sé el día exacto')).toBeNull();
   });
 
   it('T-01 · nunca número, límite, pago mínimo ni intereses', async () => {
