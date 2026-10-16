@@ -17,6 +17,7 @@ export function IconButton({
   onPress,
   size = 36,
   filled = true,
+  disabled = false,
   style,
 }: {
   label: string;
@@ -26,6 +27,8 @@ export function IconButton({
   size?: number;
   /** Con círculo de fondo (cerrar, perfil) o solo el ícono (volver). */
   filled?: boolean;
+  /** No responde y se ve apagado (la flecha de un mes que no existe todavía). */
+  disabled?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   const theme = useTheme();
@@ -33,8 +36,10 @@ export function IconButton({
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled }}
       hitSlop={hitSlopFor(size, size)}
       style={[
         {
@@ -44,6 +49,7 @@ export function IconButton({
           backgroundColor: filled ? theme.colors.surfaceSunken : undefined,
           alignItems: 'center',
           justifyContent: 'center',
+          opacity: disabled ? 0.4 : 1,
         },
         style,
       ]}

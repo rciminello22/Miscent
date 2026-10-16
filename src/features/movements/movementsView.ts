@@ -74,6 +74,12 @@ export function buildDayStrip(args: {
   });
 }
 
+/** Para el lector de pantalla: la tira no se distingue solo por color. */
+export function stripAccessibilityLabel(strip: readonly StripDay[]): string {
+  const days = strip.filter((day) => day.count > 0).map((day) => day.day);
+  return days.length === 0 ? 'Ningún día con registros' : `Días con registros: ${days.join(', ')}`;
+}
+
 /* ── El mes ───────────────────────────────────────────────────────────────── */
 
 /** La frase del N1: "12 registros", o el vacío de §16 según el mes. */

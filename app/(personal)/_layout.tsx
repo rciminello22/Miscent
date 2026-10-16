@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 import { Tabs, usePathname, useRouter } from 'expo-router';
 import { isInsideSpace } from '@/features/spaces/spaceNavigation';
+import { FabVisibilityProvider, useFabHidden } from '@/features/shared/fabVisibility';
 import { CalendarRange, House, Plus, ReceiptText, Users } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Pressable, Text } from '@/ui/primitives';
@@ -24,6 +25,14 @@ import { FAB_HEIGHT, fabBottom } from '@/ui/layout';
  * barra visible.
  */
 export default function PersonalLayout() {
+  return (
+    <FabVisibilityProvider>
+      <PersonalTabs />
+    </FabVisibilityProvider>
+  );
+}
+
+function PersonalTabs() {
   const theme = useTheme();
 
   return (
@@ -84,10 +93,13 @@ function AddButton() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
+  const hiddenByScreen = useFabHidden();
 
   // Dentro de un espacio queda solo su propio "Agregar", que carga en el
   // espacio. Decisión del 9/10 (ver isInsideSpace).
   if (isInsideSpace(pathname)) return null;
+  // Movimientos: un mes que ya pasó, o el mes en curso vacío (el N1 trae su Agregar).
+  if (hiddenByScreen) return null;
 
   return (
     <Pressable

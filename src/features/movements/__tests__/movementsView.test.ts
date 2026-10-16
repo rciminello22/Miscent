@@ -12,6 +12,7 @@ import {
   monthHeadline,
   movementDoors,
   rowDetail,
+  stripAccessibilityLabel,
 } from '../movementsView';
 
 /**
@@ -120,6 +121,34 @@ describe('buildDayStrip · la tira de días (cuenta registros, no montos)', () =
 
     expect(strip[0]!.date).toBe('2026-10-01');
     expect(strip[30]!.date).toBe('2026-10-31');
+  });
+});
+
+describe('stripAccessibilityLabel', () => {
+  it('nombra los días con registros', () => {
+    const strip = buildDayStrip({
+      month: '2026-10',
+      today: TODAY,
+      rows: [row({ id: 'a', date: '2026-10-14' }), row({ id: 'b', date: '2026-10-01' })],
+    });
+
+    expect(stripAccessibilityLabel(strip)).toBe('Días con registros: 1, 14');
+  });
+
+  it('sin registros lo dice', () => {
+    const strip = buildDayStrip({ month: '2026-10', today: TODAY, rows: [] });
+
+    expect(stripAccessibilityLabel(strip)).toBe('Ningún día con registros');
+  });
+
+  it('hoy con registros cuenta', () => {
+    const strip = buildDayStrip({
+      month: '2026-10',
+      today: TODAY,
+      rows: [row({ id: 'a', date: TODAY })],
+    });
+
+    expect(stripAccessibilityLabel(strip)).toBe('Días con registros: 15');
   });
 });
 
