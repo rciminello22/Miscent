@@ -1,16 +1,18 @@
 /**
- * UX-05 · qué muestra la pantalla del espacio, en qué orden y con qué límites.
- * TS puro: `SpaceScreen` solo dibuja lo que esto decide.
+ * Qué muestra la pantalla del espacio y en qué orden. TS puro: `SpaceScreen`
+ * solo dibuja lo que esto decide.
  *
- * El orden responde a la pregunta de la pantalla ("¿quién le debe a quién?") y
- * a su acción más frecuente (cargar un gasto): el saldo y las dos acciones van
- * arriba, y lo que pide atención se agrupa en una sola fila.
+ * Jerarquía N1/N2/N3 (15/10):
+ *   N1 · el saldo con su balanza y las acciones: siempre está.
+ *   N2 · como mucho TRES puertas, en este orden de prioridad:
+ *        Pendientes (solo si hay) · Mes · Movimientos.
+ *   N3 · cada puerta abre su pantalla. Nada de desplegables.
+ *
+ * "Próximos meses" ya no es una puerta: vive dentro del Detalle del mes, como
+ * parte de su selector (§23.4).
  */
 
-/** Cuántos movimientos se ven antes de "Ver todos". */
-export const MOVEMENTS_PREVIEW = 10;
-
-export type SpaceSection = 'balance' | 'actions' | 'pending' | 'month' | 'upcoming' | 'movements';
+export type SpaceDoor = 'pending' | 'month' | 'movements';
 
 export type SpaceLayoutInput = {
   /** SA-04 · fijos que detuvo una salida y que quien queda no decidió. */
@@ -23,61 +25,74 @@ export type SpaceLayoutInput = {
     total: number;
     payments: number;
     upcoming: number;
-    /** Cuántas categorías distintas tiene el mes. */
-    categories: number;
   };
+  /** Compromisos compartidos de los próximos meses. */
   upcomingMonths: number;
+  /** Gastos y pagos que ya pasaron. */
   movements: number;
+  /** Lo que eliminó el otro y todavía no revisaste (queda su rastro). */
+  deletions: number;
 };
 
 export type SpaceLayout = {
-  sections: SpaceSection[];
+  doors: SpaceDoor[];
   /**
-   * La fila de pendientes. `startsOpen` es verdadero con un fijo detenido:
+   * La puerta de pendientes. `urgent` es verdadero con un fijo detenido:
    * SA-04 ("¿Lo seguís pagando vos?") es una pregunta que la spec quiere que
-   * quien queda conteste, y plegada pasaría desapercibida.
+   * quien queda conteste, y no puede quedar escondida detrás de una puerta
+   * como cualquier otro pendiente.
    */
-  pending: { count: number; startsOpen: boolean } | null;
-  /** ¿Hay algo detrás de "Ver detalle del mes"? */
-  monthDetail: boolean;
+  pending: { count: number; urgent: boolean; caption: string } | null;
+  /** No hay nada para abrir aparte de los pendientes: se muestra el aviso de vacío. */
+  empty: boolean;
 };
 
 export function planSpaceLayout(input: SpaceLayoutInput): SpaceLayout {
-  const pendingCount = input.stoppedFixed + input.paidByOther + input.toReview;
+  const count = input.stoppedFixed + input.paidByOther + input.toReview;
   const pending =
-    pendingCount > 0 ? { count: pendingCount, startsOpen: input.stoppedFixed > 0 } : null;
+    count > 0
+      ? {
+          count,
+          urgent: input.stoppedFixed > 0,
+          caption: pendingDoorCaption({
+            stoppedFixed: input.stoppedFixed,
+            paidByOther: input.paidByOther,
+            toReview: input.toReview,
+          }),
+        }
+      : null;
 
   const hasMonth =
-    input.month.total > 0 || input.month.payments > 0 || input.month.upcoming > 0;
+    input.month.total > 0 ||
+    input.month.payments > 0 ||
+    input.month.upcoming > 0 ||
+    input.upcomingMonths > 0;
+  const hasMovements = input.movements > 0 || input.deletions > 0;
 
-  const sections: SpaceSection[] = ['balance', 'actions'];
-  if (pending != null) sections.push('pending');
-  if (hasMonth) sections.push('month');
-  if (input.upcomingMonths > 0) sections.push('upcoming');
-  sections.push('movements');
+  const doors: SpaceDoor[] = [];
+  if (pending != null) doors.push('pending');
+  if (hasMonth) doors.push('month');
+  if (hasMovements) doors.push('movements');
 
-  return {
-    sections,
-    pending,
-    // Con una sola categoría "Por categoría" repetiría el total: no aparece.
-    monthDetail:
-      input.month.categories > 1 || input.month.payments > 0 || input.month.upcoming > 0,
-  };
+  return { doors, pending, empty: !hasMonth && !hasMovements };
 }
 
 /**
- * Los movimientos que se ven. Nunca se corta sin avisar: `hidden` es lo que
- * falta, para rotular el "Ver todos".
+ * La línea de la puerta de Pendientes: "2 para revisar · 1 sin completar".
+ * Un fijo detenido (SA-04) va primero: es lo único que pide una decisión.
  */
-export function limitMovements<T>(
-  items: readonly T[],
-  expanded: boolean,
-  preview: number = MOVEMENTS_PREVIEW,
-): { visible: T[]; hidden: number } {
-  if (expanded || items.length <= preview) return { visible: [...items], hidden: 0 };
-  return { visible: items.slice(0, preview), hidden: items.length - preview };
-}
-
-export function pendingGroupTitle(count: number): string {
-  return count === 1 ? '1 cosa para completar o revisar' : `${count} cosas para completar o revisar`;
+export function pendingDoorCaption(counts: {
+  stoppedFixed: number;
+  paidByOther: number;
+  toReview: number;
+}): string {
+  const parts: string[] = [];
+  if (counts.stoppedFixed > 0) {
+    parts.push(
+      counts.stoppedFixed === 1 ? '1 fijo para decidir' : `${counts.stoppedFixed} fijos para decidir`,
+    );
+  }
+  if (counts.toReview > 0) parts.push(`${counts.toReview} para revisar`);
+  if (counts.paidByOther > 0) parts.push(`${counts.paidByOther} sin completar`);
+  return parts.join(' · ');
 }

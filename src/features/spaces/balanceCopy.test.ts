@@ -1,5 +1,73 @@
 import { describe, it, expect } from 'vitest';
-import { departureBalanceSentence, paymentSentence } from './balanceCopy';
+import type { SpaceMonth } from '@domain/shared-balance';
+import {
+  departureBalanceSentence,
+  paymentSentence,
+  previousMonthSentence,
+  putExtraSentence,
+} from './balanceCopy';
+
+/** Solo los campos que leen las frases del mes. */
+function month(patch: { viewerPutExtra?: number; previousBalance?: number | null }): SpaceMonth {
+  return {
+    viewerPutExtra: 0,
+    previousBalance: null,
+    other: { name: 'Martina', put: 0, share: 0 },
+    ...patch,
+  } as SpaceMonth;
+}
+
+/**
+ * S-05 y CA-25 · "puso de más" y el puente con el mes anterior son DOS frases
+ * separadas: nunca un total, un signo igual ni la diferencia como si fuera la deuda.
+ */
+describe('putExtraSentence · S-05', () => {
+  it('el usuario puso de más', () => {
+    expect(putExtraSentence(month({ viewerPutExtra: 70_000 }))).toBe(
+      'Este mes pusiste $70.000 de más.',
+    );
+  });
+
+  it('el otro puso de más', () => {
+    expect(putExtraSentence(month({ viewerPutExtra: -70_000 }))).toBe(
+      'Este mes Martina puso $70.000 de más.',
+    );
+  });
+
+  it('puso lo mismo: sin frase', () => {
+    expect(putExtraSentence(month({ viewerPutExtra: 0 }))).toBeNull();
+  });
+
+  it('en un mes que ya pasó dice el mes y no "este mes"', () => {
+    expect(putExtraSentence(month({ viewerPutExtra: 70_000 }), 'En septiembre')).toBe(
+      'En septiembre pusiste $70.000 de más.',
+    );
+    expect(putExtraSentence(month({ viewerPutExtra: -70_000 }), 'En septiembre')).toBe(
+      'En septiembre Martina puso $70.000 de más.',
+    );
+  });
+});
+
+describe('previousMonthSentence · el puente con el mes anterior', () => {
+  it('venían de septiembre', () => {
+    expect(previousMonthSentence(month({ previousBalance: -50_000 }), 'septiembre')).toBe(
+      'Venían de septiembre: Martina había puesto $50.000 de más.',
+    );
+    expect(previousMonthSentence(month({ previousBalance: 50_000 }), 'septiembre')).toBe(
+      'Venían de septiembre: Martina había puesto $50.000 de menos.',
+    );
+  });
+
+  it('sin mes anterior o en cero, sin frase', () => {
+    expect(previousMonthSentence(month({ previousBalance: null }), 'septiembre')).toBeNull();
+    expect(previousMonthSentence(month({ previousBalance: 0 }), 'septiembre')).toBeNull();
+  });
+
+  it('nunca lleva signo igual ni un total', () => {
+    const text = previousMonthSentence(month({ previousBalance: -50_000 }), 'septiembre')!;
+    expect(text).not.toMatch(/[=+]/);
+  });
+});
 
 /**
  * §25 · un pago entre miembros, en segunda persona y en las dos direcciones.

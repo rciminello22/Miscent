@@ -1,9 +1,9 @@
 import { View } from 'react-native';
-import type { SpaceOccurrence } from '@domain/occurrences';
-import type { DeletedRecord, MemberPayment } from '@domain/types';
-import { formatDayMonth, formatInstallment, formatMonth, formatPesos } from '@/lib/format';
-import { prettyLabel } from '@/features/add/categories';
+import type { LucideIcon } from 'lucide-react-native';
+import type { DeletedRecord } from '@domain/types';
+import { formatDayMonth, formatPesos } from '@/lib/format';
 import {
+  Avatar,
   ContributionBar,
   Money,
   Pressable,
@@ -16,8 +16,8 @@ import {
 import { useTheme } from '@/ui/theme';
 
 /**
- * Las filas y barras de la pantalla del espacio (§24). Presentacionales: reciben
- * todo por props; `SpaceScreen` decide qué mostrar.
+ * Las filas y barras de las pantallas del espacio (§24). Presentacionales:
+ * reciben todo por props; las pantallas deciden qué mostrar.
  */
 
 /**
@@ -29,6 +29,7 @@ import { useTheme } from '@/ui/theme';
  */
 export function MemberContribution({
   name,
+  initial,
   put,
   share,
   max,
@@ -36,6 +37,7 @@ export function MemberContribution({
   index,
 }: {
   name: string;
+  initial: string;
   put: number;
   share: number;
   max: number;
@@ -46,10 +48,13 @@ export function MemberContribution({
 
   return (
     <Stack gap="2">
-      <Row justify="space-between" align="baseline">
-        <Text variant="small" tone="secondary">
-          {isViewer ? 'Pusiste' : `${name} puso`}
-        </Text>
+      <Row justify="space-between" align="center">
+        <Row gap="2" align="center">
+          <Avatar initial={initial} tone={isViewer ? 'me' : 'other'} size={26} />
+          <Text variant="small" tone="secondary">
+            {isViewer ? 'Pusiste' : `${name} puso`}
+          </Text>
+        </Row>
         <Money amount={put} variant="smallMedium" />
       </Row>
 
@@ -65,55 +70,28 @@ export function MemberContribution({
   );
 }
 
-export type SpaceMovement =
-  | { kind: 'occurrence'; date: string; occurrence: SpaceOccurrence }
-  | { kind: 'payment'; date: string; payment: MemberPayment };
-
 /**
- * §25 · un pago entre miembros en los movimientos del espacio. P-04: no cambia
- * lo que cada uno puso ni el radar; solo lo que se deben.
+ * La barra de dos tramos de la puerta del mes: lo que puso cada uno ESE mes.
+ * Decorativa para el lector de pantalla: la puerta ya dice las cifras.
  */
-export function PaymentRow({
-  sentence,
-  date,
-  amount,
-  reviewTag = null,
-  onPress,
-}: {
-  sentence: string;
-  date: string;
-  amount: number;
-  reviewTag?: string | null;
-  onPress: () => void;
-}) {
+export function PutSplitBar({ me, other }: { me: number; other: number }) {
   const theme = useTheme();
-
   return (
-    <Pressable
-      onPress={onPress}
-      haptic="none"
-      scaleOnPress={false}
-      accessibilityRole="button"
-      accessibilityLabel={sentence}
-      style={{ paddingVertical: theme.space['3'] }}
+    <View
+      accessible={false}
+      style={{
+        flexDirection: 'row',
+        height: 12,
+        borderRadius: 6,
+        overflow: 'hidden',
+        gap: 2,
+        backgroundColor: theme.colors.surfaceSunken,
+        marginTop: theme.space['1'],
+      }}
     >
-      <Row gap="3" align="flex-start">
-        <View style={{ flex: 1, gap: 3 }}>
-          <Text variant="bodyMedium" numberOfLines={1}>
-            {sentence}
-          </Text>
-          <Text variant="caption" tone="muted">
-            {formatDayMonth(date)} · pago entre ustedes · no cambia lo que cada uno puso
-          </Text>
-          {reviewTag != null && <ReviewTag label={reviewTag} />}
-        </View>
-        <Money amount={amount} variant="bodyMedium" tone="muted" />
-        {/* UX-11 · el pago se abre. */}
-        <View style={{ marginTop: 3 }}>
-          <RowChevron />
-        </View>
-      </Row>
-    </Pressable>
+      {me > 0 && <View style={{ flex: me, backgroundColor: theme.colors.shared }} />}
+      {other > 0 && <View style={{ flex: other, backgroundColor: theme.colors.committed }} />}
+    </View>
   );
 }
 
@@ -187,65 +165,87 @@ export function ReviewTag({ label }: { label: string }) {
 }
 
 /**
- * Una ocurrencia del espacio.
+ * Una fila de las pantallas de detalle del espacio (N3): ícono, título, líneas
+ * de apoyo y monto. Sirve para movimientos, pagos, categorías y lo que se viene.
  *
- * Muestra el TOTAL, no la parte: en el espacio la cifra principal es lo que se
- * gastó entre los dos (§7.3, lente del espacio). La parte de cada uno aparece
- * en el reparto, debajo.
+ * La fecha NO va en la fila: la da el encabezado del día. "tu parte" va en gris
+ * a la derecha, bajo el monto, y no en una línea propia. Solo la fila que abre
+ * algo lleva chevron (UX-11).
  */
-export function SharedRow({
-  occurrence,
-  mySlot,
-  otherName,
-  myName,
-  showMonth = false,
+export function LedgerRow({
+  icon: Icon,
+  title,
+  caption = null,
+  authorship = null,
   reviewTag = null,
+  amount = null,
+  myShare = null,
+  muted = false,
   onPress,
 }: {
-  occurrence: SpaceOccurrence;
-  mySlot: 1 | 2;
-  otherName: string;
-  myName: string;
-  showMonth?: boolean;
+  icon?: LucideIcon;
+  title: string;
+  /** Lo que el título no dice: "pagó Martina · cuota 2 de 6". */
+  caption?: string | null;
+  /** K3 · "Lo cargó Martina · lo editaste vos". */
+  authorship?: string | null;
   /** Opción B · "Lo cargó Martina · para revisar". */
   reviewTag?: string | null;
+  amount?: number | null;
+  myShare?: number | null;
+  muted?: boolean;
   onPress?: () => void;
 }) {
   const theme = useTheme();
-  const iPaid = occurrence.payerSlot === mySlot;
-  const myShare = mySlot === 1 ? occurrence.shares.slot1 : occurrence.shares.slot2;
 
   const row = (
     <Row gap="3" align="flex-start">
-      <View style={{ flex: 1, gap: 3 }}>
-        <Text variant="bodyMedium" numberOfLines={1}>
-          {prettyLabel(occurrence.label)}
-        </Text>
+      {Icon != null && (
+        <View
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 10,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: theme.colors.surfaceSunken,
+          }}
+        >
+          <Icon size={16} color={theme.colors.textSecondary} />
+        </View>
+      )}
 
-        <Text variant="caption" tone="muted">
-          {[
-            showMonth
-              ? formatMonth(occurrence.month, occurrence.month)
-              : formatDayMonth(occurrence.balanceDate),
-            // G-06 · "pagó X" es una declaración, no una verificación.
-            `pagó ${iPaid ? myName : otherName}`,
-            occurrence.installment != null
-              ? `cuota ${formatInstallment(occurrence.installment.index, occurrence.installment.count)}`
-              : null,
-            occurrence.isRecurrence ? 'fijo' : null,
-          ]
-            .filter((part) => part != null)
-            .join(' · ')}
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text variant="bodyMedium" numberOfLines={2}>
+          {title}
         </Text>
-
-        <Text variant="caption" tone="shared">
-          tu parte <Money amount={myShare} variant="caption" tone="shared" />
-        </Text>
-
-        {reviewTag != null && <ReviewTag label={reviewTag} />}
+        {caption != null && (
+          <Text variant="caption" tone="muted">
+            {caption}
+          </Text>
+        )}
+        {/* La marca de revisar ya dice quién lo cargó: no se repite. */}
+        {reviewTag != null ? (
+          <ReviewTag label={reviewTag} />
+        ) : (
+          authorship != null && (
+            <Text variant="caption" tone="muted">
+              {authorship}
+            </Text>
+          )
+        )}
       </View>
 
-      <Money amount={occurrence.amount} variant="bodyMedium" />
+      {amount != null && (
+        <View style={{ alignItems: 'flex-end', gap: 2 }}>
+          <Money amount={amount} variant="bodyMedium" tone={muted ? 'muted' : 'default'} />
+          {myShare != null && (
+            <Text variant="caption" tone="muted">
+              tu parte <Money amount={myShare} variant="caption" tone="muted" />
+            </Text>
+          )}
+        </View>
+      )}
 
       {/* UX-11 · solo la fila que abre algo lleva chevron. */}
       {onPress != null && (
@@ -256,8 +256,6 @@ export function SharedRow({
     </Row>
   );
 
-  // UX-11 · "Próximos meses" del espacio no abre nada: fila informativa, sin
-  // rol de botón ni chevron. La misma fila en Movimientos sí se abre.
   if (onPress == null) {
     return <View style={{ paddingVertical: theme.space['3'] }}>{row}</View>;
   }
@@ -268,7 +266,7 @@ export function SharedRow({
       haptic="none"
       scaleOnPress={false}
       accessibilityRole="button"
-      accessibilityLabel={prettyLabel(occurrence.label)}
+      accessibilityLabel={[title, caption, authorship].filter((part) => part != null).join('. ')}
       style={{ paddingVertical: theme.space['3'] }}
     >
       {row}

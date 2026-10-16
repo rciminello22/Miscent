@@ -49,12 +49,12 @@ export function paymentSentence(
  * Nunca se muestra la diferencia entre lo que pusieron como si fuera la deuda:
  * son dos cifras distintas, y confundirlas es el error que CA-25 prueba.
  */
-export function putExtraSentence(month: SpaceMonth): string | null {
+export function putExtraSentence(month: SpaceMonth, when = 'Este mes'): string | null {
   if (month.viewerPutExtra === 0) return null;
 
   return month.viewerPutExtra > 0
-    ? `Este mes pusiste ${formatPesos(month.viewerPutExtra, { sign: 'never' })} de más.`
-    : `Este mes ${month.other.name} puso ${formatPesos(month.viewerPutExtra, { sign: 'never' })} de más.`;
+    ? `${when} pusiste ${formatPesos(month.viewerPutExtra, { sign: 'never' })} de más.`
+    : `${when} ${month.other.name} puso ${formatPesos(month.viewerPutExtra, { sign: 'never' })} de más.`;
 }
 
 /** §24 · el puente con el mes anterior: "Venían de septiembre: …". */

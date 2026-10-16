@@ -11,6 +11,7 @@ export { RadarBar, RadarLegend, RadarLegendDot, type RadarBarProps } from './Rad
 export { MonthBar, ContributionBar, type MonthBarProps } from './MonthBar';
 export { AudienceBadge, AudienceIcon, audienceLabel, type Audience } from './Audience';
 export { Avatar } from './Avatar';
+export { Door } from './Door';
 export { BalanceScale, type BalanceScaleProps } from './BalanceScale';
 export { Skeleton, RadarSkeleton, EmptyState, ErrorState } from './states';
 export { Sheet } from './Sheet';
