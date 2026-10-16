@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
-import Svg, { Defs, Line, Pattern, Rect } from 'react-native-svg';
 import type { Pesos } from '@domain/money';
 import { formatPesos } from '@/lib/format';
 import { barTransition } from '../motion';
+import { HatchFill } from './HatchFill';
 import { radarBarValueText } from './radarBarCopy';
 import { radarBarRatios, radarBarSeparators, radarBarTail } from './radarBarRatios';
 import { Text } from './Text';
@@ -28,9 +28,6 @@ const OUTLINE = 1.5;
 const STICK_HEIGHT = 6;
 /** El corchete de "Tus ingresos registrados". */
 const BRACKET_HEIGHT = 7;
-/** El rayado del tramo de más: paso y grosor de la línea, en px. */
-const HATCH_STEP = 5;
-const HATCH_STROKE = 2;
 const HATCH_ID = 'radar-excess-hatch';
 
 /**
@@ -197,27 +194,7 @@ export function RadarBar({
               overflow: 'hidden',
             }}
           >
-            <Svg width="100%" height="100%">
-              <Defs>
-                <Pattern
-                  id={HATCH_ID}
-                  width={HATCH_STEP}
-                  height={HATCH_STEP}
-                  patternUnits="userSpaceOnUse"
-                  patternTransform="rotate(45)"
-                >
-                  <Line
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2={HATCH_STEP}
-                    stroke={theme.colors.excess}
-                    strokeWidth={HATCH_STROKE}
-                  />
-                </Pattern>
-              </Defs>
-              <Rect width="100%" height="100%" fill={`url(#${HATCH_ID})`} />
-            </Svg>
+            <HatchFill id={HATCH_ID} color={theme.colors.excess} />
           </View>
         )}
       </View>

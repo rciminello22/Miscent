@@ -8,6 +8,7 @@ export { TextLink } from './TextLink';
 export { RowChevron } from './RowChevron';
 export { Screen, Stack, Row, Spacer, Card, SectionHeader, Divider } from './layout';
 export { RadarBar, RadarLegend, RadarLegendDot, type RadarBarProps } from './RadarBar';
+export { HatchFill } from './HatchFill';
 export { MonthBar, ContributionBar, type MonthBarProps } from './MonthBar';
 export { AudienceBadge, AudienceIcon, audienceLabel, type Audience } from './Audience';
 export { Avatar } from './Avatar';
