@@ -34,6 +34,7 @@ import { InstallmentPreview } from '@/features/add/InstallmentPreview';
 import { isValidInstallmentCount } from '@/features/add/installmentCount';
 import { buildInstallmentPreview } from '@/features/add/installmentPreviewModel';
 import { canSaveForm, saveBlockReason } from '@/features/add/saveBlockReason';
+import { DestinationAudience } from '@/features/add/DestinationAudience';
 import { SaveFooter } from '@/features/add/SaveFooter';
 import { PastDateField } from '@/features/add/DateField';
 import { MoreOptions } from '@/features/add/MoreOptions';
@@ -436,8 +437,9 @@ export default function Agregar() {
         <Field label="Destino">
           {/* PR-03 · §17 campo 4 · el ícono de cada chip dice la audiencia (una
               persona, dos) y el texto completo —"Solo vos lo ves" / "Lo ven vos y
-              Martina"— va UNA vez, en el pie junto a Guardar, que sigue al
-              destino elegido y se ve siempre (también con el teclado abierto). */}
+              Martina"— va bajo los chips y otra vez en el pie junto a Guardar,
+              que sigue al destino elegido y se ve siempre (también con el teclado
+              abierto). */}
           <Row gap="2" style={{ flexWrap: 'wrap' }}>
             <Chip
               label="Solo yo"
@@ -472,6 +474,8 @@ export default function Agregar() {
                 />
               ))}
           </Row>
+          {/* 6B · §12 · la audiencia, pegada a la elección (la del pie sigue). */}
+          <DestinationAudience audience={audience} />
         </Field>
 
         {/* §17 campos 5 y 6 · solo con un espacio elegido. */}

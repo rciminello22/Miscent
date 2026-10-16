@@ -24,6 +24,7 @@ import { InstallmentPreview } from '@/features/add/InstallmentPreview';
 import { isValidInstallmentCount } from '@/features/add/installmentCount';
 import { buildInstallmentPreview } from '@/features/add/installmentPreviewModel';
 import { canSaveForm, saveBlockReason } from '@/features/add/saveBlockReason';
+import { DestinationAudience } from '@/features/add/DestinationAudience';
 import { SaveFooter } from '@/features/add/SaveFooter';
 import { PastDateField } from '@/features/add/DateField';
 import { MoreOptions } from '@/features/add/MoreOptions';
@@ -372,6 +373,10 @@ export default function AgregarCompartido() {
                 icon={<Users size={14} color={theme.colors.textOnBrand} />}
               />
             </Row>
+            {/* 6B · §12 · la audiencia, pegada a la elección (la del pie sigue). */}
+            <DestinationAudience
+              audience={{ kind: 'shared', otherMemberName: derived.other.displayName }}
+            />
           </Field>
         )}
 
