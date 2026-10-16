@@ -690,7 +690,7 @@ export default function GastoCompartido() {
                   value={date}
                   onChange={setDate}
                   today={today}
-                  editability={dateEditability(expense)}
+                  editability={dateEditability(expense, today)}
                 />
 
                 <Field label="Descripción (opcional)">

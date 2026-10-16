@@ -1,4 +1,4 @@
-import type { IsoDate } from '@domain/calendar';
+import { compareDates, earliestEntryDate, type IsoDate } from '@domain/calendar';
 import type { Pesos } from '@domain/money';
 import type { Category, InstallmentPlan, Split } from '@domain/types';
 
@@ -18,14 +18,25 @@ import type { Category, InstallmentPlan, Split } from '@domain/types';
  */
 export type DateEditability = { editable: true } | { editable: false; reason: string };
 
-export function dateEditability(original: {
-  installments: InstallmentPlan | null;
-}): DateEditability {
-  if (original.installments == null) return { editable: true };
-  return {
-    editable: false,
-    reason: 'La fecha de una compra en cuotas no se cambia: de ella salen los meses de las cuotas.',
-  };
+export function dateEditability(
+  original: { installments: InstallmentPlan | null; date: IsoDate },
+  today: IsoDate,
+): DateEditability {
+  if (original.installments != null) {
+    return {
+      editable: false,
+      reason:
+        'La fecha de una compra en cuotas no se cambia: de ella salen los meses de las cuotas.',
+    };
+  }
+
+  // Un mes que ya pasó se ve completo pero no se reescribe: la fecha mínima de
+  // carga es el día 1 del mes en curso (la misma regla que Agregar).
+  if (compareDates(original.date, earliestEntryDate(today)) < 0) {
+    return { editable: false, reason: 'Es de un mes que ya pasó: su fecha no se cambia' };
+  }
+
+  return { editable: true };
 }
 
 /**

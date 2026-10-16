@@ -116,6 +116,26 @@ export function hasPassed(date: IsoDate, today: IsoDate): boolean {
 }
 
 /**
+ * La fecha más antigua con la que se puede CARGAR algo: el día 1 del mes en
+ * curso. Los meses que ya pasaron se pueden ver completos, pero no se les
+ * agrega nada (el radar de ese mes ya se leyó). Depende de "hoy", así que no
+ * es una regla de la base: la hace cumplir la interfaz.
+ */
+export function earliestEntryDate(today: IsoDate): IsoDate {
+  return dateInMonth(monthOf(today), 1);
+}
+
+/** ¿Se puede cargar algo con esta fecha? Del día 1 del mes en curso hasta hoy. */
+export function isEntryDateAllowed(date: IsoDate, today: IsoDate): boolean {
+  return compareDates(date, earliestEntryDate(today)) >= 0 && compareDates(date, today) <= 0;
+}
+
+/** "Ayer" solo es una opción si no cae en un mes anterior (el día 1 se oculta). */
+export function isYesterdayAllowed(today: IsoDate): boolean {
+  return isEntryDateAllowed(addDays(today, -1), today);
+}
+
+/**
  * T-03, primera mitad: la primera fecha cuyo día es `day`, igual o posterior
  * a `from`. Se usa para el cierre del resumen.
  *

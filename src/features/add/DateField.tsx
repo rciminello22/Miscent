@@ -2,7 +2,14 @@ import { useState } from 'react';
 import { Platform, View } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { CalendarDays } from 'lucide-react-native';
-import { addDays, parseDate, toIso, type IsoDate } from '@domain/calendar';
+import {
+  addDays,
+  earliestEntryDate,
+  isYesterdayAllowed,
+  parseDate,
+  toIso,
+  type IsoDate,
+} from '@domain/calendar';
 import { formatDayMonth, formatLongDate } from '@/lib/format';
 import { Pressable, Row, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
@@ -68,7 +75,8 @@ function NativeDatePicker({
  * Hoy y Ayer son casi todos los casos y cuestan un toque (§4.4: un gasto
  * cotidiano no suma pasos). Cualquier otra fecha abre el picker, con tope en
  * hoy: lo que se viene se registra como cuota o como fijo, no como un gasto
- * con fecha futura.
+ * con fecha futura. Y con piso en el día 1 del mes en curso: un mes que ya
+ * pasó se ve completo, pero no se le agrega nada (`earliestEntryDate`).
  */
 export function PastDateField({
   value,
@@ -83,7 +91,9 @@ export function PastDateField({
   const [open, setOpen] = useState(false);
 
   const yesterday = addDays(today, -1);
-  const isOther = value !== today && value !== yesterday;
+  // El día 1, "Ayer" cae en un mes que ya pasó: no se ofrece.
+  const showYesterday = isYesterdayAllowed(today);
+  const isOther = value !== today && !(showYesterday && value === yesterday);
   const otherSelected = isOther || open;
 
   function pick(date: IsoDate) {
@@ -95,7 +105,13 @@ export function PastDateField({
     <View style={{ gap: theme.space['3'] }}>
       <Row gap="2" style={{ flexWrap: 'wrap' }}>
         <Chip label="Hoy" selected={value === today && !open} onPress={() => pick(today)} />
-        <Chip label="Ayer" selected={value === yesterday && !open} onPress={() => pick(yesterday)} />
+        {showYesterday && (
+          <Chip
+            label="Ayer"
+            selected={value === yesterday && !open}
+            onPress={() => pick(yesterday)}
+          />
+        )}
         <Chip
           label={isOther ? formatDayMonth(value) : 'Otra fecha'}
           selected={otherSelected}
@@ -112,6 +128,7 @@ export function PastDateField({
       {open && (
         <NativeDatePicker
           value={value}
+          minimumDate={earliestEntryDate(today)}
           maximumDate={today}
           onPick={pick}
           onClose={() => setOpen(false)}

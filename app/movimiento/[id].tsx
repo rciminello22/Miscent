@@ -438,7 +438,7 @@ export default function MovimientoDetalle() {
                   value={date}
                   onChange={setDate}
                   today={today}
-                  editability={dateEditability(movement)}
+                  editability={dateEditability(movement, today)}
                 />
 
                 <Field label="Descripción (opcional)">

@@ -98,12 +98,19 @@ describe('hasUnsavedChanges · gasto compartido', () => {
 describe('dateEditability · X-01, X-04 y F2', () => {
   const plan: InstallmentPlan = { count: 6, firstMonth: '2026-11', impactDay: 5, approximate: false };
 
-  it('un gasto de un solo pago se puede mover de fecha', () => {
-    expect(dateEditability({ installments: null })).toEqual({ editable: true });
+  const today = '2026-10-15';
+
+  it('un gasto de un solo pago de este mes se puede mover de fecha', () => {
+    expect(dateEditability({ installments: null, date: '2026-10-03' }, today)).toEqual({
+      editable: true,
+    });
+    expect(dateEditability({ installments: null, date: '2026-10-01' }, today)).toEqual({
+      editable: true,
+    });
   });
 
   it('una compra en cuotas no: de su fecha salen el mes y el día de cada cuota', () => {
-    const result = dateEditability({ installments: plan });
+    const result = dateEditability({ installments: plan, date: '2026-10-03' }, today);
 
     expect(result.editable).toBe(false);
     if (!result.editable) {
@@ -111,5 +118,21 @@ describe('dateEditability · X-01, X-04 y F2', () => {
         'La fecha de una compra en cuotas no se cambia: de ella salen los meses de las cuotas.',
       );
     }
+  });
+
+  it('un gasto de un mes que ya pasó no cambia de fecha, y dice por qué', () => {
+    const result = dateEditability({ installments: null, date: '2026-09-30' }, today);
+
+    expect(result).toEqual({
+      editable: false,
+      reason: 'Es de un mes que ya pasó: su fecha no se cambia',
+    });
+  });
+
+  it('si es de un mes pasado Y en cuotas, manda el motivo de las cuotas', () => {
+    const result = dateEditability({ installments: plan, date: '2026-09-30' }, today);
+
+    expect(result.editable).toBe(false);
+    if (!result.editable) expect(result.reason).toMatch(/cuotas/);
   });
 });

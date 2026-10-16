@@ -1,5 +1,6 @@
 import { renderWithTheme, fireEvent } from '@/test/render';
 import { DateEditField } from './DateEditField';
+import { dateEditability } from './editForm';
 
 /**
  * UX-18 · la fecha en la edición: editable en un gasto de un solo pago, solo
@@ -43,5 +44,20 @@ describe('UX-18 · DateEditField', () => {
     expect(view.getByText(REASON)).toBeTruthy();
     expect(view.queryByRole('radio', { name: 'Hoy' })).toBeNull();
     expect(view.queryByRole('radio', { name: 'Ayer' })).toBeNull();
+  });
+
+  it('un gasto de un mes que ya pasó: texto con el motivo, sin selector', async () => {
+    const view = await renderWithTheme(
+      <DateEditField
+        value="2026-09-30"
+        onChange={() => {}}
+        today="2026-10-14"
+        editability={dateEditability({ installments: null, date: '2026-09-30' }, '2026-10-14')}
+      />,
+    );
+
+    expect(view.getByText('30 de septiembre')).toBeTruthy();
+    expect(view.getByText('Es de un mes que ya pasó: su fecha no se cambia')).toBeTruthy();
+    expect(view.queryByRole('radio', { name: 'Hoy' })).toBeNull();
   });
 });

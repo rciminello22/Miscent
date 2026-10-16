@@ -4,6 +4,9 @@ import {
   addMonths,
   clampDay,
   dateInMonth,
+  earliestEntryDate,
+  isEntryDateAllowed,
+  isYesterdayAllowed,
   firstDateWithDayAfter,
   firstDateWithDayOnOrAfter,
   hasPassed,
@@ -89,5 +92,32 @@ describe('addDays · "Ayer" en el formulario (§17 campo 10)', () => {
   it('respeta febrero, bisiesto o no', () => {
     expect(addDays('2026-03-01', -1)).toBe('2026-02-28');
     expect(addDays('2028-03-01', -1)).toBe('2028-02-29');
+  });
+});
+
+describe('fecha mínima de carga · el día 1 del mes en curso', () => {
+  it('earliestEntryDate es el día 1 del mes de hoy', () => {
+    expect(earliestEntryDate('2026-10-15')).toBe('2026-10-01');
+    expect(earliestEntryDate('2026-10-01')).toBe('2026-10-01');
+    expect(earliestEntryDate('2026-12-31')).toBe('2026-12-01');
+  });
+
+  it('se puede cargar del día 1 del mes hasta hoy, ambos incluidos', () => {
+    expect(isEntryDateAllowed('2026-10-01', '2026-10-15')).toBe(true);
+    expect(isEntryDateAllowed('2026-10-09', '2026-10-15')).toBe(true);
+    expect(isEntryDateAllowed('2026-10-15', '2026-10-15')).toBe(true);
+  });
+
+  it('no se puede cargar en un mes que ya pasó ni en el futuro', () => {
+    expect(isEntryDateAllowed('2026-09-30', '2026-10-15')).toBe(false);
+    expect(isEntryDateAllowed('2025-10-15', '2026-10-15')).toBe(false);
+    expect(isEntryDateAllowed('2026-10-16', '2026-10-15')).toBe(false);
+  });
+
+  it('"Ayer" se ofrece salvo el día 1, cuando caería en el mes anterior', () => {
+    expect(isYesterdayAllowed('2026-10-15')).toBe(true);
+    expect(isYesterdayAllowed('2026-10-02')).toBe(true);
+    expect(isYesterdayAllowed('2026-10-01')).toBe(false);
+    expect(isYesterdayAllowed('2026-01-01')).toBe(false);
   });
 });
