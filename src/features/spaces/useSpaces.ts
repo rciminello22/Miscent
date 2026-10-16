@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { monthOf } from '@domain/calendar';
+import { monthOf, type IsoDate } from '@domain/calendar';
 import { expandSpaceOccurrences, spaceHorizon } from '@domain/occurrences';
 import { pendingDeletions, pendingReview } from '@domain/review';
 import { recentActivity } from '@domain/activity';
@@ -56,34 +56,46 @@ export function useSpace(spaceId: string) {
     enabled: spaceId !== '',
   });
 
-  const derived = useMemo(() => {
-    if (query.data == null) return null;
-    const { facts, mySlot, reviews, deletions } = query.data;
-
-    const balance = calculateSharedBalance(facts, mySlot, today);
-
-    return {
-      facts,
-      mySlot,
-      balance,
-      month: calculateSpaceMonth(facts, mySlot, monthOf(today), today),
-      occurrences: expandSpaceOccurrences(facts, spaceHorizon(facts, today)),
-      /** P-03 · el monto y la dirección que dejan el saldo en cero. */
-      settlement: proposeSettlementPayment(balance),
-      /** §25 · "adelantó $X de cuotas que todavía no vencieron". */
-      pendingInstallments: pendingSharedInstallments(facts, mySlot, today),
-      other: facts.space.members.find((member) => member.slot !== mySlot)!,
-      me: facts.space.members.find((member) => member.slot === mySlot)!,
-      /** Opción B · los ids de lo que cargó el otro y todavía no revisé. */
-      pendingReview: pendingReview(facts, mySlot, reviews),
-      /** Opción B · lo que eliminó el otro y todavía no revisé. */
-      pendingDeletions: pendingDeletions(deletions, mySlot, reviews),
-      /** Should 6 · quién cargó, editó o eliminó qué, lo más reciente primero. */
-      activity: recentActivity(facts, deletions),
-    };
-  }, [query.data, today]);
+  const derived = useMemo(
+    () => (query.data == null ? null : deriveSpace(query.data, today)),
+    [query.data, today],
+  );
 
   return { ...query, derived, today };
+}
+
+/** Lo que trae el repositorio de un espacio. */
+export type SpaceQueryData = Awaited<ReturnType<typeof fetchSpaceFacts>>;
+
+/**
+ * Todo lo que se calcula de los hechos de un espacio. Una sola fuente: la usan
+ * la pantalla del espacio (`useSpace`) y la lista de Compartidos, para que la
+ * cifra de la lista y la de adentro no puedan diferir.
+ */
+export function deriveSpace(data: SpaceQueryData, today: IsoDate) {
+  const { facts, mySlot, reviews, deletions } = data;
+
+  const balance = calculateSharedBalance(facts, mySlot, today);
+
+  return {
+    facts,
+    mySlot,
+    balance,
+    month: calculateSpaceMonth(facts, mySlot, monthOf(today), today),
+    occurrences: expandSpaceOccurrences(facts, spaceHorizon(facts, today)),
+    /** P-03 · el monto y la dirección que dejan el saldo en cero. */
+    settlement: proposeSettlementPayment(balance),
+    /** §25 · "adelantó $X de cuotas que todavía no vencieron". */
+    pendingInstallments: pendingSharedInstallments(facts, mySlot, today),
+    other: facts.space.members.find((member) => member.slot !== mySlot)!,
+    me: facts.space.members.find((member) => member.slot === mySlot)!,
+    /** Opción B · los ids de lo que cargó el otro y todavía no revisé. */
+    pendingReview: pendingReview(facts, mySlot, reviews),
+    /** Opción B · lo que eliminó el otro y todavía no revisé. */
+    pendingDeletions: pendingDeletions(deletions, mySlot, reviews),
+    /** Should 6 · quién cargó, editó o eliminó qué, lo más reciente primero. */
+    activity: recentActivity(facts, deletions),
+  };
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */

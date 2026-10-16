@@ -6,6 +6,7 @@ import { spacesDoorCaption } from '@/features/home/homeDoorsCopy';
 import { Avatar, Door, Skeleton } from '@/ui/primitives';
 import { balanceSentence } from './balanceCopy';
 import { initialOf } from './balanceScaleState';
+import { PairAvatars } from './PairAvatars';
 import { pendingPill } from './spaceListCopy';
 import { useOpenSpace } from './useOpenSpace';
 import { useSpacePendings } from './useSpacePendings';
@@ -34,23 +35,6 @@ export function SpacesOnHome() {
   );
 }
 
-/** Dos círculos con iniciales: vos y el otro (punteado si todavía no entró). K7. */
-function PairAvatars({ myName, space }: { myName: string; space: SpaceSummary }) {
-  return (
-    <View style={{ flexDirection: 'row' }}>
-      <Avatar initial={initialOf(myName)} tone="me" size={28} />
-      <View style={{ marginLeft: -8 }}>
-        <Avatar
-          initial={initialOf(space.otherMemberName)}
-          tone="other"
-          dashed={!space.otherHasAccess}
-          size={28}
-        />
-      </View>
-    </View>
-  );
-}
-
 function SingleSpaceDoor({ space }: { space: SpaceSummary }) {
   const openSpace = useOpenSpace();
   const { profile } = useSession();
@@ -67,7 +51,13 @@ function SingleSpaceDoor({ space }: { space: SpaceSummary }) {
       caption={isLoading || sentence == null ? null : [sentence, pill].filter(Boolean).join(' · ')}
       attention={pendings.total > 0 ? 'attention' : 'none'}
       accessibilityLabel={[space.name, sentence, pill].filter((part) => part != null).join('. ')}
-      trailing={<PairAvatars myName={profile?.displayName ?? 'Vos'} space={space} />}
+      trailing={
+        <PairAvatars
+          myName={profile?.displayName ?? 'Vos'}
+          otherName={space.otherMemberName}
+          otherDashed={!space.otherHasAccess}
+        />
+      }
       onPress={() => openSpace(space.id)}
     >
       {isLoading && <Skeleton width={140} height={13} />}
