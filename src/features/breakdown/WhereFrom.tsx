@@ -88,8 +88,13 @@ export function WhereFrom({
                 key={income.id}
                 entering={FadeInDown.delay(stagger(index, 50)).duration(duration.base)}
               >
-                <Row justify="space-between" align="baseline" style={{ paddingVertical: 8 }}>
-                  <Text variant="small" tone="secondary">
+                <Row
+                  justify="space-between"
+                  align="baseline"
+                  gap="3"
+                  style={{ paddingVertical: 8 }}
+                >
+                  <Text variant="small" tone="secondary" style={{ flex: 1 }}>
                     {prettyLabel(income.label)}
                     {income.isRecurrence ? ' · fijo' : ''}
                   </Text>
@@ -279,7 +284,7 @@ function OccurrenceList({
 
       <Divider />
 
-      <Row justify="space-between" align="baseline">
+      <Row justify="space-between" align="baseline" gap="3">
         <Text variant="bodyMedium">Total</Text>
         <Money amount={total} variant="heading" />
       </Row>

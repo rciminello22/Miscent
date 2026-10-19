@@ -29,6 +29,21 @@ export function balanceSentence(balance: SharedBalance): string {
 }
 
 /**
+ * La misma frase de `balanceSentence`, partida para el N1 del espacio: lo que
+ * se lee, la cifra en su propia línea (es la que se ajusta si es grande) y, si
+ * hace falta, a quién. Unidas con espacios dan exactamente `balanceSentence`.
+ */
+export type BalanceLines = { lead: string; amount: number | null; tail: string | null };
+
+export function balanceLines(balance: SharedBalance): BalanceLines {
+  if (balance.settled) return { lead: 'Están a mano', amount: null, tail: null };
+
+  return balance.amount > 0
+    ? { lead: `${balance.otherMemberName} te debe`, amount: balance.amount, tail: null }
+    : { lead: 'Le debés', amount: -balance.amount, tail: `a ${balance.otherMemberName}` };
+}
+
+/**
  * §25 · un pago entre miembros, en segunda persona. G-06: "pagó" es lo
  * declarado, la app no verifica la transferencia.
  */

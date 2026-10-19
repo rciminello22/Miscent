@@ -96,8 +96,12 @@ function DetailRow({
   emphasis?: boolean;
 }) {
   return (
-    <Row justify="space-between" align="baseline">
-      <Text variant={emphasis ? 'bodyMedium' : 'body'} tone={emphasis ? 'default' : 'secondary'}>
+    <Row justify="space-between" align="baseline" gap="3">
+      <Text
+        variant={emphasis ? 'bodyMedium' : 'body'}
+        tone={emphasis ? 'default' : 'secondary'}
+        style={{ flex: 1 }}
+      >
         {label}
       </Text>
       <Money amount={amount} variant={emphasis ? 'heading' : 'bodyMedium'} animate />

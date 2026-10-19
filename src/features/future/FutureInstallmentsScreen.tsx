@@ -44,8 +44,8 @@ export function FutureInstallmentsScreen() {
                   </Text>
                 </Row>
 
-                <Row justify="space-between" align="baseline">
-                  <Text variant="caption" tone="muted">
+                <Row justify="space-between" align="baseline" gap="3">
+                  <Text variant="caption" tone="muted" style={{ flex: 1 }}>
                     {plan.spaceName != null
                       ? `${spaceContext(plan.spaceName, plan.fromFormerMembership)} · tu parte · `
                       : ''}

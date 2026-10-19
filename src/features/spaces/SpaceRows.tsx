@@ -55,7 +55,7 @@ export function MemberContribution({
             {isViewer ? 'Pusiste' : `${name} puso`}
           </Text>
         </Row>
-        <Money amount={put} variant="smallMedium" />
+        <Money amount={put} variant="smallMedium" numberOfLines={1} />
       </Row>
 
       <ContributionBar put={put} share={share} max={max} tone={tone} index={index} />
@@ -115,7 +115,7 @@ export function DeletedRow({
   return (
     <View style={{ paddingVertical: theme.space['3'], gap: 3 }}>
       <Row gap="3" align="flex-start">
-        <View style={{ flex: 1, gap: 3 }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
           <Text
             variant="bodyMedium"
             tone="muted"
@@ -131,12 +131,13 @@ export function DeletedRow({
           )}
           <ReviewTag label={tag} />
         </View>
-        <View style={{ alignItems: 'flex-end', gap: 2 }}>
+        <View style={{ alignItems: 'flex-end', gap: 2, flexShrink: 0 }}>
           {item.amount != null && (
             <Text
               variant="bodyMedium"
               tone="muted"
               tabular
+              numberOfLines={1}
               style={{ textDecorationLine: 'line-through' }}
             >
               {formatPesos(item.amount)}
@@ -215,12 +216,13 @@ export function LedgerRow({
         </View>
       )}
 
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text variant="bodyMedium" numberOfLines={2}>
+      {/* Lo de la izquierda cede antes de empujar el monto (Montos · 11). */}
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <Text variant="bodyMedium" numberOfLines={2} ellipsizeMode="tail">
           {title}
         </Text>
         {caption != null && (
-          <Text variant="caption" tone="muted">
+          <Text variant="caption" tone="muted" numberOfLines={2} ellipsizeMode="tail">
             {caption}
           </Text>
         )}
@@ -237,10 +239,15 @@ export function LedgerRow({
       </View>
 
       {amount != null && (
-        <View style={{ alignItems: 'flex-end', gap: 2 }}>
-          <Money amount={amount} variant="bodyMedium" tone={muted ? 'muted' : 'default'} />
+        <View style={{ alignItems: 'flex-end', gap: 2, flexShrink: 0 }}>
+          <Money
+            amount={amount}
+            variant="bodyMedium"
+            numberOfLines={1}
+            tone={muted ? 'muted' : 'default'}
+          />
           {myShare != null && (
-            <Text variant="caption" tone="muted">
+            <Text variant="caption" tone="muted" numberOfLines={1}>
               tu parte <Money amount={myShare} variant="caption" tone="muted" />
             </Text>
           )}

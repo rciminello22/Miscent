@@ -7,6 +7,30 @@
 
 export type Pesos = number;
 
+/**
+ * Lo máximo que se puede escribir en un campo de monto. La base guarda
+ * `integer` (hasta 2.147.483.647): el tope deja margen para sumar varios
+ * montos sin desbordar.
+ */
+export const MAX_AMOUNT: Pesos = 999_999_999;
+
+/**
+ * Lo que pasa al escribir en un campo de monto. `raw` es el texto que dejó el
+ * teclado (con los puntos del formato); `current` es lo que había.
+ *
+ * Si el número nuevo pasa de MAX_AMOUNT, el tecleo se ignora: queda `current`
+ * (no se borra lo escrito) y `capped` pide mostrar el aviso. Borrar siempre anda.
+ */
+export function typeAmount(raw: string, current: Pesos): { amount: Pesos; capped: boolean } {
+  const digits = raw.replace(/\D/g, '').replace(/^0+/, '');
+  if (digits === '') return { amount: 0, capped: false };
+  // Más de diez cifras ya pasa del tope y evita perder precisión en Number().
+  if (digits.length > 10 || Number(digits) > MAX_AMOUNT) {
+    return { amount: current, capped: true };
+  }
+  return { amount: Number(digits), capped: false };
+}
+
 export function isValidAmount(value: unknown): value is Pesos {
   return typeof value === 'number' && Number.isInteger(value) && Number.isFinite(value);
 }

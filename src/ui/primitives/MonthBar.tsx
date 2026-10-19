@@ -105,7 +105,8 @@ export function MonthBar({
         amount={committed}
         variant="smallMedium"
         tone={highlighted ? 'default' : 'secondary'}
-        style={{ width: 92, textAlign: 'right' }}
+        numberOfLines={1}
+        style={{ minWidth: 92, flexShrink: 0, textAlign: 'right' }}
       />
     </View>
   );

@@ -455,17 +455,17 @@ export default function GastoCompartido() {
             {/* §7.3 · el reparto: la lente del espacio. */}
             <Card tone="shared">
               <Stack gap="3">
-                <Row justify="space-between" align="baseline">
-                  <Text variant="small" tone="secondary">
+                <Row justify="space-between" align="baseline" gap="3">
+                  <Text variant="small" tone="secondary" style={{ flex: 1 }}>
                     Tu parte
                   </Text>
-                  <Money amount={myShare} variant="smallMedium" />
+                  <Money amount={myShare} variant="smallMedium" numberOfLines={1} />
                 </Row>
-                <Row justify="space-between" align="baseline">
-                  <Text variant="small" tone="secondary">
+                <Row justify="space-between" align="baseline" gap="3">
+                  <Text variant="small" tone="secondary" style={{ flex: 1 }}>
                     Parte de {other.displayName}
                   </Text>
-                  <Money amount={otherShare} variant="smallMedium" />
+                  <Money amount={otherShare} variant="smallMedium" numberOfLines={1} />
                 </Row>
                 {expense.split.mode === 'custom' && (
                   <Text variant="caption" tone="muted">

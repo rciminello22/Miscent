@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { ArrowRightLeft, Plus, UserPlus } from 'lucide-react-native';
-import { Button, Card, Stack, Text } from '@/ui/primitives';
+import { Button, Card, Money, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
+import type { BalanceLines } from './balanceCopy';
 
 /**
  * El N1 del espacio: la respuesta a "¿cómo están las cuentas entre los dos?".
@@ -18,6 +19,7 @@ export function SpaceHero({
   spaceName,
   scale,
   sentence,
+  lines,
   advance,
   note,
   invite,
@@ -29,6 +31,8 @@ export function SpaceHero({
   scale: ReactNode;
   /** `balanceSentence`: "Martina te debe $20.000" / "Están a mano". */
   sentence: string;
+  /** `balanceLines`: la misma frase, con la cifra en su propia línea. */
+  lines: BalanceLines;
   /** §25 · el aviso de adelanto, solo cuando aplica. */
   advance: string | null;
   /** §24 · "Martina todavía no entró" / "Martina · ex miembro". */
@@ -56,9 +60,28 @@ export function SpaceHero({
         </View>
 
         <Stack gap="2">
-          <Text variant="title" align="center">
-            {sentence}
-          </Text>
+          {/* Montos · 11 · la frase y la cifra van en líneas separadas: la cifra
+              es la que se ajusta, nunca se abrevia. `sentence` es lo que oye el
+              lector de pantalla, de corrido. */}
+          <View accessible accessibilityLabel={sentence}>
+            {lines.amount == null ? (
+              <Text variant="title" align="center">
+                {lines.lead}
+              </Text>
+            ) : (
+              <Stack gap="0">
+                <Text variant="small" tone="secondary" align="center">
+                  {lines.lead}
+                </Text>
+                <Money amount={lines.amount} sign="never" variant="title" align="center" />
+                {lines.tail != null && (
+                  <Text variant="small" tone="secondary" align="center">
+                    {lines.tail}
+                  </Text>
+                )}
+              </Stack>
+            )}
+          </View>
           {advance != null && (
             <Text variant="small" tone="secondary" align="center">
               {advance}

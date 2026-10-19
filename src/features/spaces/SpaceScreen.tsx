@@ -8,7 +8,11 @@ import { monthOf } from '@domain/calendar';
 import { formatMonth, formatPesos } from '@/lib/format';
 import { prettyLabel } from '@/features/add/categories';
 import { useSession } from '@/features/auth/SessionProvider';
-import { balanceSentence, prepaidInstallmentsSentence } from '@/features/spaces/balanceCopy';
+import {
+  balanceLines,
+  balanceSentence,
+  prepaidInstallmentsSentence,
+} from '@/features/spaces/balanceCopy';
 import { useSpace } from '@/features/spaces/useSpaces';
 import { SpaceMenu } from '@/features/spaces/SpaceMenu';
 import { spaceSummaryText } from './shareSummary';
@@ -369,6 +373,7 @@ export function SpaceScreen({
               />
             }
             sentence={balanceSentence(balance)}
+            lines={balanceLines(balance)}
             // §25 · el aviso de adelanto, para que el número no se lea mal.
             advance={prepaidInstallmentsSentence(balance, pendingInstallments)}
             note={inviteNote}

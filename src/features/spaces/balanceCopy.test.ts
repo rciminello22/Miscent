@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import type { SpaceMonth } from '@domain/shared-balance';
+import { formatPesos } from '@/lib/format';
 import {
+  balanceLines,
+  balanceSentence,
   departureBalanceSentence,
   paymentSentence,
   previousMonthSentence,
@@ -111,5 +114,43 @@ describe('P6 · el saldo al salir', () => {
     expect(departureBalanceSentence({ ...base, amount: 0, settled: true })).toBe(
       'Al salir, estaban a mano.',
     );
+  });
+});
+
+/**
+ * Montos · 11 · el N1 del espacio pone la frase y la cifra en líneas separadas,
+ * para que sea la cifra la que se ajuste. Dicen exactamente lo mismo que
+ * `balanceSentence`.
+ */
+describe('balanceLines · la frase del saldo en líneas', () => {
+  const base = { viewerSlot: 1 as const, otherMemberName: 'Martina' };
+
+  it('el otro te debe: la frase arriba y la cifra aparte', () => {
+    const balance = { ...base, amount: 20_000, settled: false };
+    expect(balanceLines(balance)).toEqual({ lead: 'Martina te debe', amount: 20_000, tail: null });
+  });
+
+  it('le debés: la cifra en el medio y a quién después', () => {
+    const balance = { ...base, amount: -20_000, settled: false };
+    expect(balanceLines(balance)).toEqual({ lead: 'Le debés', amount: 20_000, tail: 'a Martina' });
+  });
+
+  it('a mano: sin cifra', () => {
+    const balance = { ...base, amount: 0, settled: true };
+    expect(balanceLines(balance)).toEqual({ lead: 'Están a mano', amount: null, tail: null });
+  });
+
+  it('unidas dicen lo mismo que balanceSentence', () => {
+    for (const balance of [
+      { ...base, amount: 20_000, settled: false },
+      { ...base, amount: -999_999_999, settled: false },
+      { ...base, amount: 0, settled: true },
+    ]) {
+      const lines = balanceLines(balance);
+      const joined = [lines.lead, lines.amount == null ? null : formatPesos(lines.amount), lines.tail]
+        .filter((part) => part != null)
+        .join(' ');
+      expect(joined).toBe(balanceSentence(balance));
+    }
   });
 });

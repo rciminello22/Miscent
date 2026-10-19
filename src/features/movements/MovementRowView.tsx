@@ -76,9 +76,15 @@ export function MovementRowView({
           <CategoryIcon size={18} color={theme.colors.textSecondary} />
         </View>
 
-        <View style={{ flex: 1, gap: 2 }}>
+        {/* Lo de la izquierda cede antes de empujar el monto (Montos · 11). */}
+        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
           <Row gap="2" align="center">
-            <Text variant="bodyMedium" numberOfLines={1} style={{ flexShrink: 1 }}>
+            <Text
+              variant="bodyMedium"
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              style={{ flexShrink: 1 }}
+            >
               {prettyLabel(row.label)}
             </Text>
             {/* §12 · el ícono de una o dos personas en cada fila. */}
@@ -86,7 +92,7 @@ export function MovementRowView({
           </Row>
 
           {detail.caption != null && (
-            <Text variant="caption" tone="muted">
+            <Text variant="caption" tone="muted" numberOfLines={1} ellipsizeMode="tail">
               {detail.caption}
             </Text>
           )}
@@ -94,7 +100,13 @@ export function MovementRowView({
           {detail.effect != null && EffectIcon != null && (
             <Row gap="1" align="center">
               <EffectIcon size={12} color={theme.colors.textMuted} />
-              <Text variant="caption" tone="muted">
+              <Text
+                variant="caption"
+                tone="muted"
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                style={{ flexShrink: 1 }}
+              >
                 {detail.effect.text}
               </Text>
             </Row>
@@ -111,22 +123,30 @@ export function MovementRowView({
                   backgroundColor: theme.colors.shared,
                 }}
               />
-              <Text variant="caption" tone="shared">
+              <Text
+                variant="caption"
+                tone="shared"
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                style={{ flexShrink: 1 }}
+              >
                 {row.reviewTag}
               </Text>
             </Row>
           )}
         </View>
 
-        <View style={{ alignItems: 'flex-end', gap: 2 }}>
+        {/* El monto nunca se corta: no se encoge (flexShrink 0) y va en una línea. */}
+        <View style={{ alignItems: 'flex-end', gap: 2, flexShrink: 0 }}>
           <Money
             amount={row.amount}
             variant="bodyMedium"
+            numberOfLines={1}
             tone={isIncome ? 'brand' : isPayment ? 'shared' : 'default'}
           />
           {/* §16 · el total del gasto compartido, en gris. */}
           {row.total != null && row.total !== row.amount && (
-            <Text variant="caption" tone="muted" tabular>
+            <Text variant="caption" tone="muted" tabular numberOfLines={1}>
               de {formatPesos(row.total)}
             </Text>
           )}

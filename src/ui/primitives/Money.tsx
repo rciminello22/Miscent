@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatPesos } from '@/lib/format';
 import type { Pesos } from '@domain/money';
+import { fitPropsFor } from '../amountFit';
 import { duration } from '../motion';
+import { useTheme } from '../theme';
 import { Text, type TextProps } from './Text';
 
 export type MoneyProps = Omit<TextProps, 'children' | 'tabular'> & {
@@ -20,6 +22,7 @@ export type MoneyProps = Omit<TextProps, 'children' | 'tabular'> & {
 };
 
 export function Money({ amount, sign = 'auto', animate = false, ...rest }: MoneyProps) {
+  const theme = useTheme();
   const [shown, setShown] = useState(amount);
   const previous = useRef(amount);
 
@@ -51,8 +54,18 @@ export function Money({ amount, sign = 'auto', animate = false, ...rest }: Money
     return () => clearTimeout(frame);
   }, [amount, animate]);
 
+  // Montos · 11 · las cifras grandes entran en una línea y se achican solas
+  // (hasta 20pt); `flexShrink` les da el ancho al que ajustarse dentro de una fila.
+  const variant = rest.variant ?? 'body';
+  const fit = fitPropsFor(variant, theme.typography[variant].fontSize);
+
   return (
-    <Text {...rest} tabular>
+    <Text
+      {...rest}
+      {...fit}
+      style={fit == null ? rest.style : [{ flexShrink: 1 }, rest.style]}
+      tabular
+    >
       {formatPesos(shown, { sign })}
     </Text>
   );

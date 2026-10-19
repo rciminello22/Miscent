@@ -210,14 +210,14 @@ export default function Pago() {
             <Card>
               <Stack gap="4">
                 <Row gap="3" align="center" justify="center">
-                  <Text variant="smallMedium">
+                  <Text variant="smallMedium" numberOfLines={1} style={{ flexShrink: 1 }}>
                     {result.fromSlot === derived.mySlot ? me.displayName : other.displayName}
                   </Text>
                   <ArrowRight size={16} color={theme.colors.textMuted} />
-                  <Text variant="smallMedium">
+                  <Text variant="smallMedium" numberOfLines={1} style={{ flexShrink: 1 }}>
                     {result.toSlot === derived.mySlot ? me.displayName : other.displayName}
                   </Text>
-                  <Money amount={amount} variant="bodyMedium" />
+                  <Money amount={amount} variant="bodyMedium" numberOfLines={1} />
                 </Row>
 
                 <View

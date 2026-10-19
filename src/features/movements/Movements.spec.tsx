@@ -209,6 +209,32 @@ describe('MovementDayList · la lista agrupada por día', () => {
     expect(view.getByText('Casa · no cambia tu radar')).toBeTruthy();
   });
 
+  it('Montos · 11 · con un monto enorme el nombre se corta con "…" y el monto nunca', async () => {
+    const big = groupRowsByDay(
+      [
+        row({
+          id: 'movement:9',
+          date: TODAY,
+          label: 'Supermercado de la esquina del barrio',
+          amount: 999_999_999,
+          total: 999_999_999,
+        }),
+      ],
+      TODAY,
+    );
+    const view = await renderWithTheme(
+      <MovementDayList groups={big} showSpace onOpen={jest.fn()} />,
+    );
+
+    const title = view.getByText('Supermercado de la esquina del barrio');
+    expect(title.props.numberOfLines).toBe(1);
+    expect(title.props.ellipsizeMode).toBe('tail');
+
+    const amount = view.getByText('$999.999.999');
+    expect(amount.props.numberOfLines).toBe(1);
+    expect(amount.props.adjustsFontSizeToFit).toBeUndefined();
+  });
+
   it('abre la fila que se toca', async () => {
     const onOpen = jest.fn();
     const view = await renderWithTheme(

@@ -331,7 +331,7 @@ export default function MovimientoDetalle() {
                             align="baseline"
                             style={{ paddingVertical: theme.space['3'] }}
                           >
-                            <View style={{ gap: 2 }}>
+                            <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
                               <Text variant="smallMedium" tone={past ? 'muted' : 'default'}>
                                 {formatInstallment(item.index, item.count)}
                               </Text>

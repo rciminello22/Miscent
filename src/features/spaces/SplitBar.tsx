@@ -54,13 +54,14 @@ export function SplitBar({
           <Text variant="caption" tone="secondary">
             Tu parte
           </Text>
-          <Money amount={myShare} variant="smallMedium" animate />
+          <Money amount={myShare} variant="smallMedium" animate numberOfLines={1} />
         </Row>
-        <Row gap="1" align="baseline">
-          <Text variant="caption" tone="secondary">
+        {/* El nombre cede antes de empujar el monto (Montos · 11). */}
+        <Row gap="1" align="baseline" style={{ flexShrink: 1 }}>
+          <Text variant="caption" tone="secondary" numberOfLines={1} style={{ flexShrink: 1 }}>
             Parte de {otherName}
           </Text>
-          <Money amount={otherShare} variant="smallMedium" animate />
+          <Money amount={otherShare} variant="smallMedium" animate numberOfLines={1} />
         </Row>
       </Row>
     </View>

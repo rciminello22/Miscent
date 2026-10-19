@@ -64,9 +64,12 @@ export function UpcomingPaymentRow({
         })}
       </Text>
 
-      <View style={{ flex: 1, gap: 2 }}>
+      {/* Lo de la izquierda cede antes de empujar el monto (Montos · 11). */}
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
         {/* N-10 / CA-35 · el rótulo corto en CADA resumen; la frase completa, una vez por bloque. */}
-        <Text variant={body ? 'bodyMedium' : 'smallMedium'}>{paymentLabel(payment)}</Text>
+        <Text variant={body ? 'bodyMedium' : 'smallMedium'} numberOfLines={2} ellipsizeMode="tail">
+          {paymentLabel(payment)}
+        </Text>
 
         {/* §7.3 · la parte del otro, siempre aclarada. */}
         {payment.includesOtherShare > 0 && payment.otherMemberName != null && (
@@ -96,7 +99,12 @@ export function UpcomingPaymentRow({
         )}
       </View>
 
-      <Money amount={payment.amount} variant={body ? 'bodyMedium' : 'smallMedium'} />
+      <Money
+        amount={payment.amount}
+        variant={body ? 'bodyMedium' : 'smallMedium'}
+        numberOfLines={1}
+        style={{ flexShrink: 0 }}
+      />
 
       {onPress != null && (
         // UX-11 · lo tocable lleva chevron.

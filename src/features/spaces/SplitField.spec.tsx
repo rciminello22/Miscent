@@ -55,6 +55,29 @@ describe('UX-15 · SplitField', () => {
     expect(view.getByLabelText('Reparto: tu parte $70.000, parte de Martina $30.000')).toBeTruthy();
   });
 
+  it('Montos · 11 · en una parte, un dígito de más se ignora y avisa el tope', async () => {
+    const onChange = jest.fn();
+    const view = await renderWithTheme(
+      <SplitField
+        total={999_999_999}
+        split={{ mode: 'custom', shareSlot1: 999_999_999, shareSlot2: 0 }}
+        onChange={onChange}
+        mySlot={1}
+        myName="Renzo"
+        otherName="Martina"
+      />,
+    );
+
+    await fireEvent.changeText(view.getByLabelText('Parte de Renzo'), '9.999.999.999');
+
+    expect(view.getByText('El monto máximo es $999.999.999')).toBeTruthy();
+    expect(onChange).toHaveBeenCalledWith({
+      mode: 'custom',
+      shareSlot1: 999_999_999,
+      shareSlot2: 0,
+    });
+  });
+
   it('sin monto el campo ya está, para que no salte, y no se puede tocar', async () => {
     const onChange = jest.fn();
     const view = await renderField(0, onChange);

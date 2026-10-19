@@ -98,7 +98,8 @@ export function Door({
         {glyph ?? (Icon != null && <Icon size={20} color={flagged ? accent : theme.colors.textSecondary} />)}
       </View>
 
-      <View style={{ flex: 1, gap: 2 }}>
+      {/* Lo de la izquierda cede antes de empujar lo de la derecha (Montos · 11). */}
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
         {titleAside == null ? (
           <Text variant="bodyMedium">{title}</Text>
         ) : (
@@ -110,7 +111,7 @@ export function Door({
           </View>
         )}
         {value != null && (
-          <Text variant="heading" tabular>
+          <Text variant="heading" tabular style={{ flexShrink: 1 }}>
             {value}
             {caption != null && (
               <Text variant="caption" tone="muted">

@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { halve } from '@domain/money';
+import { halve, typeAmount } from '@domain/money';
 import type { Pesos } from '@domain/money';
 import type { Slot, Split } from '@domain/types';
 import { formatNumber } from '@/lib/format';
+import { AMOUNT_LIMIT_NOTICE } from '@/features/add/AmountInput';
 import { Segmented } from '@/features/add/fields';
 import { Money, Row, Stack, Text } from '@/ui/primitives';
 import { duration } from '@/ui/motion';
@@ -142,51 +144,60 @@ function ShareInput({
   onChange: (next: Pesos) => void;
 }) {
   const theme = useTheme();
+  const [capped, setCapped] = useState(false);
 
   return (
-    <Row gap="3" align="center">
-      <Text variant="small" tone="secondary" style={{ flex: 1 }} numberOfLines={1}>
-        {label}
-      </Text>
-
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          borderRadius: theme.radius.md,
-          borderWidth: 1,
-          borderColor: theme.colors.border,
-          backgroundColor: theme.colors.surface,
-          paddingHorizontal: theme.space['3'],
-          height: 44,
-          minWidth: 130,
-        }}
-      >
-        <Text variant="body" tone="muted">
-          $
+    <Stack gap="1">
+      <Row gap="3" align="center">
+        <Text variant="small" tone="secondary" style={{ flex: 1 }} numberOfLines={1}>
+          {label}
         </Text>
-        <TextInput
-          value={value > 0 ? formatNumber(value) : ''}
-          onChangeText={(raw) => {
-            const digits = raw.replace(/\D/g, '').slice(0, 12);
-            onChange(digits === '' ? 0 : Number(digits));
+
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            borderRadius: theme.radius.md,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surface,
+            paddingHorizontal: theme.space['3'],
+            height: 44,
+            minWidth: 130,
           }}
-          placeholder="0"
-          placeholderTextColor={theme.colors.textMuted}
-          keyboardType="number-pad"
-          accessibilityLabel={`Parte de ${label}`}
-          style={[
-            theme.typography.body,
-            {
-              color: theme.colors.text,
-              fontVariant: ['tabular-nums'],
-              flex: 1,
-              textAlign: 'right',
-              padding: 0,
-            },
-          ]}
-        />
-      </View>
-    </Row>
+        >
+          <Text variant="body" tone="muted">
+            $
+          </Text>
+          <TextInput
+            value={value > 0 ? formatNumber(value) : ''}
+            onChangeText={(raw) => {
+              const typed = typeAmount(raw, value);
+              setCapped(typed.capped);
+              onChange(typed.amount);
+            }}
+            placeholder="0"
+            placeholderTextColor={theme.colors.textMuted}
+            keyboardType="number-pad"
+            accessibilityLabel={`Parte de ${label}`}
+            style={[
+              theme.typography.body,
+              {
+                color: theme.colors.text,
+                fontVariant: ['tabular-nums'],
+                flex: 1,
+                textAlign: 'right',
+                padding: 0,
+              },
+            ]}
+          />
+        </View>
+      </Row>
+      {capped && (
+        <Text variant="caption" tone="secondary" align="right" accessibilityLiveRegion="polite">
+          {AMOUNT_LIMIT_NOTICE}
+        </Text>
+      )}
+    </Stack>
   );
 }
