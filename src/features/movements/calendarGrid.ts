@@ -12,12 +12,13 @@ import { formatLongDate, formatWeekday, weekdayIndex } from '@/lib/format';
 import type { MovementRow } from './buildMovementList';
 
 /**
- * §16 · el mini calendario del N1 (variante B). TS puro.
+ * §16 · la grilla del mes de Movimientos. TS puro.
  *
  * Es una grilla de 7 columnas, de lunes a domingo, con huecos al principio
- * según el día de la semana del 1. Cuenta REGISTROS, nunca plata: "cifras por
- * día" está prohibido (CA-00), así que cada día guarda cuántos registros tiene
- * y nada más.
+ * según el día de la semana del 1. De ahí salen las semanas de la franja (cortadas
+ * por el borde del mes) y la forma del mes. Cuenta REGISTROS, nunca plata:
+ * "cifras por día" está prohibido (CA-00), así que cada día guarda cuántos
+ * registros tiene y nada más.
  */
 
 export type CalendarDay = {
@@ -95,29 +96,9 @@ export function buildMonthCalendar(args: {
   };
 }
 
-/** "en 9 días" · el complemento de "12 registros". Sin registros no hay nada que decir. */
-export function recordDaysLabel(recordDays: number): string | null {
-  if (recordDays <= 0) return null;
-  return recordDays === 1 ? 'en 1 día' : `en ${recordDays} días`;
-}
-
-/** Tocar un día sin registros no navega: la frase aparece bajo el calendario. */
+/** Un día sin registros: la frase va en lugar de la lista. */
 export function emptyDayMessage(date: IsoDate): string {
   return `No registraste nada el ${formatLongDate(date)}.`;
-}
-
-/** El chip de la lista filtrada por un día: "Miércoles 14". */
-export function dayChipLabel(date: IsoDate): string {
-  return `${capitalize(formatWeekday(date))} ${parseDate(date).day}`;
-}
-
-/** Los parámetros de la lista N3 al tocar un día: el mes, "Todos" y ese día. */
-export function dayListParams(args: { month: Month; date: IsoDate }): {
-  mes: Month;
-  filtro: string;
-  dia: IsoDate;
-} {
-  return { mes: args.month, filtro: 'all', dia: args.date };
 }
 
 const DATE_PARAM = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;

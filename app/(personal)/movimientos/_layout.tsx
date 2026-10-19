@@ -2,8 +2,8 @@ import { Stack } from 'expo-router';
 import { useTheme } from '@/ui/theme';
 
 /**
- * La pestaña Movimientos es un stack: la lista vive en una pantalla propia (N3)
- * DENTRO de la pestaña, y la barra queda visible, igual que Compartidos.
+ * La pestaña Movimientos es un stack de una sola pantalla: los detalles se
+ * abren fuera de las pestañas (`/movimiento`, `/space/...`, `/historial/...`).
  */
 export const unstable_settings = { initialRouteName: 'index' };
 

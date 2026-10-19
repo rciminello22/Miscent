@@ -1,17 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import type { MovementRow } from '../buildMovementList';
-import {
-  buildMonthCalendar,
-  dayChipLabel,
-  dayListParams,
-  emptyDayMessage,
-  parseDayParam,
-  recordDaysLabel,
-} from '../calendarGrid';
+import { buildMonthCalendar, emptyDayMessage, parseDayParam } from '../calendarGrid';
 
 /**
- * El mini calendario del N1 (§16, variante B): las semanas de lunes a domingo,
- * qué días tienen registros y qué dice el lector de pantalla. TS puro.
+ * La grilla del mes de Movimientos (§16): las semanas de lunes a domingo, qué
+ * días tienen registros y qué dice el lector de pantalla. TS puro.
  * Cuenta REGISTROS, nunca plata (CA-00).
  */
 
@@ -132,32 +125,14 @@ describe('buildMonthCalendar · lo que anuncia el lector de pantalla', () => {
   });
 });
 
-describe('las frases del calendario', () => {
-  it('"en 9 días" / "en 1 día"; sin registros, nada', () => {
-    expect(recordDaysLabel(9)).toBe('en 9 días');
-    expect(recordDaysLabel(1)).toBe('en 1 día');
-    expect(recordDaysLabel(0)).toBeNull();
-  });
-
-  it('un día vacío: "No registraste nada el 9 de octubre."', () => {
+describe('un día sin registros', () => {
+  it('"No registraste nada el 9 de octubre."', () => {
     expect(emptyDayMessage('2026-10-09')).toBe('No registraste nada el 9 de octubre.');
-  });
-
-  it('el chip de la lista: "Miércoles 14"', () => {
-    expect(dayChipLabel('2026-10-14')).toBe('Miércoles 14');
   });
 });
 
-describe('el día en la ruta de la lista', () => {
-  it('tocar un día abre la lista de ese mes, con Todos y ese día', () => {
-    expect(dayListParams({ month: '2026-10', date: '2026-10-14' })).toEqual({
-      mes: '2026-10',
-      filtro: 'all',
-      dia: '2026-10-14',
-    });
-  });
-
-  it('solo se acepta una fecha del mes de la lista', () => {
+describe('el día en la ruta de la pestaña', () => {
+  it('solo se acepta una fecha del mes que se está viendo', () => {
     expect(parseDayParam('2026-10-14', '2026-10')).toBe('2026-10-14');
     expect(parseDayParam('2026-09-30', '2026-10')).toBeNull();
     expect(parseDayParam('2026-10-32', '2026-10')).toBeNull();

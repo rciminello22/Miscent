@@ -176,11 +176,14 @@ export function MovementDayList({
   showSpace,
   onOpen,
   onLongPress,
+  hideHeadings = false,
 }: {
   groups: readonly DayGroup[];
   showSpace: boolean;
   onOpen: (row: MovementRow) => void;
   onLongPress?: (row: MovementRow) => void;
+  /** La lista de un solo día ya lo dice en su encabezado: el del grupo sobra. */
+  hideHeadings?: boolean;
 }) {
   const theme = useTheme();
 
@@ -188,9 +191,11 @@ export function MovementDayList({
     <View style={{ gap: theme.space['4'] }}>
       {groups.map((group) => (
         <View key={group.date}>
-          <Text variant="overline" tone="muted" accessibilityRole="header">
-            {group.heading}
-          </Text>
+          {!hideHeadings && (
+            <Text variant="overline" tone="muted" accessibilityRole="header">
+              {group.heading}
+            </Text>
+          )}
           {group.rows.map((row, index) => (
             <View key={row.id}>
               {index > 0 && <Divider />}

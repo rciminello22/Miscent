@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { formatPesos } from '@/lib/format';
 import { filterMovements, type MovementRow } from '../buildMovementList';
 import {
   canAddInMonth,
@@ -8,8 +7,6 @@ import {
   filterSegments,
   groupRowsByDay,
   isFabHidden,
-  monthHeadline,
-  movementDoors,
   rowDestination,
   rowDetail,
 } from '../movementsView';
@@ -122,31 +119,6 @@ describe('rowDestination · qué abre cada tipo de fila', () => {
   });
 });
 
-describe('monthHeadline · la frase del N1', () => {
-  it('cuenta los registros, en singular y en plural', () => {
-    expect(monthHeadline({ count: 12, month: '2026-10', today: TODAY })).toBe('12 registros');
-    expect(monthHeadline({ count: 1, month: '2026-10', today: TODAY })).toBe('1 registro');
-  });
-
-  it('§16 · el mes en curso vacío: "Todavía no registraste nada en octubre."', () => {
-    expect(monthHeadline({ count: 0, month: '2026-10', today: TODAY })).toBe(
-      'Todavía no registraste nada en octubre.',
-    );
-  });
-
-  it('un mes que ya pasó, vacío: "No registraste nada en agosto."', () => {
-    expect(monthHeadline({ count: 0, month: '2026-08', today: TODAY })).toBe(
-      'No registraste nada en agosto.',
-    );
-  });
-
-  it('un mes de otro año lo dice', () => {
-    expect(monthHeadline({ count: 0, month: '2025-12', today: TODAY })).toBe(
-      'No registraste nada en diciembre de 2025.',
-    );
-  });
-});
-
 describe('meses: no se navega al futuro y no se agrega en el pasado', () => {
   it('la flecha siguiente se deshabilita en el mes en curso', () => {
     expect(canGoToNextMonth('2026-10', TODAY)).toBe(false);
@@ -159,10 +131,9 @@ describe('meses: no se navega al futuro y no se agrega en el pasado', () => {
     expect(canAddInMonth('2026-09', TODAY)).toBe(false);
   });
 
-  it('el botón flotante se oculta en un mes pasado y en el mes en curso vacío (el N1 trae su Agregar)', () => {
-    expect(isFabHidden({ month: '2026-09', today: TODAY, count: 17 })).toBe(true);
-    expect(isFabHidden({ month: '2026-10', today: TODAY, count: 0 })).toBe(true);
-    expect(isFabHidden({ month: '2026-10', today: TODAY, count: 12 })).toBe(false);
+  it('el botón flotante "Agregar" está solo en el mes en curso, vacío o no (ya no hay otro Agregar)', () => {
+    expect(isFabHidden({ month: '2026-09', today: TODAY })).toBe(true);
+    expect(isFabHidden({ month: '2026-10', today: TODAY })).toBe(false);
   });
 });
 
@@ -280,98 +251,5 @@ describe('rowDetail · la segunda línea, solo si agrega algo', () => {
         showSpace: true,
       }).effect,
     ).toBeNull();
-  });
-});
-
-describe('movementDoors · las puertas del N1', () => {
-  const opts = {
-    today: TODAY,
-    rowLabel: (item: MovementRow) => item.label,
-    formatAmount: formatPesos,
-  };
-  const casa = { id: 'casa', name: 'Casa' };
-  const viaje = { id: 'viaje', name: 'Viaje' };
-
-  const rows = [
-    row({
-      id: 's',
-      date: '2026-10-15',
-      label: 'Supermercado',
-      kind: 'shared-expense',
-      spaceId: 'casa',
-      amount: 50_000,
-      total: 100_000,
-    }),
-    row({ id: 'z', date: '2026-10-14', label: 'Zapatillas' }),
-    row({
-      id: 'i',
-      date: '2026-10-12',
-      label: 'Internet',
-      kind: 'shared-expense',
-      spaceId: 'casa',
-      amount: 20_000,
-      total: 40_000,
-      reviewTag: 'Lo cargó Martina · para revisar',
-    }),
-    row({
-      id: 'm',
-      date: '2026-10-10',
-      label: 'Martina te pagó',
-      kind: 'member-payment',
-      category: null,
-      spaceId: 'casa',
-      amount: 20_000,
-    }),
-    row({ id: 'c', date: '2026-10-09', label: 'Cafe' }),
-  ];
-
-  it('sin registros no hay puertas', () => {
-    expect(movementDoors({ rows: [], spaces: [casa], ...opts })).toEqual([]);
-  });
-
-  it('sin espacios, una sola puerta: Todos', () => {
-    const doors = movementDoors({ rows: rows.filter((item) => item.spaceId == null), spaces: [], ...opts });
-
-    expect(doors.map((door) => door.title)).toEqual(['Todos']);
-    expect(doors[0]!.caption).toBe('el último: Zapatillas, ayer');
-  });
-
-  it('con un espacio: Todos, Personales y el espacio', () => {
-    const doors = movementDoors({ rows, spaces: [casa], ...opts });
-
-    expect(doors.map((door) => door.title)).toEqual(['Todos', 'Personales', 'Casa']);
-    expect(doors.map((door) => door.key)).toEqual(['all', 'personal', 'casa']);
-    expect(doors[0]!.caption).toBe('el último: Supermercado, hoy');
-    expect(doors[1]!.caption).toBe('2 · el último: Zapatillas, ayer');
-  });
-
-  it('la puerta del espacio dice TU PARTE (K9), sin sumar los pagos, y avisa lo que falta revisar', () => {
-    const casaDoor = movementDoors({ rows, spaces: [casa], ...opts })[2]!;
-
-    expect(casaDoor.caption).toBe('3 · tu parte $70.000');
-    expect(casaDoor.extra).toBe('1 para revisar');
-    expect(casaDoor.attention).toBe(true);
-  });
-
-  it('sin nada para revisar no hay aviso', () => {
-    const clean = rows.map((item) => ({ ...item, reviewTag: null }));
-    const casaDoor = movementDoors({ rows: clean, spaces: [casa], ...opts })[2]!;
-
-    expect(casaDoor.extra).toBeNull();
-    expect(casaDoor.attention).toBe(false);
-  });
-
-  it('con dos o más espacios, una sola puerta los resume', () => {
-    const doors = movementDoors({ rows, spaces: [casa, viaje], ...opts });
-
-    expect(doors.map((door) => door.title)).toEqual(['Todos', 'Personales', 'Espacios']);
-    expect(doors[2]).toMatchObject({ key: 'shared', kind: 'spaces', caption: '3 · tu parte $70.000' });
-  });
-
-  it('no ofrece una puerta vacía: sin lo personal, no hay "Personales"', () => {
-    const onlyShared = rows.filter((item) => item.spaceId != null);
-    const doors = movementDoors({ rows: onlyShared, spaces: [casa], ...opts });
-
-    expect(doors.map((door) => door.title)).toEqual(['Todos', 'Casa']);
   });
 });

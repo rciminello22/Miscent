@@ -1,48 +1,39 @@
 import { useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
-import { addMonths, monthOf, type IsoDate, type Month } from '@domain/calendar';
+import { addMonths, monthOf, type Month } from '@domain/calendar';
 import { formatMonth, formatPesos } from '@/lib/format';
 import { useFeedback } from '@/features/shared/useFeedback';
 import { useDeleteMovement, usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import {
   buildMovementList,
-  filterMovements,
   spacesInMonth,
   type MovementFilter,
   type MovementRow,
 } from './buildMovementList';
-import { buildMonthCalendar } from './calendarGrid';
+import { startingMonth } from './movementsTab';
 import {
   canAddInMonth,
   canGoToNextMonth,
   effectiveFilter,
   filterSegments,
-  groupRowsByDay,
   isFabHidden,
-  monthHeadline,
   rowDestination,
 } from './movementsView';
 
 /**
  * El container de Movimientos: lee los hechos, elige el mes y el filtro y le
- * entrega a la pantalla todo ya calculado por las funciones puras de
- * `movementsView`.
+ * entrega a la pantalla las filas del mes ya armadas por las funciones puras.
  *
- * El mes, el filtro y el día pueden venir de afuera (las puertas y el mini
- * calendario los pasan por la ruta de la lista). El día vive SOLO en la lista:
- * la pestaña nunca queda filtrada.
+ * El mes y el filtro pueden venir de afuera (la ruta de la pestaña acepta
+ * `mes` y `filtro`). El día y la semana viven en la pantalla (`MovementsTabView`):
+ * cambian la lista, no los datos.
  */
-export function useMovementsMonth(initial?: {
-  month?: Month;
-  filter?: MovementFilter;
-  day?: IsoDate | null;
-}) {
+export function useMovementsMonth(initial?: { month?: string; filter?: MovementFilter }) {
   const { facts, today, isLoading, refetch } = usePersonalFacts();
 
-  const [month, setMonth] = useState<Month>(initial?.month ?? monthOf(today));
+  const [month, setMonth] = useState<Month>(() => startingMonth(initial?.month, today));
   const [filterChoice, setFilter] = useState<MovementFilter>(initial?.filter ?? 'all');
-  const [day, setDay] = useState<IsoDate | null>(initial?.day ?? null);
   const [refreshing, setRefreshing] = useState(false);
 
   const rows = useMemo(
@@ -58,9 +49,6 @@ export function useMovementsMonth(initial?: {
 
   const spaces = useMemo(() => spacesInMonth(facts, month), [facts, month]);
   const filter = effectiveFilter(filterChoice, spaces);
-  const visible = useMemo(() => filterMovements(rows, filter, day), [rows, filter, day]);
-  const groups = useMemo(() => groupRowsByDay(visible, today), [visible, today]);
-  const calendar = useMemo(() => buildMonthCalendar({ month, today, rows }), [month, today, rows]);
   const segments = useMemo(() => filterSegments(spaces), [spaces]);
 
   async function refresh() {
@@ -80,19 +68,12 @@ export function useMovementsMonth(initial?: {
     goToPrevious: () => setMonth(addMonths(month, -1)),
     goToNext: canGoToNextMonth(month, today) ? () => setMonth(addMonths(month, 1)) : null,
     canAdd: canAddInMonth(month, today),
-    fabHidden: isFabHidden({ month, today, count: rows.length }),
-    headline: monthHeadline({ count: rows.length, month, today }),
-    count: rows.length,
+    fabHidden: isFabHidden({ month, today }),
     rows,
     spaces,
     segments,
     filter,
     setFilter,
-    day,
-    clearDay: () => setDay(null),
-    visible,
-    groups,
-    calendar,
   };
 }
 

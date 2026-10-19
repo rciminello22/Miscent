@@ -1,4 +1,4 @@
-import { MovementsScreenB } from '@/features/movements/MovementsScreenB';
+import { MovementsScreen } from '@/features/movements/MovementsScreen';
 
 /**
  * §16 · Movimientos. "Ver qué se registró en un mes y corregir errores."
@@ -11,11 +11,11 @@ import { MovementsScreenB } from '@/features/movements/MovementsScreenB';
  *    total va en gris al lado. Son las dos lentes de §7.3, y nunca se mezclan
  *    en el mismo número.
  *
- * La pestaña es el N1 con sus puertas; la lista, agrupada por día, vive en el N3
- * `movimientos/lista`. §39 declara el riesgo de esta pantalla (empujar a
- * "registrar por registrar"); se mitiga mostrando el EFECTO de cada movimiento,
- * que es lo que lo vuelve útil.
+ * La pestaña es UNA pantalla: hoy y el mes arriba, los filtros, la franja de una
+ * semana y la lista del día elegido. Acepta `mes`, `filtro` y `dia` por la ruta.
+ * §39 declara el riesgo de esta pantalla (empujar a "registrar por registrar");
+ * se mitiga mostrando el EFECTO de cada movimiento, que es lo que lo vuelve útil.
  */
 export default function Movimientos() {
-  return <MovementsScreenB />;
+  return <MovementsScreen />;
 }

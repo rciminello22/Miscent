@@ -4,8 +4,9 @@ import { colorSchemes } from '@/ui/colors';
 import type { MovementRow } from './buildMovementList';
 import { FilterSegmented } from './FilterSegmented';
 import { MovementDayList } from './MovementRowView';
-import { MovementsHeader } from './MovementsHeader';
+import { MonthSummary } from './MonthSummary';
 import { buildMonthCalendar } from './calendarGrid';
+import { monthFigures, monthShape } from './movementsTab';
 import { filterSegments, groupRowsByDay } from './movementsView';
 
 /**
@@ -38,47 +39,60 @@ function row(overrides: Partial<MovementRow> & { id: string; date: string }): Mo
   };
 }
 
-describe('MovementsHeader · el N1', () => {
-  const calendar = buildMonthCalendar({
-    month: '2026-10',
-    today: TODAY,
-    rows: [row({ id: 'a', date: '2026-10-14' })],
-  });
+describe('MonthSummary · el N1', () => {
+  const rows = [
+    row({ id: 'a', date: '2026-10-14' }),
+    row({ id: 'b', date: '2026-10-15' }),
+    row({ id: 'c', date: '2026-10-15' }),
+  ];
+  const shapeOf = (month: string, source: MovementRow[]) =>
+    monthShape(buildMonthCalendar({ month, today: TODAY, rows: source }));
   const base = {
     monthLabel: 'Octubre',
-    headline: '1 registro',
-    calendar,
-    onOpenDay: jest.fn(),
+    figures: monthFigures({ rows, month: '2026-10', today: TODAY }),
+    shape: shapeOf('2026-10', rows),
+    review: null,
     onPrevious: jest.fn(),
     onNext: null,
-    onAdd: null,
   };
 
-  it('el mes, la frase, "en N días" y el mini calendario con sus días', async () => {
-    const onOpenDay = jest.fn();
-    const view = await renderWithTheme(<MovementsHeader {...base} onOpenDay={onOpenDay} />);
+  it('el mes, el día de hoy y las dos cifras: registros hoy y en octubre', async () => {
+    const view = await renderWithTheme(<MonthSummary {...base} />);
 
     expect(view.getByText('Octubre')).toBeTruthy();
-    expect(view.getByText('1 registro')).toBeTruthy();
-    expect(view.getByText('en 1 día')).toBeTruthy();
-
-    await fireEvent.press(view.getByRole('button', { name: 'Miércoles 14 de octubre, 1 registro' }));
-    expect(onOpenDay).toHaveBeenCalledWith('2026-10-14');
-    expect(view.getByLabelText('Viernes 16 de octubre, todavía no llegó')).toBeTruthy();
+    expect(view.getByText('Hoy, jueves 15 de octubre')).toBeTruthy();
+    expect(view.getByLabelText('2 registros hoy')).toBeTruthy();
+    expect(view.getByLabelText('3 en octubre')).toBeTruthy();
+    expect(view.getByText('registros hoy')).toBeTruthy();
+    expect(view.getByText('en octubre')).toBeTruthy();
   });
 
-  it('sin registros no hay "en N días"', async () => {
-    const empty = buildMonthCalendar({ month: '2026-10', today: TODAY, rows: [] });
-    const view = await renderWithTheme(
-      <MovementsHeader {...base} calendar={empty} headline="Todavía no registraste nada en octubre." />,
-    );
+  it('CA-00 · cuenta registros: ninguna cifra de plata', async () => {
+    const view = await renderWithTheme(<MonthSummary {...base} />);
 
-    expect(view.queryByText(/^en \d+ días?$/)).toBeNull();
+    expect(view.queryByText(/\$/)).toBeNull();
+  });
+
+  it('la forma del mes: un punto por día, sin tocar, con un solo texto para el lector', async () => {
+    const view = await renderWithTheme(<MonthSummary {...base} />);
+
+    expect(view.getAllByTestId(/^shape-dot-/, { includeHiddenElements: true })).toHaveLength(31);
+    expect(view.getByLabelText('Forma del mes: registraste en 2 días')).toBeTruthy();
+    // Solo las flechas del mes son botones: la forma no se toca.
+    expect(view.getAllByRole('button')).toHaveLength(2);
+  });
+
+  it('K10 · "1 para revisar en Casa", si hay', async () => {
+    const view = await renderWithTheme(<MonthSummary {...base} review="1 para revisar en Casa" />);
+    expect(view.getByText('1 para revisar en Casa')).toBeTruthy();
+
+    const without = await renderWithTheme(<MonthSummary {...base} />);
+    expect(without.queryByText(/para revisar/)).toBeNull();
   });
 
   it('en el mes en curso la flecha siguiente está deshabilitada', async () => {
     const onPrevious = jest.fn();
-    const view = await renderWithTheme(<MovementsHeader {...base} onPrevious={onPrevious} />);
+    const view = await renderWithTheme(<MonthSummary {...base} onPrevious={onPrevious} />);
 
     const next = view.getByRole('button', { name: 'Mes siguiente' });
     expect(next.props.accessibilityState.disabled).toBe(true);
@@ -89,7 +103,7 @@ describe('MovementsHeader · el N1', () => {
 
   it('en un mes que ya pasó la flecha siguiente funciona', async () => {
     const onNext = jest.fn();
-    const view = await renderWithTheme(<MovementsHeader {...base} onNext={onNext} />);
+    const view = await renderWithTheme(<MonthSummary {...base} onNext={onNext} />);
 
     const next = view.getByRole('button', { name: 'Mes siguiente' });
     expect(next.props.accessibilityState.disabled).toBe(false);
@@ -97,28 +111,34 @@ describe('MovementsHeader · el N1', () => {
     expect(onNext).toHaveBeenCalledTimes(1);
   });
 
-  it('§16 · el mes en curso vacío trae su Agregar adentro', async () => {
-    const onAdd = jest.fn();
+  it('un mes pasado: sin "Hoy", el título es el mes (una sola vez) y las cifras cambian', async () => {
+    const september = [row({ id: 's', date: '2026-09-02' }), row({ id: 't', date: '2026-09-02' })];
     const view = await renderWithTheme(
-      <MovementsHeader
+      <MonthSummary
         {...base}
-        headline="Todavía no registraste nada en octubre."
-        onAdd={onAdd}
+        monthLabel="Septiembre"
+        figures={monthFigures({ rows: september, month: '2026-09', today: TODAY })}
+        shape={shapeOf('2026-09', september)}
+        onNext={jest.fn()}
       />,
     );
 
-    expect(view.getByText('Todavía no registraste nada en octubre.')).toBeTruthy();
-    await fireEvent.press(view.getByRole('button', { name: 'Agregar' }));
-    expect(onAdd).toHaveBeenCalledTimes(1);
+    expect(view.getAllByText('Septiembre')).toHaveLength(1);
+    expect(view.queryByText(/Hoy/)).toBeNull();
+    expect(view.getByText('registros en septiembre')).toBeTruthy();
+    expect(view.getByText('día con registros')).toBeTruthy();
+    expect(view.queryByRole('button', { name: 'Agregar' })).toBeNull();
   });
 
-  it('un mes que ya pasó, vacío: sin botón Agregar', async () => {
-    const view = await renderWithTheme(
-      <MovementsHeader {...base} headline="No registraste nada en agosto." onNext={jest.fn()} />,
-    );
+  it('hoy y los días futuros se distinguen en la forma del mes, y lo relleno de lo vacío', async () => {
+    const view = await renderWithTheme(<MonthSummary {...base} />);
+    const style = (day: number) =>
+      StyleSheet.flatten(view.getByTestId(`shape-dot-${day}`, { includeHiddenElements: true }).props.style);
 
-    expect(view.getByText('No registraste nada en agosto.')).toBeTruthy();
-    expect(view.queryByRole('button', { name: 'Agregar' })).toBeNull();
+    expect(style(14).backgroundColor).toBe(colorSchemes.light.spent);
+    expect(style(13).backgroundColor).toBe('transparent');
+    expect(style(15).height).toBeGreaterThan(style(14).height);
+    expect(style(20).opacity).toBeLessThan(1);
   });
 });
 

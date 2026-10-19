@@ -1,13 +1,12 @@
-import { addDays, monthOf, type IsoDate, type Month } from '@domain/calendar';
-import type { Pesos } from '@domain/money';
-import { formatDayMonth, formatMonth } from '@/lib/format';
+import { monthOf, type IsoDate, type Month } from '@domain/calendar';
+import { formatDayMonth } from '@/lib/format';
 import { occurrenceHref, paymentHref } from '@/features/spaces/spaceNavigation';
 import type { MovementFilter, MovementRow } from './buildMovementList';
 
 /**
- * §16 · la lógica de Movimientos: la lista agrupada por día, el N1 y sus
- * puertas, el control segmentado y las filas. TS puro. (El mini calendario
- * del N1 vive en `calendarGrid`.)
+ * §16 · la lógica de Movimientos: la lista agrupada por día, el control
+ * segmentado y las filas. TS puro. (La pestaña —el estado, la franja, las
+ * cifras— vive en `movementsTab`; la grilla del mes, en `calendarGrid`.)
  */
 
 /* ── La lista, agrupada por día ───────────────────────────────────────────── */
@@ -35,17 +34,6 @@ export function groupRowsByDay(rows: readonly MovementRow[], today: IsoDate): Da
 
 /* ── El mes ───────────────────────────────────────────────────────────────── */
 
-/** La frase del N1: "12 registros", o el vacío de §16 según el mes. */
-export function monthHeadline(args: { count: number; month: Month; today: IsoDate }): string {
-  if (args.count === 1) return '1 registro';
-  if (args.count > 1) return `${args.count} registros`;
-
-  const name = formatMonth(args.month, monthOf(args.today));
-  return args.month === monthOf(args.today)
-    ? `Todavía no registraste nada en ${name}.`
-    : `No registraste nada en ${name}.`;
-}
-
 /** El futuro es de Futuro: no se navega a un mes que todavía no llegó. */
 export function canGoToNextMonth(month: Month, today: IsoDate): boolean {
   return month < monthOf(today);
@@ -57,12 +45,11 @@ export function canAddInMonth(month: Month, today: IsoDate): boolean {
 }
 
 /**
- * El botón flotante "Agregar" se esconde donde no corresponde o sobra: en un
- * mes que ya pasó, y en el mes en curso vacío, donde el N1 trae su propio
- * Agregar (para no tener dos).
+ * El botón flotante "Agregar" está SOLO en el mes en curso (vacío o no): es el
+ * único Agregar de la pestaña. En un mes que ya pasó se esconde.
  */
-export function isFabHidden(args: { month: Month; today: IsoDate; count: number }): boolean {
-  return !canAddInMonth(args.month, args.today) || args.count === 0;
+export function isFabHidden(args: { month: Month; today: IsoDate }): boolean {
+  return !canAddInMonth(args.month, args.today);
 }
 
 /* ── El control segmentado ────────────────────────────────────────────────── */
@@ -167,113 +154,4 @@ export function rowDestination(row: MovementRow): RowDestination {
 /** `movement:abc` → `abc`: el id de la fila lleva de qué tabla viene. */
 function stripPrefix(rowId: string): string {
   return rowId.slice(rowId.indexOf(':') + 1);
-}
-
-/* ── Las puertas del N1 ───────────────────────────────────────────────────── */
-
-export type MovementDoor = {
-  key: MovementFilter;
-  kind: 'all' | 'personal' | 'space' | 'spaces';
-  title: string;
-  caption: string;
-  /** "1 para revisar" (K10). */
-  extra: string | null;
-  attention: boolean;
-};
-
-function lastSeen(
-  rows: readonly MovementRow[],
-  today: IsoDate,
-  rowLabel: (row: MovementRow) => string,
-): string {
-  const last = rows[0];
-  if (last == null) return '';
-
-  let when = formatDayMonth(last.date);
-  if (last.date === today) when = 'hoy';
-  else if (last.date === addDays(today, -1)) when = 'ayer';
-  return `el último: ${rowLabel(last)}, ${when}`;
-}
-
-/**
- * Las puertas del resumen: los mismos filtros de hoy. Con dos o más espacios,
- * una sola puerta los resume (las puertas no pasan de tres). Una puerta sin
- * registros no se ofrece. En lo compartido la cifra es TU PARTE (K9), sin
- * sumar los pagos entre miembros.
- */
-export function movementDoors(args: {
-  rows: readonly MovementRow[];
-  spaces: readonly SpaceRef[];
-  today: IsoDate;
-  rowLabel: (row: MovementRow) => string;
-  formatAmount: (amount: Pesos) => string;
-}): MovementDoor[] {
-  const { rows, spaces, today, rowLabel, formatAmount } = args;
-  if (rows.length === 0) return [];
-
-  const doors: MovementDoor[] = [
-    {
-      key: 'all',
-      kind: 'all',
-      title: 'Todos',
-      caption: lastSeen(rows, today, rowLabel),
-      extra: null,
-      attention: false,
-    },
-  ];
-  if (spaces.length === 0) return doors;
-
-  const personal = rows.filter((item) => item.spaceId == null);
-  if (personal.length > 0) {
-    doors.push({
-      key: 'personal',
-      kind: 'personal',
-      title: 'Personales',
-      caption: `${personal.length} · ${lastSeen(personal, today, rowLabel)}`,
-      extra: null,
-      attention: false,
-    });
-  }
-
-  const sharedDoor = (
-    key: string,
-    kind: 'space' | 'spaces',
-    title: string,
-    scope: readonly MovementRow[],
-  ): MovementDoor | null => {
-    if (scope.length === 0) return null;
-    const myPart = scope
-      .filter((item) => item.kind === 'shared-expense')
-      .reduce((sum, item) => sum + item.amount, 0);
-    const toReview = scope.filter((item) => item.reviewTag != null).length;
-    return {
-      key,
-      kind,
-      title,
-      caption: `${scope.length} · tu parte ${formatAmount(myPart)}`,
-      extra: toReview > 0 ? `${toReview} para revisar` : null,
-      attention: toReview > 0,
-    };
-  };
-
-  if (spaces.length === 1) {
-    const only = spaces[0]!;
-    const door = sharedDoor(
-      only.id,
-      'space',
-      only.name,
-      rows.filter((item) => item.spaceId === only.id),
-    );
-    if (door != null) doors.push(door);
-  } else {
-    const door = sharedDoor(
-      'shared',
-      'spaces',
-      'Espacios',
-      rows.filter((item) => item.spaceId != null),
-    );
-    if (door != null) doors.push(door);
-  }
-
-  return doors;
 }
