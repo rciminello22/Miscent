@@ -111,6 +111,20 @@ export function formatPaymentWhen(args: {
   return `${args.approx === true ? '~' : ''}${formatDayMonth(args.date)}`;
 }
 
+const WEEKDAY_NAMES = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
+
+/** 0 es lunes y 6 es domingo: la semana de acá empieza el lunes. */
+export function weekdayIndex(date: IsoDate): number {
+  const { year, month, day } = parseDate(date);
+  // getUTCDay: 0 es domingo. Se corre para que el lunes sea 0.
+  return (new Date(Date.UTC(year, month - 1, day)).getUTCDay() + 6) % 7;
+}
+
+/** "miércoles" · en minúscula, como el mes. */
+export function formatWeekday(date: IsoDate): string {
+  return WEEKDAY_NAMES[weekdayIndex(date)] ?? '';
+}
+
 /** "3 de 6" · §20. */
 export function formatInstallment(index: number, count: number): string {
   return `${index} de ${count}`;

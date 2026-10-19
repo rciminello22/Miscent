@@ -1,20 +1,12 @@
-import {
-  addDays,
-  dateInMonth,
-  lastDayOfMonth,
-  monthOf,
-  parseMonth,
-  compareDates,
-  type IsoDate,
-  type Month,
-} from '@domain/calendar';
+import { addDays, monthOf, type IsoDate, type Month } from '@domain/calendar';
 import type { Pesos } from '@domain/money';
 import { formatDayMonth, formatMonth } from '@/lib/format';
 import type { MovementFilter, MovementRow } from './buildMovementList';
 
 /**
  * §16 · la lógica de Movimientos: la lista agrupada por día, el N1 y sus
- * puertas, el control segmentado y las filas. TS puro.
+ * puertas, el control segmentado y las filas. TS puro. (El mini calendario
+ * del N1 vive en `calendarGrid`.)
  */
 
 /* ── La lista, agrupada por día ───────────────────────────────────────────── */
@@ -38,45 +30,6 @@ export function groupRowsByDay(rows: readonly MovementRow[], today: IsoDate): Da
     });
   }
   return groups;
-}
-
-/* ── La tira de días ──────────────────────────────────────────────────────── */
-
-export type StripDay = {
-  day: number;
-  date: IsoDate;
-  /** `with`: tiene registros. `today`: hoy (con o sin registros). `future`: todavía no llegó. */
-  state: 'empty' | 'with' | 'today' | 'future';
-  /** Cuántos registros: la tira cuenta registros, nunca montos ("cifras por día" está prohibido). */
-  count: number;
-};
-
-export function buildDayStrip(args: {
-  month: Month;
-  today: IsoDate;
-  rows: readonly MovementRow[];
-}): StripDay[] {
-  const { year, month: m } = parseMonth(args.month);
-  const counts = new Map<IsoDate, number>();
-  for (const item of args.rows) counts.set(item.date, (counts.get(item.date) ?? 0) + 1);
-
-  return Array.from({ length: lastDayOfMonth(year, m) }, (_, index) => {
-    const day = index + 1;
-    const date = dateInMonth(args.month, day);
-    const count = counts.get(date) ?? 0;
-
-    let state: StripDay['state'] = count > 0 ? 'with' : 'empty';
-    if (date === args.today) state = 'today';
-    else if (compareDates(date, args.today) > 0) state = 'future';
-
-    return { day, date, state, count };
-  });
-}
-
-/** Para el lector de pantalla: la tira no se distingue solo por color. */
-export function stripAccessibilityLabel(strip: readonly StripDay[]): string {
-  const days = strip.filter((day) => day.count > 0).map((day) => day.day);
-  return days.length === 0 ? 'Ningún día con registros' : `Días con registros: ${days.join(', ')}`;
 }
 
 /* ── El mes ───────────────────────────────────────────────────────────────── */

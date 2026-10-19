@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { formatPesos } from '@/lib/format';
 import { filterMovements, type MovementRow } from '../buildMovementList';
 import {
-  buildDayStrip,
   canAddInMonth,
   canGoToNextMonth,
   effectiveFilter,
@@ -12,7 +11,6 @@ import {
   monthHeadline,
   movementDoors,
   rowDetail,
-  stripAccessibilityLabel,
 } from '../movementsView';
 
 /**
@@ -66,88 +64,6 @@ describe('groupRowsByDay · la lista agrupada por día', () => {
 
   it('sin filas no hay grupos', () => {
     expect(groupRowsByDay([], TODAY)).toEqual([]);
-  });
-});
-
-describe('buildDayStrip · la tira de días (cuenta registros, no montos)', () => {
-  const rows = [
-    row({ id: 'a', date: '2026-10-15' }),
-    row({ id: 'b', date: '2026-10-14' }),
-    row({ id: 'c', date: '2026-10-14' }),
-    row({ id: 'd', date: '2026-10-01' }),
-  ];
-
-  it('tiene un día por cada día del mes', () => {
-    expect(buildDayStrip({ month: '2026-10', today: TODAY, rows })).toHaveLength(31);
-    expect(buildDayStrip({ month: '2026-09', today: TODAY, rows: [] })).toHaveLength(30);
-    expect(buildDayStrip({ month: '2028-02', today: '2028-02-10', rows: [] })).toHaveLength(29);
-  });
-
-  it('marca hoy, los días con registros, los vacíos y los que todavía no llegaron', () => {
-    const strip = buildDayStrip({ month: '2026-10', today: TODAY, rows });
-    const stateOf = (day: number) => strip[day - 1]!.state;
-
-    expect(stateOf(1)).toBe('with');
-    expect(stateOf(2)).toBe('empty');
-    expect(stateOf(14)).toBe('with');
-    expect(stateOf(15)).toBe('today');
-    expect(stateOf(16)).toBe('future');
-    expect(stateOf(31)).toBe('future');
-  });
-
-  it('cuenta registros por día, no montos', () => {
-    const strip = buildDayStrip({ month: '2026-10', today: TODAY, rows });
-
-    expect(strip[13]!.count).toBe(2);
-    expect(strip[14]!.count).toBe(1);
-    expect(strip[1]!.count).toBe(0);
-  });
-
-  it('hoy sin registros sigue marcado como hoy, con cuenta cero', () => {
-    const strip = buildDayStrip({ month: '2026-10', today: TODAY, rows: [] });
-
-    expect(strip[14]).toMatchObject({ state: 'today', count: 0 });
-  });
-
-  it('un mes que ya pasó queda completo: ningún día es futuro ni hoy', () => {
-    const strip = buildDayStrip({ month: '2026-09', today: TODAY, rows: [] });
-
-    expect(strip.every((day) => day.state === 'empty')).toBe(true);
-  });
-
-  it('cada día lleva su fecha', () => {
-    const strip = buildDayStrip({ month: '2026-10', today: TODAY, rows: [] });
-
-    expect(strip[0]!.date).toBe('2026-10-01');
-    expect(strip[30]!.date).toBe('2026-10-31');
-  });
-});
-
-describe('stripAccessibilityLabel', () => {
-  it('nombra los días con registros', () => {
-    const strip = buildDayStrip({
-      month: '2026-10',
-      today: TODAY,
-      rows: [row({ id: 'a', date: '2026-10-14' }), row({ id: 'b', date: '2026-10-01' })],
-    });
-
-    expect(stripAccessibilityLabel(strip)).toBe('Días con registros: 1, 14');
-  });
-
-  it('sin registros lo dice', () => {
-    const strip = buildDayStrip({ month: '2026-10', today: TODAY, rows: [] });
-
-    expect(stripAccessibilityLabel(strip)).toBe('Ningún día con registros');
-  });
-
-  it('hoy con registros cuenta', () => {
-    const strip = buildDayStrip({
-      month: '2026-10',
-      today: TODAY,
-      rows: [row({ id: 'a', date: TODAY })],
-    });
-
-    expect(stripAccessibilityLabel(strip)).toBe('Días con registros: 15');
   });
 });
 

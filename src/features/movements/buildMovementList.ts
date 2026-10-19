@@ -236,16 +236,22 @@ export function buildMovementList(args: {
   return rows.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 }
 
-/** §16 · "Filtros: Todos · Personales · uno por espacio". */
+/**
+ * §16 · "Filtros: Todos · Personales · uno por espacio". Con `day`, además, solo
+ * los registros de esa fecha: el mini calendario abre la lista de un día y el
+ * filtro se compone con el segmentado.
+ */
 export function filterMovements(
   rows: readonly MovementRow[],
   filter: MovementFilter,
+  day?: IsoDate | null,
 ): MovementRow[] {
-  if (filter === 'all') return [...rows];
-  if (filter === 'personal') return rows.filter((row) => row.spaceId == null);
+  const ofDay = day == null ? rows : rows.filter((row) => row.date === day);
+  if (filter === 'all') return [...ofDay];
+  if (filter === 'personal') return ofDay.filter((row) => row.spaceId == null);
   // Todos los espacios juntos (la puerta que los resume, con dos o más).
-  if (filter === 'shared') return rows.filter((row) => row.spaceId != null);
-  return rows.filter((row) => row.spaceId === filter);
+  if (filter === 'shared') return ofDay.filter((row) => row.spaceId != null);
+  return ofDay.filter((row) => row.spaceId === filter);
 }
 
 /** Los espacios que aparecen en el mes, para armar los chips de filtro. */

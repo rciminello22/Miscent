@@ -7,6 +7,8 @@ import { useHideFab } from '@/features/shared/fabVisibility';
 import { IconButton, Row, Skeleton, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 import { useBottomPadding } from '@/ui/useBottomPadding';
+import { parseDayParam } from './calendarGrid';
+import { DayFilterChip } from './DayFilterChip';
 import { FilterSegmented } from './FilterSegmented';
 import { MovementDayList } from './MovementRowView';
 import { useMovementActions, useMovementsMonth } from './useMovements';
@@ -23,10 +25,13 @@ export function MovementsListScreen() {
   const theme = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ mes?: string; filtro?: string }>();
+  const params = useLocalSearchParams<{ mes?: string; filtro?: string; dia?: string }>();
+  const month = params.mes != null && MONTH_PARAM.test(params.mes) ? params.mes : undefined;
   const movements = useMovementsMonth({
-    month: params.mes != null && MONTH_PARAM.test(params.mes) ? params.mes : undefined,
+    month,
     filter: params.filtro,
+    // El día (del mini calendario) solo se acepta si es una fecha de ese mes.
+    day: month == null ? null : parseDayParam(params.dia, month),
   });
   const actions = useMovementActions();
   const bottomPad = useBottomPadding({ tabs: true, fab: false });
@@ -77,6 +82,11 @@ export function MovementsListScreen() {
           onChange={movements.setFilter}
         />
 
+        {/* El filtro por día vive solo acá: el chip lo dice y lo deshace. */}
+        {movements.day != null && (
+          <DayFilterChip date={movements.day} onClear={movements.clearDay} />
+        )}
+
         <View>
           {movements.isLoading ? (
             <Stack gap="4">
@@ -85,7 +95,7 @@ export function MovementsListScreen() {
             </Stack>
           ) : movements.visible.length === 0 ? (
             <Text variant="small" tone="muted">
-              Sin registros acá este mes.
+              {movements.day == null ? 'Sin registros acá este mes.' : 'Sin registros acá ese día.'}
             </Text>
           ) : (
             <MovementDayList

@@ -8,6 +8,7 @@ import { useHideFab } from '@/features/shared/fabVisibility';
 import { Door, Skeleton, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 import { useBottomPadding } from '@/ui/useBottomPadding';
+import { dayListParams } from './calendarGrid';
 import { MovementsHeader } from './MovementsHeader';
 import { movementDoors, type MovementDoor } from './movementsView';
 import { useMovementsMonth } from './useMovements';
@@ -20,9 +21,11 @@ const DOOR_ICON: Record<MovementDoor['kind'], LucideIcon> = {
 };
 
 /**
- * §16 · Movimientos: la pestaña es el N1 y hasta tres puertas; la
- * lista, agrupada por día y con el control segmentado repetido, vive en su
- * propia pantalla (N3). Las puertas son los mismos filtros, como atajos.
+ * §16 · Movimientos: la pestaña es el N1 (con el mini calendario) y hasta tres
+ * puertas; la lista, agrupada por día y con el control segmentado repetido,
+ * vive en su propia pantalla (N3). Las puertas son los mismos filtros, como
+ * atajos, y el calendario abre la lista de un día. La pestaña nunca queda
+ * filtrada: el día vive solo en la lista.
  */
 export function MovementsScreenB() {
   const theme = useTheme();
@@ -62,7 +65,13 @@ export function MovementsScreenB() {
         <MovementsHeader
           monthLabel={movements.monthLabel}
           headline={movements.headline}
-          strip={movements.strip}
+          calendar={movements.calendar}
+          onOpenDay={(date) =>
+            router.push({
+              pathname: '/(personal)/movimientos/lista',
+              params: dayListParams({ month: movements.month, date }),
+            })
+          }
           onPrevious={movements.goToPrevious}
           onNext={movements.goToNext}
           onAdd={movements.canAdd && movements.count === 0 ? () => router.push('/agregar') : null}

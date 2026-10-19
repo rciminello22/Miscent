@@ -351,6 +351,23 @@ describe('§16 · filtros "Todos · Personales · uno por espacio"', () => {
     expect(only[0]?.spaceId).toBe('casa');
   });
 
+  it('un día deja solo los registros de ese día', () => {
+    expect(filterMovements(rows, 'all', '2026-10-06').map((item) => item.date)).toEqual([
+      '2026-10-06',
+    ]);
+    expect(filterMovements(rows, 'all', '2026-10-09')).toEqual([]);
+  });
+
+  it('el día se combina con el segmentado', () => {
+    expect(filterMovements(rows, 'casa', '2026-10-06')).toEqual([]);
+    expect(filterMovements(rows, 'casa', '2026-10-05')).toHaveLength(1);
+    expect(filterMovements(rows, 'personal', '2026-10-06')).toHaveLength(1);
+  });
+
+  it('sin día no filtra por fecha', () => {
+    expect(filterMovements(rows, 'all', null)).toHaveLength(2);
+  });
+
   it('los chips de filtro salen de los espacios con movimientos en el mes', () => {
     expect(spacesInMonth(facts, '2026-10')).toEqual([{ id: 'casa', name: 'Casa' }]);
   });

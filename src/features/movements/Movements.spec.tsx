@@ -3,7 +3,8 @@ import type { MovementRow } from './buildMovementList';
 import { FilterSegmented } from './FilterSegmented';
 import { MovementDayList } from './MovementRowView';
 import { MovementsHeader } from './MovementsHeader';
-import { buildDayStrip, filterSegments, groupRowsByDay } from './movementsView';
+import { buildMonthCalendar } from './calendarGrid';
+import { filterSegments, groupRowsByDay } from './movementsView';
 
 /**
  * Nivel 3 · lo que dicen y hacen las piezas de Movimientos (§16): el N1, el
@@ -35,7 +36,7 @@ function row(overrides: Partial<MovementRow> & { id: string; date: string }): Mo
 }
 
 describe('MovementsHeader · el N1', () => {
-  const strip = buildDayStrip({
+  const calendar = buildMonthCalendar({
     month: '2026-10',
     today: TODAY,
     rows: [row({ id: 'a', date: '2026-10-14' })],
@@ -43,21 +44,33 @@ describe('MovementsHeader · el N1', () => {
   const base = {
     monthLabel: 'Octubre',
     headline: '1 registro',
-    strip,
+    calendar,
+    onOpenDay: jest.fn(),
     onPrevious: jest.fn(),
     onNext: null,
     onAdd: null,
   };
 
-  it('el mes, la frase y la tira de días con su texto para el lector de pantalla', async () => {
-    const view = await renderWithTheme(<MovementsHeader {...base} />);
+  it('el mes, la frase, "en N días" y el mini calendario con sus días', async () => {
+    const onOpenDay = jest.fn();
+    const view = await renderWithTheme(<MovementsHeader {...base} onOpenDay={onOpenDay} />);
 
     expect(view.getByText('Octubre')).toBeTruthy();
     expect(view.getByText('1 registro')).toBeTruthy();
-    expect(view.getByLabelText('Días con registros: 14')).toBeTruthy();
-    expect(view.getByTestId('day-14-with')).toBeTruthy();
-    expect(view.getByTestId('day-15-today')).toBeTruthy();
-    expect(view.getByTestId('day-16-future')).toBeTruthy();
+    expect(view.getByText('en 1 día')).toBeTruthy();
+
+    await fireEvent.press(view.getByRole('button', { name: 'Miércoles 14 de octubre, 1 registro' }));
+    expect(onOpenDay).toHaveBeenCalledWith('2026-10-14');
+    expect(view.getByLabelText('Viernes 16 de octubre, todavía no llegó')).toBeTruthy();
+  });
+
+  it('sin registros no hay "en N días"', async () => {
+    const empty = buildMonthCalendar({ month: '2026-10', today: TODAY, rows: [] });
+    const view = await renderWithTheme(
+      <MovementsHeader {...base} calendar={empty} headline="Todavía no registraste nada en octubre." />,
+    );
+
+    expect(view.queryByText(/^en \d+ días?$/)).toBeNull();
   });
 
   it('en el mes en curso la flecha siguiente está deshabilitada', async () => {

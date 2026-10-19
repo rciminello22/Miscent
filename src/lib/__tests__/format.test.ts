@@ -8,6 +8,8 @@ import {
   formatNumber,
   formatPaymentWhen,
   formatPesos,
+  formatWeekday,
+  weekdayIndex,
 } from '../format';
 
 describe('formato de montos', () => {
@@ -81,6 +83,22 @@ describe('formato de fechas', () => {
     expect(formatPaymentWhen({ date: '2026-11-15', month: '2026-11', approx: true })).toBe('~15 nov');
     expect(formatPaymentWhen({ date: null, month: '2026-11', approx: true })).toBe('noviembre');
     expect(formatPaymentWhen({ date: '2026-11-15', month: '2026-11', approx: false })).toBe('15 nov');
+  });
+});
+
+describe('el día de la semana', () => {
+  it('lo nombra en minúscula, como el mes', () => {
+    expect(formatWeekday('2026-10-14')).toBe('miércoles');
+    expect(formatWeekday('2026-10-15')).toBe('jueves');
+    expect(formatWeekday('2026-10-17')).toBe('sábado');
+    expect(formatWeekday('2026-10-18')).toBe('domingo');
+    expect(formatWeekday('2026-10-19')).toBe('lunes');
+  });
+
+  it('el día de la semana cuenta desde el lunes: 0 es lunes y 6 es domingo', () => {
+    expect(weekdayIndex('2026-10-19')).toBe(0);
+    expect(weekdayIndex('2026-10-01')).toBe(3);
+    expect(weekdayIndex('2026-10-18')).toBe(6);
   });
 });
 

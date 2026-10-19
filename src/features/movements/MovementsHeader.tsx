@@ -1,14 +1,16 @@
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react-native';
 import { Button, Card, IconButton, Row, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
-import { DayStrip } from './DayStrip';
-import type { StripDay } from './movementsView';
+import type { IsoDate } from '@domain/calendar';
+import { recordDaysLabel, type MonthCalendar } from './calendarGrid';
+import { MiniCalendar } from './MiniCalendar';
 
 /**
  * El N1 de Movimientos (§16): la respuesta a "¿qué registré este mes?".
  *
- * Un panel teñido con el mes (con su stepper), la frase ("12 registros", o el
- * vacío de §16) y la tira de días, que es su forma visual. Con el mes en curso
+ * Un panel teñido con el mes (con su stepper), la frase ("12 registros" y "en 9
+ * días", o el vacío de §16) y el mini calendario, que es su forma visual y
+ * lanza la lista de un día. Con el mes en curso
  * vacío trae su propio "Agregar": el botón flotante se esconde para no tener
  * dos. En un mes que ya pasó no hay Agregar: no se carga con fecha de un mes
  * cerrado.
@@ -18,14 +20,17 @@ import type { StripDay } from './movementsView';
 export function MovementsHeader({
   monthLabel,
   headline,
-  strip,
+  calendar,
+  onOpenDay,
   onPrevious,
   onNext,
   onAdd,
 }: {
   monthLabel: string;
   headline: string;
-  strip: readonly StripDay[];
+  calendar: MonthCalendar;
+  /** Tocar un día con registros: abre la lista de ese día. */
+  onOpenDay: (date: IsoDate) => void;
   onPrevious: () => void;
   /** `null` en el mes en curso: el futuro es de Futuro. */
   onNext: (() => void) | null;
@@ -33,6 +38,7 @@ export function MovementsHeader({
   onAdd: (() => void) | null;
 }) {
   const theme = useTheme();
+  const recordDays = recordDaysLabel(calendar.recordDays);
 
   return (
     <Card tone="brand" style={{ borderRadius: theme.radius.xl, padding: theme.space['4'] }}>
@@ -57,9 +63,17 @@ export function MovementsHeader({
           />
         </Row>
 
-        <Text variant="title">{headline}</Text>
+        <Stack gap="0">
+          <Text variant="title">{headline}</Text>
+          {recordDays != null && (
+            <Text variant="caption" tone="secondary">
+              {recordDays}
+            </Text>
+          )}
+        </Stack>
 
-        <DayStrip days={strip} />
+        {/* Al cambiar de mes la frase de un día vacío se va: el calendario se rearma. */}
+        <MiniCalendar key={monthLabel} calendar={calendar} onOpenDay={onOpenDay} />
 
         {onAdd != null && (
           <Button

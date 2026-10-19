@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { addMonths, monthOf, type Month } from '@domain/calendar';
+import { addMonths, monthOf, type IsoDate, type Month } from '@domain/calendar';
 import { formatMonth, formatPesos } from '@/lib/format';
 import { useOpenSpace } from '@/features/spaces/useOpenSpace';
 import { useFeedback } from '@/features/shared/useFeedback';
@@ -13,8 +13,8 @@ import {
   type MovementFilter,
   type MovementRow,
 } from './buildMovementList';
+import { buildMonthCalendar } from './calendarGrid';
 import {
-  buildDayStrip,
   canAddInMonth,
   canGoToNextMonth,
   effectiveFilter,
@@ -29,14 +29,20 @@ import {
  * entrega a la pantalla todo ya calculado por las funciones puras de
  * `movementsView`.
  *
- * El mes y el filtro pueden venir de afuera (las puertas los pasan por la ruta
- * de la lista).
+ * El mes, el filtro y el día pueden venir de afuera (las puertas y el mini
+ * calendario los pasan por la ruta de la lista). El día vive SOLO en la lista:
+ * la pestaña nunca queda filtrada.
  */
-export function useMovementsMonth(initial?: { month?: Month; filter?: MovementFilter }) {
+export function useMovementsMonth(initial?: {
+  month?: Month;
+  filter?: MovementFilter;
+  day?: IsoDate | null;
+}) {
   const { facts, today, isLoading, refetch } = usePersonalFacts();
 
   const [month, setMonth] = useState<Month>(initial?.month ?? monthOf(today));
   const [filterChoice, setFilter] = useState<MovementFilter>(initial?.filter ?? 'all');
+  const [day, setDay] = useState<IsoDate | null>(initial?.day ?? null);
   const [refreshing, setRefreshing] = useState(false);
 
   const rows = useMemo(
@@ -52,9 +58,9 @@ export function useMovementsMonth(initial?: { month?: Month; filter?: MovementFi
 
   const spaces = useMemo(() => spacesInMonth(facts, month), [facts, month]);
   const filter = effectiveFilter(filterChoice, spaces);
-  const visible = useMemo(() => filterMovements(rows, filter), [rows, filter]);
+  const visible = useMemo(() => filterMovements(rows, filter, day), [rows, filter, day]);
   const groups = useMemo(() => groupRowsByDay(visible, today), [visible, today]);
-  const strip = useMemo(() => buildDayStrip({ month, today, rows }), [month, today, rows]);
+  const calendar = useMemo(() => buildMonthCalendar({ month, today, rows }), [month, today, rows]);
   const segments = useMemo(() => filterSegments(spaces), [spaces]);
 
   async function refresh() {
@@ -82,9 +88,11 @@ export function useMovementsMonth(initial?: { month?: Month; filter?: MovementFi
     segments,
     filter,
     setFilter,
+    day,
+    clearDay: () => setDay(null),
     visible,
     groups,
-    strip,
+    calendar,
   };
 }
 
