@@ -225,12 +225,18 @@ la sesión del 15 al 19/10, que se pierde. Para editarlo en otra sesión:
    (`former_memberships`) de su historial, de una vez y **solo si no
    quedan cuotas por venir**. Al quitarla cambia el radar de los meses
    pasados donde contaba su parte, y eso se dice en la confirmación.
-   - **Falta:** que Renzo elija en el wireframe `#dq17` (dónde va la acción
-     y la confirmación) y después implementarlo.
-   - **Necesita una migración:** `former_memberships` no tiene políticas de
-     escritura a propósito. Hace falta una RPC `security definer` que borre
-     la fila propia (`user_id = auth.uid()`), con su `grant` y asserts
-     pgTAP. **No se aplica sin el OK de Renzo, y el push lo corre él.**
+   - **Implementado el 19/10** (`266372a`, `11d51c5`). Está en Perfil, en
+     la sección "Espacios que dejaste", con la hoja de confirmación, sin
+     Deshacer. Con cuotas por venir, el botón queda apagado con la frase.
+   - **FALTA APLICAR la migración 0021** (`app_remove_former_space`, RPC
+     `security definer` que borra solo la foto propia). Con eso los asserts
+     pgTAP pasan de 92 a 98. Hasta aplicarla, "Quitar" muestra un toast de
+     error y no se rompe nada. Lo aplica Renzo: `login`, `db push`,
+     `db:types` y `test:rls`.
+   - **Duda abierta:** hoy bloquea cualquier pago por venir de la foto (también
+     un fijo o una compra en 1 pago con vencimiento futuro), pero la frase
+     habla de "cuotas". Para que bloqueen solo las cuotas, se cambia
+     `isUpcoming` en `formerSpaces.ts`.
 2. **Que Renzo pruebe en el iPhone** lo del 18 y 19/10 (lista de abajo).
 3. **Pendientes abiertos** (más abajo).
 
