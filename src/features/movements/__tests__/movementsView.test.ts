@@ -10,6 +10,7 @@ import {
   isFabHidden,
   monthHeadline,
   movementDoors,
+  rowDestination,
   rowDetail,
 } from '../movementsView';
 
@@ -64,6 +65,59 @@ describe('groupRowsByDay · la lista agrupada por día', () => {
 
   it('sin filas no hay grupos', () => {
     expect(groupRowsByDay([], TODAY)).toEqual([]);
+  });
+});
+
+describe('rowDestination · qué abre cada tipo de fila', () => {
+  it('un movimiento personal abre su detalle', () => {
+    expect(rowDestination(row({ id: 'movement:m1', date: TODAY }))).toEqual({
+      kind: 'href',
+      href: '/movimiento/m1',
+    });
+    expect(
+      rowDestination(row({ id: 'movement:m2', date: TODAY, kind: 'personal-income' })),
+    ).toEqual({ kind: 'href', href: '/movimiento/m2' });
+  });
+
+  it('un gasto compartido abre directo el detalle del gasto, no el espacio', () => {
+    expect(
+      rowDestination(
+        row({ id: 'shared:g1', date: TODAY, kind: 'shared-expense', spaceId: 'casa' }),
+      ),
+    ).toEqual({ kind: 'href', href: '/space/casa/gasto/g1' });
+  });
+
+  it('un pago entre miembros abre lo que abría: el espacio', () => {
+    expect(
+      rowDestination(
+        row({ id: 'payment:p1', date: TODAY, kind: 'member-payment', spaceId: 'casa' }),
+      ),
+    ).toEqual({ kind: 'space', spaceId: 'casa' });
+  });
+
+  it('SA-02 · de un espacio del que saliste no hay detalle, ni del gasto ni del pago', () => {
+    expect(
+      rowDestination(
+        row({
+          id: 'shared:g1',
+          date: TODAY,
+          kind: 'shared-expense',
+          spaceId: 'casa',
+          formerSpace: true,
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      rowDestination(
+        row({
+          id: 'payment:p1',
+          date: TODAY,
+          kind: 'member-payment',
+          spaceId: 'casa',
+          formerSpace: true,
+        }),
+      ),
+    ).toBeNull();
   });
 });
 

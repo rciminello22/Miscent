@@ -45,7 +45,7 @@ export type MovementRow = {
   spaceName: string | null;
   /** "pagó vos" / "pagó Martina". `null` si no es un gasto compartido. */
   payerLabel: string | null;
-  /** §16 · "Se paga en noviembre", "6 cuotas de $30.000", "Ingreso registrado". */
+  /** §16 · "1 pago · se paga en noviembre", "6 cuotas de $30.000", "Ingreso registrado". */
   effect: string | null;
   /** Qué clase de efecto es, para elegir su ícono. `method` es solo el nombre del medio. */
   effectKind: 'installments' | 'card' | 'income' | 'method' | null;
@@ -71,7 +71,8 @@ function cardEffect(
 ): string | null {
   if (method == null || method.kind !== 'card') return null;
   const schedule = resolveCardPayment(method, date);
-  return `Se paga en ${monthName(schedule.month)}`;
+  // Siempre dicho igual: "1 pago · se paga en noviembre" (las cuotas, "6 cuotas de $30.000").
+  return `1 pago · se paga en ${monthName(schedule.month)}`;
 }
 
 export function buildMovementList(args: {

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { addMonths, monthOf, type IsoDate, type Month } from '@domain/calendar';
 import { formatMonth, formatPesos } from '@/lib/format';
 import { useOpenSpace } from '@/features/spaces/useOpenSpace';
@@ -22,6 +22,7 @@ import {
   groupRowsByDay,
   isFabHidden,
   monthHeadline,
+  rowDestination,
 } from './movementsView';
 
 /**
@@ -108,14 +109,13 @@ export function useMovementActions() {
   const feedback = useFeedback();
 
   function open(row: MovementRow) {
-    // §16 · tocar abre el detalle, con Editar y Eliminar.
-    // SA-02 · de un espacio del que saliste ya no hay detalle.
-    if (row.formerSpace) return;
-    if (row.spaceId != null) {
-      openSpace(row.spaceId);
-      return;
-    }
-    router.push(`/movimiento/${row.id.replace('movement:', '')}`);
+    // §16 · tocar abre el detalle, con Editar y Eliminar. Qué abre cada fila lo
+    // decide `rowDestination` (SA-02: de un espacio del que saliste, nada).
+    // Abrir el detalle NO cuenta como revisado (K10).
+    const destination = rowDestination(row);
+    if (destination == null) return;
+    if (destination.kind === 'space') openSpace(destination.spaceId);
+    else router.push(destination.href as Href);
   }
 
   function confirmDelete(row: MovementRow) {

@@ -1,6 +1,7 @@
 import { addDays, monthOf, type IsoDate, type Month } from '@domain/calendar';
 import type { Pesos } from '@domain/money';
 import { formatDayMonth, formatMonth } from '@/lib/format';
+import { occurrenceHref } from '@/features/spaces/spaceNavigation';
 import type { MovementFilter, MovementRow } from './buildMovementList';
 
 /**
@@ -116,6 +117,43 @@ export function rowDetail(row: MovementRow, options: { showSpace: boolean }): Ro
       : null;
 
   return { caption: parts.length > 0 ? parts.join(' · ') : null, effect };
+}
+
+/** A dónde lleva tocar una fila. */
+export type RowDestination =
+  | { kind: 'href'; href: string }
+  | { kind: 'space'; spaceId: string }
+  | null;
+
+/**
+ * Tocar una fila abre su detalle, se haya hecho donde se haya hecho:
+ *
+ *   - un movimiento personal, su detalle
+ *   - un gasto compartido, el detalle del gasto (`/space/[id]/gasto/[gid]`) y
+ *     NO el espacio. "Atrás" vuelve a la lista. Abrirlo no cuenta como
+ *     revisado (K10): "Está bien" sigue siendo explícito.
+ *   - un pago entre miembros no tiene pantalla propia: abre lo que abría, el
+ *     espacio
+ *   - de un espacio del que saliste no hay detalle (SA-02)
+ *
+ * La lista solo trae gastos del espacio, no sus fijos: la ocurrencia de un fijo
+ * se abre desde el espacio (`occurrenceHref` ya distingue los dos casos).
+ */
+export function rowDestination(row: MovementRow): RowDestination {
+  if (row.formerSpace) return null;
+  if (row.spaceId == null) return { kind: 'href', href: `/movimiento/${stripPrefix(row.id)}` };
+  if (row.kind === 'shared-expense') {
+    return {
+      kind: 'href',
+      href: occurrenceHref(row.spaceId, { sourceKind: 'expense', sourceId: stripPrefix(row.id) }),
+    };
+  }
+  return { kind: 'space', spaceId: row.spaceId };
+}
+
+/** `movement:abc` → `abc`: el id de la fila lleva de qué tabla viene. */
+function stripPrefix(rowId: string): string {
+  return rowId.slice(rowId.indexOf(':') + 1);
 }
 
 /* ── Las puertas del N1 ───────────────────────────────────────────────────── */

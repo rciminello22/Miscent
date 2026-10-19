@@ -154,7 +154,82 @@ describe('§16 · la lista de Movimientos', () => {
     });
 
     const rows = buildMovementList({ facts, ...options });
-    expect(rows[0]?.effect).toBe('Se paga en noviembre');
+    expect(rows[0]?.effect).toBe('1 pago · se paga en noviembre');
+    expect(rows[0]?.effectKind).toBe('card');
+  });
+
+  describe('14 · B · la fila de un compartido dice cómo se paga, de forma simple', () => {
+    const casa = (args: { payerSlot: 1 | 2; withCard?: boolean }) => {
+      const expense = sharedExpense({
+        id: 'heladera',
+        amount: 180_000,
+        date: '2026-10-12',
+        payerSlot: args.payerSlot,
+        description: 'Heladera',
+      });
+      return buildMovementList({
+        facts: personalFacts({
+          spaces: [
+            membership({
+              facts: spaceFacts({ expenses: [expense] }),
+              mySlot: RENZO,
+              paymentDetails:
+                args.withCard === true ? [paidWith('heladera', RENZO, visa.id)] : [],
+            }),
+          ],
+        }),
+        ...options,
+      })[0]!;
+    };
+
+    it('pagaste vos con tarjeta, en 1 pago: "1 pago · se paga en noviembre"', () => {
+      const result = casa({ payerSlot: RENZO, withCard: true });
+
+      expect(result.effect).toBe('1 pago · se paga en noviembre');
+      expect(result.effectKind).toBe('card');
+    });
+
+    it('P19 · si pagó el otro en 1 pago no hay mes de tarjeta que mostrar (C-05)', () => {
+      const result = casa({ payerSlot: MARTINA });
+
+      expect(result.effect).toBeNull();
+      expect(result.effectKind).toBeNull();
+    });
+
+    it('pagaste vos sin medio cargado: no se inventa un mes', () => {
+      expect(casa({ payerSlot: RENZO }).effect).toBeNull();
+    });
+
+    it('en cuotas, pague quien pague, dice cuántas y de cuánto es TU parte', () => {
+      const expense = sharedExpense({
+        amount: 180_000,
+        date: '2026-10-12',
+        payerSlot: MARTINA,
+        installments: { count: 3, card: null },
+      });
+      const [result] = buildMovementList({
+        facts: personalFacts({
+          spaces: [
+            membership({ facts: spaceFacts({ expenses: [expense] }), mySlot: RENZO }),
+          ],
+        }),
+        ...options,
+      });
+
+      expect(result?.effect).toBe('3 cuotas de $30.000');
+      expect(result?.effectKind).toBe('installments');
+    });
+
+    it('un gasto personal en débito sigue diciendo el medio, sin "1 pago"', () => {
+      const [result] = buildMovementList({
+        facts: personalFacts({
+          movements: [movement({ amount: 9_000, date: '2026-10-02', paymentMethodId: debito.id })],
+        }),
+        ...options,
+      });
+
+      expect(result?.effect).toBe('Débito');
+    });
   });
 
   it('un ingreso se rotula "Ingreso registrado"', () => {
