@@ -18,6 +18,8 @@ import {
 } from '@/data/repositories/edits';
 import { useFeedback } from '@/features/shared/useFeedback';
 import type { FeedbackAudience } from '@/features/shared/feedbackCopy';
+import { fixedIncomeDetail } from '@/features/detail/incomeDetail';
+import { IncomeSummary } from '@/features/detail/IncomeSummary';
 import { fixedWording } from './fixedCopy';
 import { AmountInput } from '@/features/add/AmountInput';
 import { prettyLabel } from '@/features/add/categories';
@@ -295,19 +297,29 @@ export function FixedDetail({
         )}
 
         <Stack gap="2">
-          <Money amount={recurrence.amount} variant="display" />
-          <Text variant="small" tone="secondary">
-            {[
-              isIncome ? 'Ingreso fijo' : 'Fijo',
-              incomeDayPhrase({ day: recurrence.dayOfMonth, approx: recurrence.dayApprox }),
-              methodName,
-              recurrence.endMonth != null
-                ? `hasta ${formatMonth(recurrence.endMonth, currentMonth)}`
-                : null,
-            ]
-              .filter((part) => part != null && part !== '')
-              .join(' · ')}
-          </Text>
+          {isIncome ? (
+            /* 15·5 · "+" y color, qué es y desde cuándo. */
+            <IncomeSummary
+              amount={recurrence.amount}
+              copy={fixedIncomeDetail(recurrence, today)}
+            />
+          ) : (
+            <>
+              <Money amount={recurrence.amount} variant="display" />
+              <Text variant="small" tone="secondary">
+                {[
+                  'Fijo',
+                  incomeDayPhrase({ day: recurrence.dayOfMonth, approx: recurrence.dayApprox }),
+                  methodName,
+                  recurrence.endMonth != null
+                    ? `hasta ${formatMonth(recurrence.endMonth, currentMonth)}`
+                    : null,
+                ]
+                  .filter((part) => part != null && part !== '')
+                  .join(' · ')}
+              </Text>
+            </>
+          )}
           {/* T-02 · discreto, sin recordatorios: abre el selector con "Sé el día". */}
           {isIncome && recurrence.dayApprox && mode === 'view' && (
             <TextLink

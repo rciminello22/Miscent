@@ -36,6 +36,8 @@ import { canSaveForm, saveBlockReason } from '@/features/add/saveBlockReason';
 import { isValidInstallmentCount } from '@/features/add/installmentCount';
 import { PaymentMethodField } from '@/features/add/PaymentMethodField';
 import { useFeedback } from '@/features/shared/useFeedback';
+import { oneOffIncomeDetail } from '@/features/detail/incomeDetail';
+import { IncomeSummary } from '@/features/detail/IncomeSummary';
 import { InstallmentsDetail } from '@/features/detail/InstallmentsDetail';
 import { buildInstallmentsDetail } from '@/features/detail/installmentsCycle';
 import { amountSpeech, signOf } from '@/features/movements/amountSign';
@@ -314,6 +316,16 @@ export default function MovimientoDetalle() {
                 detail={installmentsView}
                 footnote="Las cuotas no se editan de a una: se edita la compra y se regeneran."
               />
+            ) : movement.kind === 'income' ? (
+              /* 15·5 · un ingreso puntual: "+" y color, "Extra · 12 de octubre" y qué es.
+                 La descripción ya es el título (sin ella, la categoría). */
+              <IncomeSummary
+                amount={movement.amount}
+                copy={oneOffIncomeDetail(
+                  { date: movement.date, categoryLabel: prettyLabel(movement.category) },
+                  today,
+                )}
+              />
             ) : (
               <>
                 <Stack gap="2">
@@ -325,11 +337,7 @@ export default function MovimientoDetalle() {
                     accessibilityLabel={amountSpeech(movementKind, movement.amount, formatPesos)}
                   />
                   <Text variant="small" tone="secondary">
-                    {[
-                      formatDayMonth(movement.date),
-                      prettyLabel(movement.category),
-                      movement.kind === 'income' ? 'Ingreso registrado' : method?.name,
-                    ]
+                    {[formatDayMonth(movement.date), prettyLabel(movement.category), method?.name]
                       .filter((part) => part != null && part !== '')
                       .join(' · ')}
                   </Text>

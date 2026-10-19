@@ -3,6 +3,7 @@ import { formatPesos } from '@/lib/format';
 import { amountSpeech } from '@/features/movements/amountSign';
 import { Card, Divider, Money, Row, SectionHeader, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
+import { FactRows } from './FactRows';
 import type { InstallmentsDetail as InstallmentsDetailModel, SegmentState } from './installmentsCycle';
 
 /**
@@ -67,21 +68,7 @@ export function InstallmentsDetail({
             {detail.cycle.passed}
           </Text>
 
-          {detail.facts.length > 0 && (
-            <View style={{ gap: theme.space['3'] }}>
-              <Divider />
-              {detail.facts.map((fact) => (
-                <Row key={fact.label} justify="space-between" align="baseline" gap="3">
-                  <Text variant="small" tone="secondary">
-                    {fact.label}
-                  </Text>
-                  <Text variant="smallMedium" style={{ flexShrink: 1 }} align="right">
-                    {fact.value}
-                  </Text>
-                </Row>
-              ))}
-            </View>
-          )}
+          {detail.facts.length > 0 && <FactRows facts={detail.facts} divided />}
         </Stack>
       </Card>
 
