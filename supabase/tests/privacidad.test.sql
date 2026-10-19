@@ -8,10 +8,11 @@
 -- `authenticated`, igual que un cliente de la app. No hay atajos: si una
 -- política está mal, el test lo ve.
 --
--- 92 asserts. Cubre: PR-01, PR-02, CA-05, CA-11, CA-12, CA-13, CA-22, CA-40,
+-- 98 asserts. Cubre: PR-01, PR-02, CA-05, CA-11, CA-12, CA-13, CA-22, CA-40,
 -- CA-47, CA-48, C-02, C-05, D-01, E-01, E-02, I-02, I-04, I-07, K1, K3, K4,
 -- P5, P7, SA-02, SA-04, SA-06, SY-02, la revisión de lo que carga el otro, X-02, §26 quitar acceso, la asimetría de
--- shared_payment_details y el usuario anónimo de O2 sin email.
+-- shared_payment_details, el usuario anónimo de O2 sin email y quitar un
+-- espacio del historial (0021).
 --
 -- Se corre de dos formas, y las dos funcionan sobre este mismo archivo:
 --   npm run test:rls      (pgTAP vía Docker, con salida TAP)
@@ -26,7 +27,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
 
-select plan(92);
+select plan(98);
 
 -- ───────────────────────────────────────────────────────────────────────────
 -- Montaje: Renzo (con cuenta personal), Martina (invitada, Estado B) y Juan.
@@ -1070,6 +1071,75 @@ insert into tests.results(line) select is(
   tests.get('anon_days')::int,
   0,
   'PR-02 · sin sesión no se ve la historia de días de ninguna tarjeta'
+);
+
+
+-- ───────────────────────────────────────────────────────────────────────────
+-- Quitar un espacio del historial (0021) · SA-05, P6, PR-02
+--
+-- Quien salió puede sacar SU foto de un espacio (former_memberships), y solo la
+-- suya. Ojo: estos asserts necesitan la migración 0021 aplicada. Contra la base
+-- anterior fallan por función inexistente: primero RED, después db push.
+--
+-- Martina salió de "Casa" más arriba y conserva su foto. Renzo, Juan y Martina
+-- tienen además fotos de otros espacios: la quita de una no toca las demás.
+-- ───────────────────────────────────────────────────────────────────────────
+
+select tests.as_service();
+select tests.put(
+  'fotos_ajenas',
+  (select count(*)::int from former_memberships
+   where user_id <> '22222222-2222-2222-2222-222222222222')::text
+);
+
+-- Renzo sigue en Casa y no tiene foto de ese espacio; la de Martina no es suya.
+select tests.authenticate_as('11111111-1111-1111-1111-111111111111');
+
+insert into tests.results(line) select lives_ok(
+  $$ select app_remove_former_space(tests.get('casa_id')::uuid) $$,
+  'Quitar del historial · llamarla sin foto propia de ese espacio no falla ni hace nada'
+);
+
+select tests.as_service();
+
+insert into tests.results(line) select is(
+  (select count(*)::int from former_memberships
+   where user_id = '22222222-2222-2222-2222-222222222222'
+     and space_id = tests.get('casa_id')::uuid),
+  1,
+  'Quitar del historial / PR-02 · otro usuario NO puede quitar la foto ajena'
+);
+
+-- El dueño sí.
+select tests.authenticate_as('22222222-2222-2222-2222-222222222222');
+
+insert into tests.results(line) select lives_ok(
+  $$ select app_remove_former_space(tests.get('casa_id')::uuid) $$,
+  'Quitar del historial · el dueño quita la foto de un espacio del que salió'
+);
+
+insert into tests.results(line) select is(
+  (select count(*)::int from former_memberships
+   where space_id = tests.get('casa_id')::uuid),
+  0,
+  'Quitar del historial · después de quitarla, el dueño ya no tiene la foto'
+);
+
+select tests.as_service();
+
+insert into tests.results(line) select is(
+  (select count(*)::int from former_memberships
+   where user_id <> '22222222-2222-2222-2222-222222222222')::text,
+  tests.get('fotos_ajenas'),
+  'Quitar del historial · las fotos de los demás quedan como estaban'
+);
+
+-- Sin sesión no se ejecuta: anon no tiene EXECUTE y authenticated sí.
+insert into tests.results(line) select is(
+  has_function_privilege('anon', 'public.app_remove_former_space(uuid)', 'execute')
+    or has_function_privilege('public', 'public.app_remove_former_space(uuid)', 'execute'),
+  false,
+  'Quitar del historial · sin sesión (anon, PUBLIC) no se ejecuta'
 );
 
 
