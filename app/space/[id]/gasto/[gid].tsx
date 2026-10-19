@@ -1,17 +1,18 @@
 import { useMemo, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { goBack } from '@/features/shared/navigation';
 import { Trash2, X } from 'lucide-react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { monthOf } from '@domain/calendar';
-import { scheduleInstallments } from '@domain/installments';
+import { installmentAmounts } from '@domain/installments';
 import { calculateSharedBalance } from '@domain/shared-balance';
 import { resolveShares } from '@domain/split';
 import type { Category, SharedExpense, Split } from '@domain/types';
-import { formatDayMonth, formatInstallment, formatMonth, formatPesos } from '@/lib/format';
+import { formatDayMonth, formatPesos } from '@/lib/format';
 import { amountSpeech } from '@/features/movements/amountSign';
+import { InstallmentsDetail } from '@/features/detail/InstallmentsDetail';
+import { buildInstallmentsDetail, myInstallmentsOf } from '@/features/detail/installmentsCycle';
 import { queryKeys } from '@/data/queryClient';
 import {
   endSharedInstallmentsNow,
@@ -53,12 +54,10 @@ import {
   AudienceBadge,
   Button,
   Card,
-  Divider,
   IconButton,
   Money,
   Row,
   Screen,
-  SectionHeader,
   Stack,
   Text,
   TextField,
@@ -135,6 +134,9 @@ export default function GastoCompartido() {
 
   const method =
     personalFacts.paymentMethods.find((item) => item.id === paymentMethodId) ?? null;
+  /** El medio tal como está guardado (el de arriba es el del formulario de edición). */
+  const savedMethod =
+    personalFacts.paymentMethods.find((item) => item.id === currentPaymentMethodId) ?? null;
 
   async function invalidate() {
     await Promise.all([
@@ -280,11 +282,6 @@ export default function GastoCompartido() {
     );
   }, [derived, expense, today]);
 
-  const schedule = useMemo(() => {
-    if (expense?.installments == null) return [];
-    return scheduleInstallments(expense.amount, expense.installments);
-  }, [expense]);
-
   if (derived == null || expense == null) {
     return (
       <Screen>
@@ -305,6 +302,25 @@ export default function GastoCompartido() {
   const myShare = mySlot === 1 ? shares.slot1 : shares.slot2;
   const otherShare = mySlot === 1 ? shares.slot2 : shares.slot1;
   const iPaid = expense.payerSlot === mySlot;
+
+  // 15·4 · una compra en cuotas: lo tuyo de cada una (K9), con las fechas
+  // GUARDADAS del plan (F2) y no la tarjeta del otro (PR-02). El medio, solo si
+  // pagaste vos (C-05).
+  const installmentsView =
+    expense.installments == null
+      ? null
+      : buildInstallmentsDetail({
+          today,
+          purchaseDate: expense.date,
+          schedule: myInstallmentsOf({ ...expense, installments: expense.installments }, mySlot),
+          shared: {
+            purchaseTotal: expense.amount,
+            installmentTotals: installmentAmounts(expense.amount, expense.installments.count),
+            payerName: other.displayName,
+            iPaid,
+          },
+          methodName: iPaid ? (savedMethod?.name ?? null) : null,
+        });
 
   const categories = EXPENSE_CATEGORIES;
 
@@ -441,28 +457,38 @@ export default function GastoCompartido() {
 
         {!editing ? (
           <>
-            <Stack gap="2">
-              {/* 15 · la cifra grande es TU PARTE (K9) con "−"; el total, en gris y sin signo. */}
-              <Money
-                amount={myShare}
-                variant="display"
-                sign="out"
-                accessibilityLabel={amountSpeech('expense', myShare, formatPesos)}
+            {installmentsView != null ? (
+              /* 15·4 · una compra en cuotas: tu parte, el ciclo, la próxima y la lista.
+                 X-05 · el cronograma se ve, pero una cuota no se edita. */
+              <InstallmentsDetail
+                detail={installmentsView}
+                // P2 · la deuda se genera cuota por cuota.
+                footnote="Cada cuota cambia lo que se deben cuando llega su fecha, no el día de la compra."
               />
-              {expense.amount !== myShare && (
-                <Text variant="caption" tone="muted" tabular>
-                  de {formatPesos(expense.amount)}
+            ) : (
+              <Stack gap="2">
+                {/* 15 · la cifra grande es TU PARTE (K9) con "−"; el total, en gris y sin signo. */}
+                <Money
+                  amount={myShare}
+                  variant="display"
+                  sign="out"
+                  accessibilityLabel={amountSpeech('expense', myShare, formatPesos)}
+                />
+                {expense.amount !== myShare && (
+                  <Text variant="caption" tone="muted" tabular>
+                    de {formatPesos(expense.amount)}
+                  </Text>
+                )}
+                <Text variant="small" tone="secondary">
+                  {[
+                    formatDayMonth(expense.date),
+                    prettyLabel(expense.category),
+                    // G-06 · "pagó X" es una declaración, no una verificación.
+                    `pagó ${iPaid ? me.displayName : other.displayName}`,
+                  ].join(' · ')}
                 </Text>
-              )}
-              <Text variant="small" tone="secondary">
-                {[
-                  formatDayMonth(expense.date),
-                  prettyLabel(expense.category),
-                  // G-06 · "pagó X" es una declaración, no una verificación.
-                  `pagó ${iPaid ? me.displayName : other.displayName}`,
-                ].join(' · ')}
-              </Text>
-            </Stack>
+              </Stack>
+            )}
 
             {/* §7.3 · el reparto: la lente del espacio. */}
             <Card tone="shared">
@@ -517,49 +543,6 @@ export default function GastoCompartido() {
               </Row>
             )}
 
-            {/* X-05 · el cronograma se ve, pero una cuota no se edita. */}
-            {schedule.length > 0 && (
-              <Stack gap="4">
-                <SectionHeader title="Sus cuotas" />
-                <Card>
-                  <Stack gap="0">
-                    {schedule.map((item, index) => {
-                      const past = item.date != null && item.date <= today;
-                      return (
-                        <View key={item.index}>
-                          <Row
-                            justify="space-between"
-                            align="baseline"
-                            style={{ paddingVertical: theme.space['3'] }}
-                          >
-                            <View style={{ gap: 2 }}>
-                              <Text variant="smallMedium" tone={past ? 'muted' : 'default'}>
-                                {formatInstallment(item.index, item.count)}
-                              </Text>
-                              <Text variant="caption" tone="muted">
-                                {formatMonth(item.month, monthOf(today))}
-                                {past ? ' · ya pasó' : ''}
-                              </Text>
-                            </View>
-                            <Money
-                              amount={item.amount}
-                              variant="smallMedium"
-                              tone={past ? 'muted' : 'default'}
-                            />
-                          </Row>
-                          {index < schedule.length - 1 && <Divider />}
-                        </View>
-                      );
-                    })}
-                  </Stack>
-                </Card>
-                {/* P2 · la deuda se genera cuota por cuota. */}
-                <Text variant="caption" tone="muted">
-                  Cada cuota cambia lo que se deben cuando llega su fecha, no el día de la
-                  compra.
-                </Text>
-              </Stack>
-            )}
 
             <Stack gap="3">
               {/* X-02 / K3 · los dos miembros pueden editar. */}

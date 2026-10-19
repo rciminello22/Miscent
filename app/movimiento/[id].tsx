@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { goBack } from '@/features/shared/navigation';
 import { useOpenSpace } from '@/features/spaces/useOpenSpace';
@@ -8,9 +8,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { monthOf } from '@domain/calendar';
 import { resolveCardPayment } from '@domain/cards';
-import { installmentAmounts, scheduleInstallments } from '@domain/installments';
+import { scheduleInstallments } from '@domain/installments';
 import type { Category } from '@domain/types';
-import { formatDayMonth, formatInstallment, formatMonth, formatPesos } from '@/lib/format';
+import { formatDayMonth, formatMonth, formatPesos } from '@/lib/format';
 import { queryKeys } from '@/data/queryClient';
 import {
   deletePersonalMovementById,
@@ -36,18 +36,18 @@ import { canSaveForm, saveBlockReason } from '@/features/add/saveBlockReason';
 import { isValidInstallmentCount } from '@/features/add/installmentCount';
 import { PaymentMethodField } from '@/features/add/PaymentMethodField';
 import { useFeedback } from '@/features/shared/useFeedback';
+import { InstallmentsDetail } from '@/features/detail/InstallmentsDetail';
+import { buildInstallmentsDetail } from '@/features/detail/installmentsCycle';
 import { amountSpeech, signOf } from '@/features/movements/amountSign';
 import { MoveToSpace } from '@/features/movements/MoveToSpace';
 import {
   AudienceBadge,
   Button,
   Card,
-  Divider,
   IconButton,
   Money,
   Row,
   Screen,
-  SectionHeader,
   Stack,
   Text,
   TextField,
@@ -172,6 +172,19 @@ export default function MovimientoDetalle() {
   }
 
   const movementKind = movement.kind === 'income' ? 'income' : 'expense';
+  // 15·4 · el medio con que se pagó, tal como está GUARDADO (no el del formulario).
+  const savedMethod =
+    facts.paymentMethods.find((item) => item.id === movement.paymentMethodId) ?? null;
+  const installmentsView =
+    movement.installments == null
+      ? null
+      : buildInstallmentsDetail({
+          today,
+          purchaseDate: movement.date,
+          schedule,
+          shared: null,
+          methodName: savedMethod?.name ?? null,
+        });
   const categories = movement.kind === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
   const cardSchedule =
     method?.kind === 'card' ? resolveCardPayment(method, movement.date) : null;
@@ -294,77 +307,45 @@ export default function MovimientoDetalle() {
 
         {!editing ? (
           <>
-            <Stack gap="2">
-              {/* 15 · el signo de la cifra grande es el de la fila: "−" sale, "+" entra. */}
-              <Money
-                amount={movement.amount}
-                variant="display"
-                sign={signOf(movementKind)}
-                accessibilityLabel={amountSpeech(movementKind, movement.amount, formatPesos)}
+            {installmentsView != null ? (
+              /* 15·4 · una compra en cuotas: el monto, el ciclo, la próxima y la lista.
+                 X-05 · el cronograma se muestra, pero una cuota no se edita. */
+              <InstallmentsDetail
+                detail={installmentsView}
+                footnote="Las cuotas no se editan de a una: se edita la compra y se regeneran."
               />
-              <Text variant="small" tone="secondary">
-                {[
-                  formatDayMonth(movement.date),
-                  prettyLabel(movement.category),
-                  movement.kind === 'income' ? 'Ingreso registrado' : method?.name,
-                ]
-                  .filter((part) => part != null && part !== '')
-                  .join(' · ')}
-              </Text>
-            </Stack>
+            ) : (
+              <>
+                <Stack gap="2">
+                  {/* 15 · el signo de la cifra grande es el de la fila: "−" sale, "+" entra. */}
+                  <Money
+                    amount={movement.amount}
+                    variant="display"
+                    sign={signOf(movementKind)}
+                    accessibilityLabel={amountSpeech(movementKind, movement.amount, formatPesos)}
+                  />
+                  <Text variant="small" tone="secondary">
+                    {[
+                      formatDayMonth(movement.date),
+                      prettyLabel(movement.category),
+                      movement.kind === 'income' ? 'Ingreso registrado' : method?.name,
+                    ]
+                      .filter((part) => part != null && part !== '')
+                      .join(' · ')}
+                  </Text>
+                </Stack>
 
-            {/* §22 · en qué resumen cae. */}
-            {cardSchedule != null && movement.installments == null && (
-              <Card tone="sunken">
-                <Text variant="small">
-                  Se paga en {formatMonth(cardSchedule.month, monthOf(movement.date))}
-                  {cardSchedule.approximate ? ' · fechas aproximadas' : ''}, dentro del
-                  resumen estimado de {method?.name}.
-                </Text>
-              </Card>
-            )}
-
-            {/* X-05 · el cronograma se muestra, pero una cuota no se edita. */}
-            {schedule.length > 0 && (
-              <Stack gap="4">
-                <SectionHeader title="Sus cuotas" />
-                <Card>
-                  <Stack gap="0">
-                    {schedule.map((item, index) => {
-                      const past = item.date != null && item.date <= today;
-                      return (
-                        <View key={item.index}>
-                          <Row
-                            justify="space-between"
-                            align="baseline"
-                            style={{ paddingVertical: theme.space['3'] }}
-                          >
-                            <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-                              <Text variant="smallMedium" tone={past ? 'muted' : 'default'}>
-                                {formatInstallment(item.index, item.count)}
-                              </Text>
-                              <Text variant="caption" tone="muted">
-                                {formatMonth(item.month, monthOf(today))}
-                                {/* G-06 · "Ya pasó", nunca "Pagado". */}
-                                {past ? ' · ya pasó' : ''}
-                              </Text>
-                            </View>
-                            <Money
-                              amount={item.amount}
-                              variant="smallMedium"
-                              tone={past ? 'muted' : 'default'}
-                            />
-                          </Row>
-                          {index < schedule.length - 1 && <Divider />}
-                        </View>
-                      );
-                    })}
-                  </Stack>
-                </Card>
-                <Text variant="caption" tone="muted">
-                  Las cuotas no se editan de a una: se edita la compra y se regeneran.
-                </Text>
-              </Stack>
+                {/* §22 · en qué resumen cae. */}
+                {cardSchedule != null && (
+                  <Card tone="sunken">
+                    <Text variant="small">
+                      Se paga en {formatMonth(cardSchedule.month, monthOf(movement.date))}
+                      {cardSchedule.approximate ? ' · fechas aproximadas' : ''}, dentro del
+                      resumen estimado de {method?.name}.
+                    </Text>
+                  </Card>
+                )}
+              </>
             )}
 
             <Stack gap="3">
