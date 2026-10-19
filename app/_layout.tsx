@@ -136,6 +136,7 @@ function RouteGuard() {
       'space',
       // Hojas de detalle: viven fuera de las pestanas (secciones 16 y 21).
       'movimiento',
+      'historial',
       'fijo',
       'tarjetas',
     ]);

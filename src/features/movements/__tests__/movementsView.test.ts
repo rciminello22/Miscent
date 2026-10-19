@@ -96,7 +96,7 @@ describe('rowDestination · qué abre cada tipo de fila', () => {
     ).toEqual({ kind: 'href', href: '/space/casa/pagos/p1' });
   });
 
-  it('SA-02 · de un espacio del que saliste no hay detalle, ni del gasto ni del pago', () => {
+  it('SA-02 · de un espacio del que saliste abre el detalle de solo lectura del historial, no el del espacio', () => {
     expect(
       rowDestination(
         row({
@@ -107,7 +107,7 @@ describe('rowDestination · qué abre cada tipo de fila', () => {
           formerSpace: true,
         }),
       ),
-    ).toBeNull();
+    ).toEqual({ kind: 'href', href: '/historial/casa/g1' });
     expect(
       rowDestination(
         row({
@@ -118,7 +118,7 @@ describe('rowDestination · qué abre cada tipo de fila', () => {
           formerSpace: true,
         }),
       ),
-    ).toBeNull();
+    ).toEqual({ kind: 'href', href: '/historial/casa/p1' });
   });
 });
 

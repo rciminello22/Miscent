@@ -108,11 +108,9 @@ export function useMovementActions() {
 
   function open(row: MovementRow) {
     // §16 · tocar abre el detalle, con Editar y Eliminar. Qué abre cada fila lo
-    // decide `rowDestination` (SA-02: de un espacio del que saliste, nada).
-    // Abrir el detalle NO cuenta como revisado (K10).
-    const destination = rowDestination(row);
-    if (destination == null) return;
-    router.push(destination.href as Href);
+    // decide `rowDestination` (SA-02: de un espacio del que saliste, su detalle
+    // de solo lectura). Abrir el detalle NO cuenta como revisado (K10).
+    router.push(rowDestination(row).href as Href);
   }
 
   function confirmDelete(row: MovementRow) {

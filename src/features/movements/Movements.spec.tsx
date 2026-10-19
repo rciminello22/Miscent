@@ -373,7 +373,7 @@ describe('MovementDayList · la lista agrupada por día', () => {
     expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: 'movement:2' }));
   });
 
-  it('SA-02 · un espacio del que saliste no tiene detalle: la fila no es un botón', async () => {
+  it('SA-02 · la fila de un espacio del que saliste abre su detalle de solo lectura, y lo dice', async () => {
     const former = groupRowsByDay(
       [
         row({
@@ -387,13 +387,15 @@ describe('MovementDayList · la lista agrupada por día', () => {
       ],
       TODAY,
     );
+    const onOpen = jest.fn();
     const view = await renderWithTheme(
-      <MovementDayList groups={former} showSpace onOpen={jest.fn()} />,
+      <MovementDayList groups={former} showSpace onOpen={onOpen} />,
     );
 
-    expect(view.queryByRole('button', { name: /Cena/ })).toBeNull();
-    expect(view.getByText('Cena')).toBeTruthy();
-    // Sin chevron ni rol de botón, pero con la pista de por qué no se abre.
+    // Es tocable como cualquier fila (UX-11): botón, y sigue diciendo que ya no sos miembro.
+    await fireEvent.press(view.getByRole('button', { name: /Cena/ }));
+    expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: 'shared:9' }));
     expect(view.getByText('Casa · Ya no sos miembro')).toBeTruthy();
+    expect(view.getByTestId('chevron', { includeHiddenElements: true })).toBeTruthy();
   });
 });

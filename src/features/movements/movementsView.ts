@@ -109,8 +109,9 @@ export type RowDetail = {
  * sobra (salvo uno del que ya saliste: eso se dice siempre).
  */
 export function rowDetail(row: MovementRow, options: { showSpace: boolean }): RowDetail {
-  // SA-02 · de un espacio del que saliste no hay detalle: la segunda línea dice
-  // por qué la fila no se abre. Lo demás (quién pagó, el efecto) no se ofrece.
+  // SA-02 · de un espacio del que saliste la segunda línea dice que ya no sos
+  // miembro. Lo demás (quién pagó, el efecto) no se ofrece: el detalle de
+  // solo lectura trae lo que quedó en la foto.
   if (row.formerSpace) {
     return {
       caption: [row.spaceName, FORMER_MEMBER].filter((part) => part != null).join(' · '),
@@ -131,8 +132,8 @@ export function rowDetail(row: MovementRow, options: { showSpace: boolean }): Ro
   return { caption: parts.length > 0 ? parts.join(' · ') : null, effect };
 }
 
-/** A dónde lleva tocar una fila: siempre a un detalle, o a nada. */
-export type RowDestination = { kind: 'href'; href: string } | null;
+/** A dónde lleva tocar una fila: siempre a un detalle. */
+export type RowDestination = { kind: 'href'; href: string };
 
 /**
  * Tocar una fila abre su detalle, se haya hecho donde se haya hecho:
@@ -144,14 +145,18 @@ export type RowDestination = { kind: 'href'; href: string } | null;
  *   - un pago entre miembros, el detalle del pago (`/space/[id]/pagos/[pid]`).
  *     Antes caía en el "resto" y abría el espacio: esa era la causa de que
  *     "tocar un movimiento de un espacio" te mandara adentro del espacio.
- *   - de un espacio del que saliste no hay detalle (SA-02)
+ *   - de un espacio del que saliste (SA-02), el detalle de SOLO LECTURA del
+ *     historial (`/historial/[spaceId]/[id]`): lo que quedó en la foto al salir
+ *     (SA-05). Nunca el del espacio, al que ya no entrás.
  *
  * La lista solo trae gastos del espacio, no sus fijos: la ocurrencia de un fijo
  * se abre desde el espacio (`occurrenceHref` ya distingue los dos casos).
  */
 export function rowDestination(row: MovementRow): RowDestination {
-  if (row.formerSpace) return null;
   const sourceId = stripPrefix(row.id);
+  if (row.formerSpace && row.spaceId != null) {
+    return { kind: 'href', href: `/historial/${row.spaceId}/${sourceId}` };
+  }
   if (row.spaceId == null) return { kind: 'href', href: `/movimiento/${sourceId}` };
   if (row.kind === 'member-payment') {
     return { kind: 'href', href: paymentHref(row.spaceId, sourceId) };

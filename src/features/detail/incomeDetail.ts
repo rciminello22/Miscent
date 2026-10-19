@@ -19,7 +19,7 @@ export const ONE_OFF_INCOME_LABEL = 'Extra';
 export type IncomeDetailCopy = { subtitle: string; facts: Fact[] };
 
 /** "12 de octubre"; con el año solo si es de otro. */
-function dateWithYear(date: IsoDate, today: IsoDate): string {
+export function dateWithYear(date: IsoDate, today: IsoDate): string {
   const year = parseDate(date).year;
   const text = formatLongDate(date);
   return year === parseDate(today).year ? text : `${text} de ${year}`;

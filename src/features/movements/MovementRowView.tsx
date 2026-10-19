@@ -47,10 +47,6 @@ export function MovementRowView({
   const isPayment = row.kind === 'member-payment';
   // 15 · "−" sale, "+" entra; solo lo que entra lleva color.
   const kind = signedKindOf(row);
-  // SA-02 · de un espacio del que saliste no hay detalle: la fila es informativa
-  // y no lleva chevron ni rol de botón (UX-11).
-  const opensDetail = !row.formerSpace;
-
   const CategoryIcon = row.category != null ? categoryMeta(row.category).icon : ArrowRightLeft;
   const EffectIcon = detail.effect != null ? EFFECT_ICON[detail.effect.kind] : null;
 
@@ -60,7 +56,7 @@ export function MovementRowView({
       onLongPress={onLongPress}
       haptic="none"
       scaleOnPress={false}
-      accessibilityRole={opensDetail ? 'button' : undefined}
+      accessibilityRole="button"
       accessibilityLabel={[
         prettyLabel(row.label),
         // Las palabras, no el signo: "gasto de $4.500", "te pagaron $20.000".
@@ -161,12 +157,10 @@ export function MovementRowView({
           )}
         </View>
 
-        {/* UX-11 · la fila abre el detalle. */}
-        {opensDetail && (
-          <View style={{ marginTop: 8 }}>
-            <RowChevron />
-          </View>
-        )}
+        {/* UX-11 · la fila abre el detalle (también la de un espacio del que saliste: SA-02). */}
+        <View style={{ marginTop: 8 }}>
+          <RowChevron />
+        </View>
       </Row>
     </Pressable>
   );

@@ -579,19 +579,20 @@ describe('bug · tocar una fila REAL de Movimientos abre su detalle, nunca el es
     });
   });
 
-  it('SA-02 · del espacio del que saliste, ni el gasto ni el pago abren nada', () => {
+  it('SA-02 · del espacio del que saliste, el gasto y el pago abren su detalle de solo lectura', () => {
+    const payment = memberPayment({ fromSlot: MARTINA, toSlot: RENZO, amount: 20_000, date: '2026-10-06' });
     const rows = build(
       { leftOn: '2026-10-10' },
       spaceFacts({
         expenses: [sharedExpense({ id: 'super', amount: 100_000, date: '2026-10-05', payerSlot: MARTINA })],
-        payments: [
-          memberPayment({ fromSlot: MARTINA, toSlot: RENZO, amount: 20_000, date: '2026-10-06' }),
-        ],
+        payments: [payment],
       }),
     );
 
     expect(rows).toHaveLength(2);
-    for (const row of rows) expect(rowDestination(row)).toBeNull();
+    expect(rows.map((row) => rowDestination(row).href).sort()).toEqual(
+      [`/historial/casa/${payment.id}`, '/historial/casa/super'].sort(),
+    );
   });
 });
 
