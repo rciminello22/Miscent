@@ -181,10 +181,16 @@ export function LedgerRow({
   reviewTag = null,
   amount = null,
   myShare = null,
+  sign = null,
+  ofTotal = null,
+  speech = null,
+  iconTone = 'default',
   muted = false,
   onPress,
 }: {
   icon?: LucideIcon;
+  /** 15 · `shared` pinta el recuadro del ícono en teal: el ⇄ de un pago entre miembros. */
+  iconTone?: 'default' | 'shared';
   title: string;
   /** Lo que el título no dice: "pagó Martina · cuota 2 de 6". */
   caption?: string | null;
@@ -194,25 +200,33 @@ export function LedgerRow({
   reviewTag?: string | null;
   amount?: number | null;
   myShare?: number | null;
+  /** 15 · "out" lleva "−" y "in" lleva "+" y color; sin `sign`, la cifra queda como está. */
+  sign?: 'out' | 'in' | null;
+  /** 15 · el total del gasto, en gris y sin signo: "de $100.000". */
+  ofTotal?: number | null;
+  /** 15 · lo que lee el lector de pantalla en vez del signo: "gasto de $50.000". */
+  speech?: string | null;
   muted?: boolean;
   onPress?: () => void;
 }) {
   const theme = useTheme();
+  const sharedIcon = iconTone === 'shared';
 
   const row = (
     <Row gap="3" align="flex-start">
       {Icon != null && (
         <View
+          testID="ledger-icon"
           style={{
             width: 32,
             height: 32,
             borderRadius: 10,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: theme.colors.surfaceSunken,
+            backgroundColor: sharedIcon ? theme.colors.sharedSoft : theme.colors.surfaceSunken,
           }}
         >
-          <Icon size={16} color={theme.colors.textSecondary} />
+          <Icon size={16} color={sharedIcon ? theme.colors.shared : theme.colors.textSecondary} />
         </View>
       )}
 
@@ -244,8 +258,14 @@ export function LedgerRow({
             amount={amount}
             variant="bodyMedium"
             numberOfLines={1}
+            sign={sign}
             tone={muted ? 'muted' : 'default'}
           />
+          {ofTotal != null && (
+            <Text variant="caption" tone="muted" tabular numberOfLines={1}>
+              de {formatPesos(ofTotal)}
+            </Text>
+          )}
           {myShare != null && (
             <Text variant="caption" tone="muted" numberOfLines={1}>
               tu parte <Money amount={myShare} variant="caption" tone="muted" />
@@ -273,7 +293,9 @@ export function LedgerRow({
       haptic="none"
       scaleOnPress={false}
       accessibilityRole="button"
-      accessibilityLabel={[title, caption, authorship].filter((part) => part != null).join('. ')}
+      accessibilityLabel={[title, speech, caption, authorship]
+        .filter((part) => part != null)
+        .join('. ')}
       // 44pt: el área mínima tocable (HIG), aunque la fila tenga una sola línea.
       style={{ paddingVertical: theme.space['3'], minHeight: 44 }}
     >

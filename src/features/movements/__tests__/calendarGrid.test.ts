@@ -35,6 +35,7 @@ function row(id: string, date: string): MovementRow {
     deletable: true,
     reviewTag: null,
     formerSpace: false,
+    paymentDirection: null,
   };
 }
 

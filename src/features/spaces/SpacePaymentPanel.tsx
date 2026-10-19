@@ -5,6 +5,7 @@ import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
 import { balanceSentence, paymentSentence } from './balanceCopy';
 import { PaymentDetail } from './PaymentDetail';
 import { reviewTag } from './reviewCopy';
+import { paymentDirectionOf, paymentRowTitle } from './spaceMovements';
 import { useSpaceReview } from './useSpaceActions';
 import { useDeleteMemberPayment, type useSpace } from './useSpaces';
 
@@ -71,7 +72,9 @@ export function SpacePaymentPanel({
 
   return (
     <PaymentDetail
-      sentence={paymentSentence(payment, derived.mySlot, derived.other.displayName)}
+      sentence={paymentRowTitle(payment, derived.mySlot, derived.other.displayName)}
+      amount={payment.amount}
+      direction={paymentDirectionOf(payment, derived.mySlot)}
       date={payment.date}
       recordedBy={{
         isMe: payment.recordedBySlot === derived.mySlot,

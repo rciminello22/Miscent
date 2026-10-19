@@ -36,6 +36,7 @@ import { canSaveForm, saveBlockReason } from '@/features/add/saveBlockReason';
 import { isValidInstallmentCount } from '@/features/add/installmentCount';
 import { PaymentMethodField } from '@/features/add/PaymentMethodField';
 import { useFeedback } from '@/features/shared/useFeedback';
+import { amountSpeech, signOf } from '@/features/movements/amountSign';
 import { MoveToSpace } from '@/features/movements/MoveToSpace';
 import {
   AudienceBadge,
@@ -170,6 +171,7 @@ export default function MovimientoDetalle() {
     );
   }
 
+  const movementKind = movement.kind === 'income' ? 'income' : 'expense';
   const categories = movement.kind === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
   const cardSchedule =
     method?.kind === 'card' ? resolveCardPayment(method, movement.date) : null;
@@ -293,7 +295,13 @@ export default function MovimientoDetalle() {
         {!editing ? (
           <>
             <Stack gap="2">
-              <Money amount={movement.amount} variant="display" />
+              {/* 15 · el signo de la cifra grande es el de la fila: "−" sale, "+" entra. */}
+              <Money
+                amount={movement.amount}
+                variant="display"
+                sign={signOf(movementKind)}
+                accessibilityLabel={amountSpeech(movementKind, movement.amount, formatPesos)}
+              />
               <Text variant="small" tone="secondary">
                 {[
                   formatDayMonth(movement.date),

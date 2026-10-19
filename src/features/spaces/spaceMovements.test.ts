@@ -7,7 +7,11 @@ import {
   dayHeading,
   groupMovementsByDay,
   movementsDoorCaption,
+  occurrenceFigures,
+  PAYMENT_CAPTION,
   paymentAuthorshipLine,
+  paymentDirectionOf,
+  paymentRowTitle,
   paymentTitle,
   taggedOccurrenceIds,
 } from './spaceMovements';
@@ -169,6 +173,47 @@ describe('paymentTitle', () => {
   it('"Pago de Martina" o "Tu pago", sin signos de deuda', () => {
     expect(paymentTitle(payment('p', TODAY, 2), 1, 'Martina')).toBe('Pago de Martina');
     expect(paymentTitle(payment('p', TODAY, 1), 1, 'Martina')).toBe('Tu pago');
+  });
+});
+
+describe('15 · un pago en la lista del espacio: el título sin cifra y la dirección de quien mira', () => {
+  it('"Martina te pagó" / "Le pagaste a Martina": la cifra va aparte, con su signo', () => {
+    expect(paymentRowTitle(payment('p', TODAY, 2), 1, 'Martina')).toBe('Martina te pagó');
+    expect(paymentRowTitle(payment('p', TODAY, 1), 1, 'Martina')).toBe('Le pagaste a Martina');
+  });
+
+  it('la dirección es la de quien mira: el mismo pago lo ve el otro al revés', () => {
+    expect(paymentDirectionOf(payment('p', TODAY, 2), 1)).toBe('received');
+    expect(paymentDirectionOf(payment('p', TODAY, 1), 1)).toBe('sent');
+    expect(paymentDirectionOf(payment('p', TODAY, 2), 2)).toBe('sent');
+    expect(paymentDirectionOf(payment('p', TODAY, 1), 2)).toBe('received');
+  });
+
+  it('la segunda línea es la misma en todos lados: "Entre ustedes · no cambia tu radar"', () => {
+    expect(PAYMENT_CAPTION).toBe('Entre ustedes · no cambia tu radar');
+  });
+});
+
+describe('15 · un gasto en la lista del espacio: tu parte arriba, el total en gris', () => {
+  it('50/50: −$50.000 de $100.000', () => {
+    expect(occurrenceFigures({ ...occurrence('a', TODAY), amount: 100_000, shares: { slot1: 50_000, slot2: 50_000 } }, 1)).toEqual({
+      amount: 50_000,
+      ofTotal: 100_000,
+    });
+  });
+
+  it('es TU parte aunque haya pagado el otro, y se lee según tu lugar', () => {
+    const luz = { ...occurrence('luz', TODAY), amount: 45_000, shares: { slot1: 22_500, slot2: 22_500 }, payerSlot: 2 as const };
+    expect(occurrenceFigures(luz, 1).amount).toBe(22_500);
+
+    const custom = { ...occurrence('c', TODAY), amount: 100_000, shares: { slot1: 30_000, slot2: 70_000 } };
+    expect(occurrenceFigures(custom, 1).amount).toBe(30_000);
+    expect(occurrenceFigures(custom, 2).amount).toBe(70_000);
+  });
+
+  it('si tu parte es el total, no repite "de $X"', () => {
+    const all = { ...occurrence('a', TODAY), amount: 100, shares: { slot1: 100, slot2: 0 } };
+    expect(occurrenceFigures(all, 1)).toEqual({ amount: 100, ofTotal: null });
   });
 });
 

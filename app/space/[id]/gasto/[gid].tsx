@@ -10,7 +10,8 @@ import { scheduleInstallments } from '@domain/installments';
 import { calculateSharedBalance } from '@domain/shared-balance';
 import { resolveShares } from '@domain/split';
 import type { Category, SharedExpense, Split } from '@domain/types';
-import { formatDayMonth, formatInstallment, formatMonth } from '@/lib/format';
+import { formatDayMonth, formatInstallment, formatMonth, formatPesos } from '@/lib/format';
+import { amountSpeech } from '@/features/movements/amountSign';
 import { queryKeys } from '@/data/queryClient';
 import {
   endSharedInstallmentsNow,
@@ -441,7 +442,18 @@ export default function GastoCompartido() {
         {!editing ? (
           <>
             <Stack gap="2">
-              <Money amount={expense.amount} variant="display" />
+              {/* 15 · la cifra grande es TU PARTE (K9) con "−"; el total, en gris y sin signo. */}
+              <Money
+                amount={myShare}
+                variant="display"
+                sign="out"
+                accessibilityLabel={amountSpeech('expense', myShare, formatPesos)}
+              />
+              {expense.amount !== myShare && (
+                <Text variant="caption" tone="muted" tabular>
+                  de {formatPesos(expense.amount)}
+                </Text>
+              )}
               <Text variant="small" tone="secondary">
                 {[
                   formatDayMonth(expense.date),

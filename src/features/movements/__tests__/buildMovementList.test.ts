@@ -264,6 +264,46 @@ describe('§16 · la lista de Movimientos', () => {
     });
   });
 
+  it('15 · la dirección de un pago es la de quien mira: te pagaron o pagaste', () => {
+    const casa = spaceFacts({
+      payments: [
+        memberPayment({ fromSlot: MARTINA, toSlot: RENZO, amount: 20_000, date: '2026-10-12' }),
+        memberPayment({ fromSlot: RENZO, toSlot: MARTINA, amount: 20_000, date: '2026-10-10' }),
+      ],
+    });
+    const asRenzo = buildMovementList({
+      facts: personalFacts({ spaces: [membership({ facts: casa, mySlot: RENZO })] }),
+      ...options,
+    });
+    const asMartina = buildMovementList({
+      facts: personalFacts({ spaces: [membership({ facts: casa, mySlot: MARTINA })] }),
+      ...options,
+    });
+
+    expect(asRenzo.map((item) => item.paymentDirection)).toEqual(['received', 'sent']);
+    // El mismo pago lo ve Martina al revés.
+    expect(asMartina.map((item) => item.paymentDirection)).toEqual(['sent', 'received']);
+  });
+
+  it('lo que no es un pago entre miembros no tiene dirección', () => {
+    const rows = buildMovementList({
+      facts: personalFacts({
+        movements: [movement({ amount: 4_500, date: '2026-10-13' })],
+        spaces: [
+          membership({
+            facts: spaceFacts({
+              expenses: [sharedExpense({ amount: 100_000, date: '2026-10-05', payerSlot: RENZO })],
+            }),
+            mySlot: RENZO,
+          }),
+        ],
+      }),
+      ...options,
+    });
+
+    expect(rows.map((item) => item.paymentDirection)).toEqual([null, null]);
+  });
+
   it('C-05 · si pagó el otro, no se muestra ningún medio de pago', () => {
     // El gasto lo pagó Martina con SU tarjeta: Renzo no puede saber con qué.
     const casa = spaceFacts({

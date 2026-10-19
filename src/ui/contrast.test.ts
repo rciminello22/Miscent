@@ -169,6 +169,64 @@ describe('Decisión 1A · el recipiente del exceso sobre el panel (brandSoft)', 
   }
 });
 
+/**
+ * 15 · la regla de signos: lo que entra se pinta en `brand` como TEXTO. Medido
+ * sobre cada fondo donde aparece:
+ *   - la fila de una lista y el detalle (cifra grande, 34pt): background
+ *   - una Card y la hoja (Sheet): surface
+ *   - el panel de un ingreso fijo (cifra grande): brandSoft
+ *   - el recuadro teal de lo compartido: sharedSoft
+ *
+ * Texto normal: 4,5:1. Texto grande (>= 24pt, la cifra `display` de 34pt):
+ * 3:1 (WCAG 1.4.3). Las filas usan 16pt, así que van por 4,5.
+ */
+const LARGE_TEXT = 3;
+
+describe('15 · el "+" en brand como texto de una fila (4,5:1)', () => {
+  const rowSurfaces: Record<keyof typeof colorSchemes, (keyof ThemeColors)[]> = {
+    light: ['background', 'surface', 'surfaceSunken'],
+    dark: ['background', 'surface', 'surfaceSunken'],
+  };
+
+  for (const scheme of ['light', 'dark'] as const) {
+    for (const surface of rowSurfaces[scheme]) {
+      it(`${scheme} · brand sobre ${surface}`, () => {
+        const colors = colorSchemes[scheme];
+        expect(contrast(colors.brand, colors[surface])).toBeGreaterThanOrEqual(AA);
+      });
+    }
+  }
+});
+
+describe('15 · el "+" en brand como cifra grande (>= 24pt, 3:1)', () => {
+  const bigSurfaces: (keyof ThemeColors)[] = [
+    'background',
+    'surface',
+    'surfaceRaised',
+    'surfaceSunken',
+    'brandSoft',
+    'sharedSoft',
+  ];
+
+  for (const scheme of ['light', 'dark'] as const) {
+    for (const surface of bigSurfaces) {
+      it(`${scheme} · brand sobre ${surface}`, () => {
+        const colors = colorSchemes[scheme];
+        expect(contrast(colors.brand, colors[surface])).toBeGreaterThanOrEqual(LARGE_TEXT);
+      });
+    }
+  }
+});
+
+describe('15 · el ⇄ de un pago entre miembros: `shared` sobre su recuadro (gráfico, 3:1)', () => {
+  for (const scheme of ['light', 'dark'] as const) {
+    it(`${scheme} · shared sobre sharedSoft`, () => {
+      const colors = colorSchemes[scheme];
+      expect(contrast(colors.shared, colors.sharedSoft)).toBeGreaterThanOrEqual(GRAPHIC);
+    });
+  }
+});
+
 describe('UX-03 · contraste de las barras por mes (MonthBar, >= 3:1 contra su track)', () => {
   for (const scheme of ['light', 'dark'] as const) {
     const colors = colorSchemes[scheme];

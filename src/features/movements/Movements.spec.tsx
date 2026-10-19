@@ -1,4 +1,6 @@
+import { StyleSheet, type TextStyle } from 'react-native';
 import { fireEvent, renderWithTheme } from '@/test/render';
+import { colorSchemes } from '@/ui/colors';
 import type { MovementRow } from './buildMovementList';
 import { FilterSegmented } from './FilterSegmented';
 import { MovementDayList } from './MovementRowView';
@@ -31,6 +33,7 @@ function row(overrides: Partial<MovementRow> & { id: string; date: string }): Mo
     deletable: true,
     reviewTag: null,
     formerSpace: false,
+    paymentDirection: null,
     ...overrides,
   };
 }
@@ -199,9 +202,121 @@ describe('MovementDayList · la lista agrupada por día', () => {
       <MovementDayList groups={groups} showSpace onOpen={jest.fn()} />,
     );
 
-    expect(view.getByText('$50.000')).toBeTruthy();
+    expect(view.getByText('−$50.000')).toBeTruthy();
     expect(view.getByText('de $100.000')).toBeTruthy();
     expect(view.getByText('Casa · pagó vos')).toBeTruthy();
+  });
+
+  describe('15 · la regla de signos en la fila', () => {
+    const colorOf = (node: { props: { style?: unknown } }) =>
+      StyleSheet.flatten(node.props.style as TextStyle).color;
+
+    const signed = groupRowsByDay(
+      [
+        row({ id: 'movement:1', date: TODAY, label: 'cafe', amount: 4_500 }),
+        row({
+          id: 'movement:2',
+          date: TODAY,
+          label: 'Sueldo',
+          kind: 'personal-income',
+          category: 'sueldo',
+          amount: 1_200_000,
+          effect: 'Ingreso registrado',
+          effectKind: 'income',
+        }),
+        row({
+          id: 'payment:3',
+          date: TODAY,
+          label: 'Martina te pagó',
+          kind: 'member-payment',
+          paymentDirection: 'received',
+          category: null,
+          amount: 20_000,
+          spaceId: 'casa',
+          spaceName: 'Casa',
+          note: 'no cambia tu radar',
+          audience: { kind: 'shared', otherMemberName: 'Martina' },
+        }),
+        row({
+          id: 'payment:4',
+          date: TODAY,
+          label: 'Le pagaste a Martina',
+          kind: 'member-payment',
+          paymentDirection: 'sent',
+          category: null,
+          amount: 15_000,
+          spaceId: 'casa',
+          spaceName: 'Casa',
+          note: 'no cambia tu radar',
+          audience: { kind: 'shared', otherMemberName: 'Martina' },
+        }),
+      ],
+      TODAY,
+    );
+
+    it('lo que sale lleva el menos tipográfico, en texto normal (nunca rojo)', async () => {
+      const view = await renderWithTheme(
+        <MovementDayList groups={signed} showSpace onOpen={jest.fn()} />,
+      );
+
+      const cafe = view.getByText('−$4.500');
+      expect(colorOf(cafe)).toBe(colorSchemes.light.text);
+      expect(colorOf(cafe)).not.toBe(colorSchemes.light.danger);
+    });
+
+    it('lo que entra lleva el más y el color brand: un ingreso y un pago recibido', async () => {
+      const view = await renderWithTheme(
+        <MovementDayList groups={signed} showSpace onOpen={jest.fn()} />,
+      );
+
+      expect(colorOf(view.getByText('+$1.200.000'))).toBe(colorSchemes.light.brand);
+      expect(colorOf(view.getByText('+$20.000'))).toBe(colorSchemes.light.brand);
+    });
+
+    it('un pago que hiciste vos sale: −, sin color, y el ⇄ no va junto al monto', async () => {
+      const view = await renderWithTheme(
+        <MovementDayList groups={signed} showSpace onOpen={jest.fn()} />,
+      );
+
+      expect(colorOf(view.getByText('−$15.000'))).toBe(colorSchemes.light.text);
+      // El monto es solo el monto: el ⇄ vive en el recuadro de la izquierda.
+      expect(view.queryByText(/⇄/)).toBeNull();
+    });
+
+    it('el pago lleva el ⇄ como ícono a la izquierda, en un recuadro teal (shared)', async () => {
+      const view = await renderWithTheme(
+        <MovementDayList groups={signed} showSpace onOpen={jest.fn()} />,
+      );
+
+      const tiles = view.getAllByTestId('payment-icon');
+      expect(tiles).toHaveLength(2);
+      for (const tile of tiles) {
+        expect(StyleSheet.flatten(tile.props.style).backgroundColor).toBe(
+          colorSchemes.light.sharedSoft,
+        );
+      }
+      expect(view.getAllByText('Casa · no cambia tu radar')).toHaveLength(2);
+    });
+
+    it('el total gris de un compartido no lleva signo', async () => {
+      const view = await renderWithTheme(
+        <MovementDayList groups={groups} showSpace onOpen={jest.fn()} />,
+      );
+
+      expect(view.getByText('de $100.000')).toBeTruthy();
+      expect(view.queryByText(/[+−]\$100\.000/)).toBeNull();
+    });
+
+    it('lector de pantalla: gasto de, ingreso de, te pagaron, pagaste (nunca "menos" ni "más")', async () => {
+      const view = await renderWithTheme(
+        <MovementDayList groups={signed} showSpace onOpen={jest.fn()} />,
+      );
+
+      expect(view.getByRole('button', { name: 'Cafe, gasto de $4.500' })).toBeTruthy();
+      expect(view.getByRole('button', { name: 'Sueldo, ingreso de $1.200.000' })).toBeTruthy();
+      expect(view.getByRole('button', { name: 'Martina te pagó, te pagaron $20.000' })).toBeTruthy();
+      expect(view.getByRole('button', { name: 'Le pagaste a Martina, pagaste $15.000' })).toBeTruthy();
+    });
   });
 
   it('dentro de un espacio el nombre sobra', async () => {
@@ -243,7 +358,7 @@ describe('MovementDayList · la lista agrupada por día', () => {
     expect(title.props.numberOfLines).toBe(1);
     expect(title.props.ellipsizeMode).toBe('tail');
 
-    const amount = view.getByText('$999.999.999');
+    const amount = view.getByText('−$999.999.999');
     expect(amount.props.numberOfLines).toBe(1);
     expect(amount.props.adjustsFontSizeToFit).toBeUndefined();
   });
@@ -254,7 +369,7 @@ describe('MovementDayList · la lista agrupada por día', () => {
       <MovementDayList groups={groups} showSpace onOpen={onOpen} />,
     );
 
-    await fireEvent.press(view.getByRole('button', { name: 'Zapatillas' }));
+    await fireEvent.press(view.getByRole('button', { name: 'Zapatillas, gasto de $180.000' }));
     expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: 'movement:2' }));
   });
 

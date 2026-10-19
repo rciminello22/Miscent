@@ -39,6 +39,18 @@ describe('formato de montos', () => {
     expect(formatPesos(-35_000, { sign: 'never' })).toBe('$35.000');
   });
 
+  it('15 · un movimiento lleva el menos tipográfico si sale y el más si entra', () => {
+    expect(formatPesos(4_500, { sign: 'out' })).toBe('−$4.500');
+    expect(formatPesos(1_200_000, { sign: 'in' })).toBe('+$1.200.000');
+    // El signo lo da el sentido, no la cifra: nunca se duplica.
+    expect(formatPesos(-4_500, { sign: 'out' })).toBe('−$4.500');
+    expect(formatPesos(-4_500, { sign: 'in' })).toBe('+$4.500');
+    // El menos es el tipográfico (U+2212), no el guion.
+    expect(formatPesos(4_500, { sign: 'out' }).startsWith('−')).toBe(true);
+    // Un cero no es un movimiento: sin signo.
+    expect(formatPesos(0, { sign: 'out' })).toBe('$0');
+  });
+
   it('formatNumber deja el monto sin el signo de pesos', () => {
     expect(formatNumber(1_200_000)).toBe('1.200.000');
   });

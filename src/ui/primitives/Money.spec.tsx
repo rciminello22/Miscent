@@ -1,4 +1,6 @@
+import { StyleSheet } from 'react-native';
 import { renderWithTheme } from '@/test/render';
+import { colorSchemes } from '../colors';
 import { Money } from './Money';
 
 /**
@@ -30,6 +32,35 @@ describe('Money · cifras que se ajustan', () => {
 
     expect(text.props.adjustsFontSizeToFit).toBeUndefined();
     expect(text.props.numberOfLines).toBeUndefined();
+  });
+
+  it('15 · sign="out": el menos tipográfico, en texto normal (nunca rojo)', async () => {
+    const view = await renderWithTheme(<Money amount={4_500} sign="out" variant="bodyMedium" />);
+    const text = view.getByText('−$4.500');
+    const style = StyleSheet.flatten(text.props.style);
+
+    expect(style.color).toBe(colorSchemes.light.text);
+    expect(style.color).not.toBe(colorSchemes.light.danger);
+  });
+
+  it('15 · sign="in": el más y el color brand', async () => {
+    const view = await renderWithTheme(<Money amount={85_000} sign="in" variant="bodyMedium" />);
+    const text = view.getByText('+$85.000');
+
+    expect(StyleSheet.flatten(text.props.style).color).toBe(colorSchemes.light.brand);
+  });
+
+  it('15 · sin sign sigue como siempre (sin signo ni color)', async () => {
+    const view = await renderWithTheme(<Money amount={4_500} variant="bodyMedium" />);
+
+    expect(view.getByText('$4.500')).toBeTruthy();
+    expect(view.queryByText(/[+−]/)).toBeNull();
+  });
+
+  it('15 · sign=null equivale a no pasar nada', async () => {
+    const view = await renderWithTheme(<Money amount={4_500} sign={null} variant="bodyMedium" />);
+
+    expect(view.getByText('$4.500')).toBeTruthy();
   });
 
   it('nunca abrevia', async () => {

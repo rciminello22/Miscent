@@ -60,6 +60,12 @@ export type MovementRow = {
   reviewTag: string | null;
   /** SA-05 · de un espacio del que ya saliste: no se puede abrir (SA-02). */
   formerSpace: boolean;
+  /**
+   * 15 · un pago entre miembros entra o sale según QUIEN MIRA: "Martina te
+   * pagó" es `received` (+) y "Le pagaste a Martina" es `sent` (−). `null` si
+   * la fila no es un pago.
+   */
+  paymentDirection: 'received' | 'sent' | null;
 };
 
 export type MovementFilter = 'all' | 'personal' | string;
@@ -127,6 +133,7 @@ export function buildMovementList(args: {
       // Lo propio nunca es para revisar.
       reviewTag: null,
       formerSpace: false,
+      paymentDirection: null,
     });
   }
 
@@ -201,6 +208,7 @@ export function buildMovementList(args: {
         deletable: false,
         reviewTag: tagFor(expense.id),
         formerSpace,
+        paymentDirection: null,
       });
     }
 
@@ -232,6 +240,7 @@ export function buildMovementList(args: {
         deletable: false,
         reviewTag: tagFor(payment.id),
         formerSpace,
+        paymentDirection: received ? 'received' : 'sent',
       });
     }
   }

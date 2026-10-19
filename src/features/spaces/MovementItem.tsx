@@ -1,14 +1,18 @@
 import { ArrowRightLeft } from 'lucide-react-native';
 import type { SpaceOccurrence } from '@domain/occurrences';
 import type { MemberPayment } from '@domain/types';
-import { formatInstallment } from '@/lib/format';
+import { formatInstallment, formatPesos } from '@/lib/format';
 import { categoryMeta, prettyLabel } from '@/features/add/categories';
-import { paymentSentence } from './balanceCopy';
+import { amountSpeech, signOf } from '@/features/movements/amountSign';
 import { LedgerRow } from './SpaceRows';
 import { reviewTag } from './reviewCopy';
 import {
   authorshipLine,
+  occurrenceFigures,
+  PAYMENT_CAPTION,
   paymentAuthorshipLine,
+  paymentDirectionOf,
+  paymentRowTitle,
   type SpaceMovement,
 } from './spaceMovements';
 import type { useSpace } from './useSpaces';
@@ -52,15 +56,20 @@ export function MovementItem({
 
   if (movement.kind === 'payment') {
     const { payment } = movement;
+    // 15 · entra o sale según quien mira; el ⇄ vive en el recuadro, no en el monto.
+    const direction = paymentDirectionOf(payment, derived.mySlot);
+    const kind = direction === 'received' ? 'payment-received' : 'payment-sent';
     return (
       <LedgerRow
         icon={ArrowRightLeft}
-        title={paymentSentence(payment, derived.mySlot, otherName)}
-        caption="pago entre ustedes"
+        iconTone="shared"
+        title={paymentRowTitle(payment, derived.mySlot, otherName)}
+        caption={PAYMENT_CAPTION}
         authorship={paymentAuthorshipLine(payment.recordedBySlot, derived.mySlot, otherName)}
         reviewTag={derived.pendingReview.has(payment.id) ? reviewTag(otherName, 'created') : null}
         amount={payment.amount}
-        muted
+        sign={signOf(kind)}
+        speech={amountSpeech(kind, payment.amount, formatPesos)}
         onPress={() => onOpenPayment(payment)}
       />
     );
@@ -68,7 +77,8 @@ export function MovementItem({
 
   const { occurrence } = movement;
   const iPaid = occurrence.payerSlot === derived.mySlot;
-  const myShare = derived.mySlot === 1 ? occurrence.shares.slot1 : occurrence.shares.slot2;
+  // 15 · tu parte arriba con "−" y el total en gris, como en Movimientos.
+  const figures = occurrenceFigures(occurrence, derived.mySlot);
   const reason = derived.pendingReview.get(occurrence.sourceId);
 
   return (
@@ -87,8 +97,10 @@ export function MovementItem({
         .join(' · ')}
       authorship={occurrenceAuthorship(derived, occurrence)}
       reviewTag={tagged && reason != null ? reviewTag(otherName, reason) : null}
-      amount={occurrence.amount}
-      myShare={myShare}
+      amount={figures.amount}
+      sign="out"
+      ofTotal={figures.ofTotal}
+      speech={amountSpeech('expense', figures.amount, formatPesos)}
       // Un gasto se edita desde su detalle; un fijo, desde el fijo (§21).
       onPress={() => onOpenOccurrence(occurrence)}
     />

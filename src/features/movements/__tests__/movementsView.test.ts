@@ -36,6 +36,7 @@ function row(overrides: Partial<MovementRow> & { id: string; date: string }): Mo
     deletable: true,
     reviewTag: null,
     formerSpace: false,
+    paymentDirection: null,
     ...overrides,
   };
 }

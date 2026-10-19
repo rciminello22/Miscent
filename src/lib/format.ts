@@ -13,10 +13,28 @@ import type { IsoDate, Month } from '@domain/calendar';
 import { parseDate, parseMonth } from '@domain/calendar';
 import type { Pesos } from '@domain/money';
 
+/**
+ * Cómo se firma un monto:
+ *   - `auto`  · solo el negativo lleva "−" (el comportamiento de siempre)
+ *   - `never` · sin signo: el texto de alrededor ya explica el sentido
+ *   - `out`   · es plata que SALE de un movimiento: "−$4.500"
+ *   - `in`    · es plata que ENTRA: "+$1.200.000"
+ * `out` e `in` mandan sobre el signo del número: lo dice el sentido, no la cifra.
+ */
+export type PesosSign = 'auto' | 'never' | 'out' | 'in';
+
 /** $1.200.000 · separador de miles con punto, sin decimales. */
-export function formatPesos(amount: Pesos, options?: { sign?: 'auto' | 'never' }): string {
-  const showSign = (options?.sign ?? 'auto') === 'auto' && amount < 0;
+export function formatPesos(amount: Pesos, options?: { sign?: PesosSign }): string {
+  const sign = options?.sign ?? 'auto';
   const digits = Math.abs(Math.round(amount)).toString();
+  const isZero = digits === '0';
+
+  let prefix = '';
+  if (!isZero) {
+    if (sign === 'out') prefix = '−';
+    else if (sign === 'in') prefix = '+';
+    else if (sign === 'auto' && amount < 0) prefix = '−';
+  }
 
   let grouped = '';
   for (let index = 0; index < digits.length; index++) {
@@ -24,7 +42,7 @@ export function formatPesos(amount: Pesos, options?: { sign?: 'auto' | 'never' }
     grouped += digits[index];
   }
 
-  return `${showSign ? '−' : ''}$${grouped}`;
+  return `${prefix}$${grouped}`;
 }
 
 /** Sin el signo $, para cuando el contexto ya lo dice. */

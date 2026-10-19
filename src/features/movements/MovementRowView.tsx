@@ -12,6 +12,7 @@ import {
   Text,
 } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
+import { amountSpeech, signOf, signedKindOf } from './amountSign';
 import type { MovementRow } from './buildMovementList';
 import { rowDetail, type DayGroup } from './movementsView';
 
@@ -44,7 +45,8 @@ export function MovementRowView({
   const theme = useTheme();
   const detail = rowDetail(row, { showSpace });
   const isPayment = row.kind === 'member-payment';
-  const isIncome = row.kind === 'personal-income';
+  // 15 · "−" sale, "+" entra; solo lo que entra lleva color.
+  const kind = signedKindOf(row);
   // SA-02 · de un espacio del que saliste no hay detalle: la fila es informativa
   // y no lleva chevron ni rol de botón (UX-11).
   const opensDetail = !row.formerSpace;
@@ -59,21 +61,33 @@ export function MovementRowView({
       haptic="none"
       scaleOnPress={false}
       accessibilityRole={opensDetail ? 'button' : undefined}
-      accessibilityLabel={prettyLabel(row.label)}
+      accessibilityLabel={[
+        prettyLabel(row.label),
+        // Las palabras, no el signo: "gasto de $4.500", "te pagaron $20.000".
+        amountSpeech(kind, row.amount, formatPesos),
+        row.total != null && row.total !== row.amount ? `de ${formatPesos(row.total)}` : null,
+      ]
+        .filter((part) => part != null)
+        .join(', ')}
       style={{ paddingVertical: theme.space['3'] }}
     >
       <Row gap="3" align="flex-start">
+        {/* El ⇄ de un pago entre miembros vive acá, en un recuadro teal, y no junto al monto. */}
         <View
+          testID={isPayment ? 'payment-icon' : undefined}
           style={{
             width: 36,
             height: 36,
             borderRadius: 11,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: theme.colors.surfaceSunken,
+            backgroundColor: isPayment ? theme.colors.sharedSoft : theme.colors.surfaceSunken,
           }}
         >
-          <CategoryIcon size={18} color={theme.colors.textSecondary} />
+          <CategoryIcon
+            size={18}
+            color={isPayment ? theme.colors.shared : theme.colors.textSecondary}
+          />
         </View>
 
         {/* Lo de la izquierda cede antes de empujar el monto (Montos · 11). */}
@@ -138,12 +152,7 @@ export function MovementRowView({
 
         {/* El monto nunca se corta: no se encoge (flexShrink 0) y va en una línea. */}
         <View style={{ alignItems: 'flex-end', gap: 2, flexShrink: 0 }}>
-          <Money
-            amount={row.amount}
-            variant="bodyMedium"
-            numberOfLines={1}
-            tone={isIncome ? 'brand' : isPayment ? 'shared' : 'default'}
-          />
+          <Money amount={row.amount} variant="bodyMedium" numberOfLines={1} sign={signOf(kind)} />
           {/* §16 · el total del gasto compartido, en gris. */}
           {row.total != null && row.total !== row.amount && (
             <Text variant="caption" tone="muted" tabular numberOfLines={1}>

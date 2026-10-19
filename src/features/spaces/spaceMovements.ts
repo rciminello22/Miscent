@@ -97,6 +97,35 @@ export function paymentTitle(payment: MemberPayment, mySlot: Slot, otherName: st
 }
 
 /**
+ * 15 · el título de un pago en la lista del espacio, sin la cifra: el monto va
+ * aparte, con su signo ("+$20.000" / "−$20.000").
+ */
+export function paymentRowTitle(payment: MemberPayment, mySlot: Slot, otherName: string): string {
+  return payment.fromSlot === mySlot ? `Le pagaste a ${otherName}` : `${otherName} te pagó`;
+}
+
+/** 15 · entra o sale según QUIEN MIRA: el mismo pago lo ve el otro al revés. */
+export function paymentDirectionOf(payment: MemberPayment, mySlot: Slot): 'received' | 'sent' {
+  return payment.toSlot === mySlot ? 'received' : 'sent';
+}
+
+/** P-04 · dentro del espacio, la segunda línea de todo pago entre miembros. */
+export const PAYMENT_CAPTION = 'Entre ustedes · no cambia tu radar';
+
+/**
+ * 15 · la cifra de un gasto en la lista del espacio: TU PARTE arriba (K9) y el
+ * total en gris, sin signo ("−$50.000" y "de $100.000"). Lo mismo que dice
+ * Movimientos: el listado no puede decir otra cosa en un lado y en el otro.
+ */
+export function occurrenceFigures(
+  occurrence: SpaceOccurrence,
+  mySlot: Slot,
+): { amount: number; ofTotal: number | null } {
+  const mine = mySlot === 1 ? occurrence.shares.slot1 : occurrence.shares.slot2;
+  return { amount: mine, ofTotal: mine === occurrence.amount ? null : occurrence.amount };
+}
+
+/**
  * K3 · quién cargó y quién editó un registro. Un registro de antes de guardar
  * quién lo cargó no se inventa.
  */

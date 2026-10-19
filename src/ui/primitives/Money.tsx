@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { formatPesos } from '@/lib/format';
+import { formatPesos, type PesosSign } from '@/lib/format';
 import type { Pesos } from '@domain/money';
 import { fitPropsFor } from '../amountFit';
 import { duration } from '../motion';
@@ -8,8 +8,17 @@ import { Text, type TextProps } from './Text';
 
 export type MoneyProps = Omit<TextProps, 'children' | 'tabular'> & {
   amount: Pesos;
-  /** `never` oculta el signo: el texto de alrededor ya explica el sentido (N-08). */
-  sign?: 'auto' | 'never';
+  /**
+   * El signo de la cifra:
+   *   - `out` · un movimiento que sale: "−$4.500", en texto normal (nunca rojo)
+   *   - `in`  · un movimiento que entra: "+$85.000", en `brand`: solo lo que
+   *     entra lleva color
+   *   - `never` oculta el signo: el texto de alrededor ya explica el sentido (N-08)
+   *   - `auto` (o sin pasar) · solo el negativo lleva "−"
+   * `out` e `in` son para los movimientos de plata (filas y detalles); los
+   * totales, el saldo y los compromisos no los llevan.
+   */
+  sign?: PesosSign | null;
   /**
    * Cuenta desde el valor anterior hasta el nuevo.
    *
@@ -21,7 +30,7 @@ export type MoneyProps = Omit<TextProps, 'children' | 'tabular'> & {
   animate?: boolean;
 };
 
-export function Money({ amount, sign = 'auto', animate = false, ...rest }: MoneyProps) {
+export function Money({ amount, sign, animate = false, ...rest }: MoneyProps) {
   const theme = useTheme();
   const [shown, setShown] = useState(amount);
   const previous = useRef(amount);
@@ -63,10 +72,12 @@ export function Money({ amount, sign = 'auto', animate = false, ...rest }: Money
     <Text
       {...rest}
       {...fit}
+      // Solo lo que entra lleva color: el signo `in` pone `brand`.
+      tone={sign === 'in' ? 'brand' : rest.tone}
       style={fit == null ? rest.style : [{ flexShrink: 1 }, rest.style]}
       tabular
     >
-      {formatPesos(shown, { sign })}
+      {formatPesos(shown, { sign: sign ?? 'auto' })}
     </Text>
   );
 }

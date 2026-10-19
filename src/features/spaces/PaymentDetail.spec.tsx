@@ -1,5 +1,7 @@
+import { StyleSheet } from 'react-native';
 import { fireEvent } from '@testing-library/react-native';
 import { renderWithTheme } from '@/test/render';
+import { colorSchemes } from '@/ui/colors';
 import { PaymentDetail } from './PaymentDetail';
 
 /**
@@ -11,7 +13,9 @@ import { PaymentDetail } from './PaymentDetail';
  */
 
 const base = {
-  sentence: 'Martina te pagó $20.000',
+  sentence: 'Martina te pagó',
+  amount: 20_000,
+  direction: 'received' as const,
   date: '2026-10-08',
   recordedBy: { isMe: false, name: 'Martina' },
   onDelete: () => {},
@@ -21,8 +25,34 @@ describe('PaymentDetail · §25', () => {
   it('P-01 · quién le pagó a quién y cuánto, y cuándo', async () => {
     const view = await renderWithTheme(<PaymentDetail {...base} />);
 
-    expect(view.getByText('Martina te pagó $20.000')).toBeTruthy();
+    expect(view.getByText('Martina te pagó')).toBeTruthy();
+    expect(view.getByText('+$20.000')).toBeTruthy();
     expect(view.getByText('8 de octubre')).toBeTruthy();
+  });
+
+  it('15 · si te pagaron, "+" en brand; el lector dice "te pagaron $20.000"', async () => {
+    const view = await renderWithTheme(<PaymentDetail {...base} />);
+    const figure = view.getByText('+$20.000');
+
+    expect(StyleSheet.flatten(figure.props.style).color).toBe(colorSchemes.light.brand);
+    expect(figure.props.accessibilityLabel).toBe('te pagaron $20.000');
+  });
+
+  it('15 · si pagaste vos, "−" en texto normal; el lector dice "pagaste $20.000"', async () => {
+    const view = await renderWithTheme(
+      <PaymentDetail {...base} sentence="Le pagaste a Martina" direction="sent" />,
+    );
+    const figure = view.getByText('−$20.000');
+
+    expect(StyleSheet.flatten(figure.props.style).color).toBe(colorSchemes.light.text);
+    expect(figure.props.accessibilityLabel).toBe('pagaste $20.000');
+  });
+
+  it('15 · bajo la cifra, "Tu radar · No cambia": la defensa contra leerlo como un ingreso', async () => {
+    const view = await renderWithTheme(<PaymentDetail {...base} />);
+
+    expect(view.getByText('Tu radar')).toBeTruthy();
+    expect(view.getByText('No cambia')).toBeTruthy();
   });
 
   it('P-01 · quién lo registró: nombra al otro miembro', async () => {
