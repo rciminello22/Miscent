@@ -1,4 +1,3 @@
-// TEMPORAL: variante B en prueba. Se borra si gana la A.
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, CalendarRange } from 'lucide-react-native';
@@ -16,7 +15,7 @@ import { useMovementActions, useMovementsMonth } from './useMovements';
 const MONTH_PARAM = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 /**
- * §16 · variante B, el N3: la lista del mes con el filtro ya aplicado. El
+ * §16 · Movimientos, el N3: la lista del mes con el filtro ya aplicado. El
  * control segmentado se repite acá: como cambiar de filtro volviendo atrás es
  * incómodo, las puertas pasan a ser atajos.
  */

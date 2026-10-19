@@ -13,9 +13,8 @@ import { formatDayMonth, formatMonth } from '@/lib/format';
 import type { MovementFilter, MovementRow } from './buildMovementList';
 
 /**
- * §16 · la lógica de Movimientos que comparten las dos variantes (la pestaña
- * como lista y la pestaña como resumen con puertas). TS puro: al descartar una
- * variante solo se borra su presentación; esto se queda.
+ * §16 · la lógica de Movimientos: la lista agrupada por día, el N1 y sus
+ * puertas, el control segmentado y las filas. TS puro.
  */
 
 /* ── La lista, agrupada por día ───────────────────────────────────────────── */
@@ -166,7 +165,7 @@ export function rowDetail(row: MovementRow, options: { showSpace: boolean }): Ro
   return { caption: parts.length > 0 ? parts.join(' · ') : null, effect };
 }
 
-/* ── Las puertas de la variante B ─────────────────────────────────────────── */
+/* ── Las puertas del N1 ───────────────────────────────────────────────────── */
 
 export type MovementDoor = {
   key: MovementFilter;

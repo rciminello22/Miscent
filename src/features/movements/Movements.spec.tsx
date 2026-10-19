@@ -7,7 +7,7 @@ import { buildDayStrip, filterSegments, groupRowsByDay } from './movementsView';
 
 /**
  * Nivel 3 · lo que dicen y hacen las piezas de Movimientos (§16): el N1, el
- * control segmentado y las filas. Las comparten las dos variantes.
+ * control segmentado y las filas.
  */
 
 const TODAY = '2026-10-15';

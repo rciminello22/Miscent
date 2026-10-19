@@ -1,4 +1,3 @@
-// TEMPORAL: variante B en prueba. Se borra si gana la A.
 import { RefreshControl, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ReceiptText, User, Users, type LucideIcon } from 'lucide-react-native';
@@ -21,7 +20,7 @@ const DOOR_ICON: Record<MovementDoor['kind'], LucideIcon> = {
 };
 
 /**
- * §16 · Movimientos, variante B: la pestaña es el N1 y hasta tres puertas; la
+ * §16 · Movimientos: la pestaña es el N1 y hasta tres puertas; la
  * lista, agrupada por día y con el control segmentado repetido, vive en su
  * propia pantalla (N3). Las puertas son los mismos filtros, como atajos.
  */

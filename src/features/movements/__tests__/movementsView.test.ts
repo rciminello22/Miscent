@@ -16,8 +16,7 @@ import {
 } from '../movementsView';
 
 /**
- * §16 · la lógica que comparten las dos variantes de Movimientos. TS puro: al
- * descartar una variante solo se borra su presentación, esto se queda.
+ * §16 · la lógica de Movimientos. TS puro.
  */
 
 function row(overrides: Partial<MovementRow> & { id: string; date: string }): MovementRow {
@@ -314,7 +313,7 @@ describe('rowDetail · la segunda línea, solo si agrega algo', () => {
   });
 });
 
-describe('movementDoors · las puertas de la variante B', () => {
+describe('movementDoors · las puertas del N1', () => {
   const opts = {
     today: TODAY,
     rowLabel: (item: MovementRow) => item.label,

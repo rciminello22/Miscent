@@ -27,10 +27,10 @@ import {
 /**
  * El container de Movimientos: lee los hechos, elige el mes y el filtro y le
  * entrega a la pantalla todo ya calculado por las funciones puras de
- * `movementsView`. Lo usan las dos variantes.
+ * `movementsView`.
  *
- * El mes y el filtro pueden venir de afuera (la variante B los pasa por la
- * ruta de la lista).
+ * El mes y el filtro pueden venir de afuera (las puertas los pasan por la ruta
+ * de la lista).
  */
 export function useMovementsMonth(initial?: { month?: Month; filter?: MovementFilter }) {
   const { facts, today, isLoading, refetch } = usePersonalFacts();
