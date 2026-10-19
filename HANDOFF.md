@@ -1,7 +1,7 @@
 # Handoff · Radar del sueldo comprometido
 
 Contexto para retomar el proyecto en una sesión nueva.
-Última actualización: 15 de octubre de 2026 · auditoría UX/UI aplicada (28 commits, sin push) · base remota sin cambios.
+Última actualización: 19 de octubre de 2026 · rediseño de jerarquía visual aplicado · migraciones hasta la 0020 aplicadas · todo commiteado en `master`, **sin push**.
 
 ---
 
@@ -52,6 +52,20 @@ de cuentas") están en el escritorio pero **están superadas**. No usarlas.
 - **Nada se aplica en la base remota sin su OK explícito** (`db push`). El
   token de la CLI vence en minutos: pedirle `npx supabase login` justo antes.
 - Le gusta debatir UX: sus "detalles para debatir" suelen esconder bugs reales.
+- **Metodología de wireframes (desde el 15/10, obligatoria):** antes de
+  rediseñar o crear una pantalla, y para **toda pregunta de UI**, se dibuja un
+  wireframe HTML con las opciones lado a lado (con "Gana / Pierde" y una
+  recomendación). Se publica como artifact y se implementa recién cuando lo
+  elige mirándolo: "me pierdo si solo leo". El texto queda para lo que no
+  tiene forma visual (reglas de datos, migraciones).
+- **Las anotaciones del wireframe van como notas amarillas que dicen "NOTA".**
+  Una vez confundió un recuadro punteado y un "Tocar: …" con parte de la UI.
+- **El `db push` lo corre él:** el clasificador de permisos de Claude Code lo
+  bloquea. Darle los comandos en orden (`login`, `db push`, `db:types`,
+  `test:rls`) y después verificar con `migration list` y los tests.
+- Trabaja delegando: el agente principal coordina y los subagentes
+  implementan (una tanda por tema, commits por tema). A los subagentes hay que
+  prohibirles explícitamente editar con sed, scripts o `cat >>`.
 
 ---
 
@@ -150,7 +164,8 @@ radar/
 | Área | Estado |
 |---|---|
 | Dominio (§29 completo) | ✅ Los 7 casos de §29.1 pasan exactos |
-| Supabase + RLS | ✅ 15 tablas, 18 migraciones · **78/78 asserts** contra el remoto |
+| Supabase + RLS | ✅ 16 tablas, 20 migraciones · **92/92 asserts** contra el remoto (16/10) |
+| Rediseño de jerarquía (15 a 19/10) | ✅ Sistema N1/N2/N3 en todas las pantallas · ver "Por dónde seguir" y §11 |
 | UI base | ✅ Tokens claro/oscuro, motion, 14 primitivas propias, teclado y footer fijo (§11) |
 | O1 · O2 · O3 | ✅ Completos, con T-07/Q-06 derivados del último cierre |
 | Acceso | ✅ Código de 8 dígitos + enlace · "Ya tengo cuenta" sin alta · invitada **sin email** (ver §10) |
@@ -178,9 +193,9 @@ npm run verify:full  # + los de RLS
 
 | Nivel | Qué | Cuántos |
 |---|---|---|
-| 1 · Dominio y reglas puras (vitest) | Casos A–G, CA-*, casos de uso, identidad, navegación, Agregar, contraste WCAG de los tokens | 612 |
-| 2 · Autorización (pgTAP) | PR-01, PR-02, CA-11..13, CA-47, CA-48, SY-02, SA-06, D-01, P7, §26, anónimos, permisos de funciones | 46 |
-| 3 · Componentes (jest-expo) | El lenguaje **obligatorio** | 132 |
+| 1 · Dominio y reglas puras (vitest) | Casos A–G, CA-*, casos de uso, identidad, navegación, Agregar, contraste WCAG de los tokens, historia de días de tarjeta | 1263 |
+| 2 · Autorización (pgTAP) | PR-01, PR-02, CA-11..13, CA-47, CA-48, SY-02, SA-06, D-01, P7, §26, anónimos, permisos de funciones, días aproximados, `payment_method_days` | 92 |
+| 3 · Componentes (jest-expo) | El lenguaje **obligatorio**, navegación de pestañas (`renderRouter`) | 399 |
 | 4 · Lint de lenguaje | **Automatiza CA-00** | en CI |
 
 El nivel 4 ya cazó **4 errores míos** ("te quedaría", "el saldo", "Te quedan N
@@ -190,35 +205,119 @@ cuotas"). El nivel 3 encontró **2 bugs reales**.
 
 ## 5. Qué falta
 
-### ▶ Por dónde seguir (actualizado el 15/10)
+### ▶ Por dónde seguir (actualizado el 19/10)
 
-Las 18 migraciones están aplicadas al remoto · pgTAP **78/78** (14/10).
-La auditoría UX/UI no tocó la base.
+**Estado:** las 20 migraciones están aplicadas al remoto (la 0019 y la 0020,
+el 16/10) · pgTAP **92/92** · `npm run verify` en verde (vitest 1263, jest
+399, CA-00) · **todo commiteado en `master`, sin push** (unos 55 commits desde
+`697b52b`).
 
-**La V1 del MVP está completa contra la spec**, y la **primera auditoría
-UX/UI ya está aplicada**: 28 commits, de `ee9a484` a `366dc59`. El informe
-completo está en engram (`audit/ux-2026-10-14`); las decisiones de Renzo,
-en `audit/ux-*`.
+**Los wireframes (la referencia visual de todo lo que sigue):**
+**https://claude.ai/artifact/6m96ypiCKBpUxwxDZk9M19** ("Jerarquía visual
+Radar"). La sección `#decisiones` tiene los bloques 1 a 17, cada uno con la
+opción elegida marcada "Elegida". El archivo fuente vivía en el scratchpad de
+la sesión del 15 al 19/10, que se pierde. Para editarlo en otra sesión:
+`Artifact read` de esa URL, editar la copia local y republicar con `url`.
 
-**Lo primero: probar en el iPhone lo de la auditoría** (claro y oscuro):
-1. Editar solo la descripción de una compra en cuotas desde la cuenta del
-   que NO pagó: el saldo y las cuotas no cambian de fecha (`shouldReplan`).
-2. Perfil → Ingresos, Fijos y Tarjetas: listas propias, sin caer en el
-   onboarding. Ingresos y fijos abren `/fijo/[id]`.
-3. Espacio (creador e invitado): saldo y acciones arriba, pendientes en
-   una fila (abierta si hay un fijo detenido), "Ver todos (N)".
-4. Aviso al guardar un compartido: "Con esto, Martina te debe $X" solo
-   con gasto puntual de hoy o antes; nada en cuotas, fijos o fecha futura.
-5. Error al guardar con el teclado abierto (modo avión): se cierra el
-   teclado y se ve el toast.
-6. Barra del radar (contraste, separadores, sin ingresos = gris vacío),
-   Futuro ("Este mes", Sin asignar negativo con la frase de N-08), detalle
-   del resumen estimado (nombre de tarjeta, total igual a la fila).
-7. Agregar: cuotas "Otra" (1, 2, 24, 40), audiencia junto a Guardar,
-   Guardar teal si el destino es un espacio, motivo de Guardar apagado.
-   Edición: fecha editable solo en un pago, "¿Descartar los cambios?".
+**Lo próximo, en orden:**
+1. **Bloque 17 · "Quitar un espacio de tu historial"** (decidido: opción a).
+   Quien salió de un espacio puede quitar la foto de ese espacio
+   (`former_memberships`) de su historial, de una vez y **solo si no
+   quedan cuotas por venir**. Al quitarla cambia el radar de los meses
+   pasados donde contaba su parte, y eso se dice en la confirmación.
+   - **Falta:** que Renzo elija en el wireframe `#dq17` (dónde va la acción
+     y la confirmación) y después implementarlo.
+   - **Necesita una migración:** `former_memberships` no tiene políticas de
+     escritura a propósito. Hace falta una RPC `security definer` que borre
+     la fila propia (`user_id = auth.uid()`), con su `grant` y asserts
+     pgTAP. **No se aplica sin el OK de Renzo, y el push lo corre él.**
+2. **Que Renzo pruebe en el iPhone** lo del 18 y 19/10 (lista de abajo).
+3. **Pendientes abiertos** (más abajo).
 
-**Qué se hizo en la auditoría (por etapa):**
+**Para probar en el iPhone (recargar la app antes):**
+1. **Movimientos (16A):**
+   - arriba "Hoy, …", con los registros de hoy y los del mes;
+   - los filtros "Todos · Personales · Casa";
+   - la franja de la semana con "Todo el mes" (tocar un día cambia la
+     lista sin navegar; las flechas frenan en la semana de hoy);
+   - la ayuda del punto la primera vez;
+   - un mes pasado, sin "Agregar".
+2. **Tocar filas en Movimientos:**
+   - un gasto compartido abre el gasto;
+   - un pago entre miembros abre su detalle (pantalla nueva);
+   - una fila de "Con gonzalo · ya no sos miembro" abre el detalle de
+     solo lectura.
+3. **Signos:** "−" en texto normal y "+" en color en las listas y los
+   detalles; sin ⇄ junto a ningún monto.
+4. **Detalles:**
+   - una compra en cuotas: "Faltan $X", el ciclo y "Ya pasaron 3 de 6
+     cuotas";
+   - un ingreso fijo ("desde octubre") y uno puntual ("Extra").
+5. **Apariencia en Perfil** (Automático · Claro · Oscuro) y el tope de
+   $999.999.999 en los montos.
+6. **Tarjetas:**
+   - corregir los días (la hoja "antes → ahora" y Deshacer), y verificar
+     que un mes pasado no cambie;
+   - eliminar una tarjeta con y sin pagos por venir.
+
+**Qué se hizo del 15 al 19/10, después de la auditoría** (detalle en
+engram, `ux/decisiones-*`, y en los wireframes):
+- **Sistema de jerarquía N1/N2/N3** en todas las pantallas (§11): la
+  respuesta con su forma visual, como mucho 3 puertas y el detalle en su
+  propia pantalla. Sin desplegables para la densidad.
+- **Compartidos (P23):**
+  - la pestaña abre siempre en la lista (`popToTopOnBlur` y la lista
+    siempre debajo del espacio);
+  - las filas tienen la balanza mini y los avatares;
+  - van ordenadas por la última vez que se abrió cada espacio;
+  - el filtro aparece desde 5 espacios y la búsqueda desde 9.
+- **El espacio:**
+  - el N1 con `BalanceScale` (la balanza animada con Reanimated y SVG;
+    "Están a mano" con tilde);
+  - las puertas Pendientes, Mes y Movimientos, con sus N3;
+  - el invitado con U1.
+- **Inicio:**
+  - "Tus ingresos de octubre", con el tramo de Sin asignar con contorno;
+  - el exceso como recipiente a escala (1A);
+  - las puertas, y en el mes que se pasa, el tope rayado con
+    "+$X" a la derecha (2D).
+- **Futuro:**
+  - el mes elegido como N1, con el ingreso previsto a la vista (CA-38);
+  - "Este mes" en los pagos;
+  - el desglose de §23.1.
+- **Movimientos:** una sola pantalla (16A). Un ingreso puntual dice "Extra".
+- **La regla de signos de toda la app** (§11).
+- **Detalles nuevos:**
+  - de compra en cuotas: el ciclo, "Faltan" y "Ya pasaron N de M";
+  - de ingreso: fijo o extra, desde cuándo;
+  - de pago entre miembros;
+  - de solo lectura de un ex espacio.
+- **Días aproximados:** "Sé el día / Más o menos / No sé" en el cierre, el
+  vencimiento y el día de cobro (migración 0019).
+- **Tarjetas desde Perfil:**
+  - la lista y el detalle;
+  - **corregir los días**, que recalcula de este mes en adelante; la
+    historia de días (0020) protege los meses pasados;
+  - **eliminar** (P24: no se elimina con pagos por venir; si se elimina
+    se marca con `deleted_at` y no se borra la fila).
+- **Fechas:** no se carga nada antes del día 1 del mes en curso.
+- **Montos:** tope de $999.999.999 y cifras que se achican sin abreviar.
+- **Apariencia** (tema elegible) en Perfil.
+- **Bugs reales arreglados:**
+  - "Continuar" del onboarding cargando en loop al volver (y el sueldo
+    duplicado);
+  - el interruptor A/B;
+  - la pestaña Compartidos que abría adentro del último espacio;
+  - los gastos futuros que no se podían abrir;
+  - las cuotas de un compartido calculadas sobre el total y no sobre tu
+    parte (K9);
+  - los pagos entre miembros que abrían el espacio.
+
+**Decisiones nuevas en la spec (§38):** P23 (Compartidos siempre en la
+lista), P24 (eliminar tarjetas), P25 (una sola ayuda en el radar). La fila
+de §14 y la de "Eliminar" de §22 quedaron actualizadas.
+
+**Qué se hizo en la auditoría del 14 y 15/10 (por etapa):**
 - **1** · Ingresos fijos accesibles y sin duplicar (era P0: Perfil abría
   el onboarding, que creaba otro sueldo) · contraste de `textMuted` y
   `excess` · barra sin proporciones sin ingresos · el error cierra el
@@ -239,19 +338,36 @@ en `audit/ux-*`.
   saldo) · espacio reordenado · saldo en el aviso · progreso real del
   onboarding · Perfil sin wizard.
 
-**Pendientes que dejó la auditoría (decidir):**
-- **Editar y eliminar tarjetas** no existe (`updatePaymentMethod` sin UI;
-  §22 pide recalcular con aviso y no eliminar con cuotas activas).
+**Pendientes abiertos (decidir o hacer):**
 - **El que no pagó cambia la cantidad de cuotas** de una compra con la
   tarjeta del otro: se rearma con Q-03, porque no ve la tarjeta. Falta una
   regla de producto.
+- **Una compra en cuotas guarda UN solo día de impacto** (F2). Corregir el
+  vencimiento de una tarjeta mueve el día de las cuotas ya pasadas dentro de
+  su mismo mes (nunca el mes ni los totales). Fijarlo del todo exigiría un día
+  por cuota.
 - **Deuda en subpasos** (O3 paso 4): no se hizo, por riesgo.
-- **Audiencia doble en Agregar**: junto al destino (§17) y en el footer.
 - Con tarjeta compartida, el aviso al guardar muestra el saldo en lugar de
   "Se paga en noviembre".
-- Huecos de la spec: §17 campo 8 (valor de cuota, primer mes editable),
-  §16 (fijos de meses pasados en Movimientos).
+- **Huecos de la spec:**
+  - §17 campo 8: valor de cuota y primer mes editable (Renzo eligió solo
+    "Otra");
+  - §16: fijos de meses pasados en Movimientos (la lista solo muestra lo
+    cargado);
+  - cuotas que no son de tarjeta en el onboarding (quedaron afuera por
+    decisión).
 - Un ingreso que ya terminó no aparece en "Tus ingresos".
+- **Tema elegido en Perfil:** las alertas, el teclado y el selector de
+  fecha nativos siguen la apariencia del iPhone, no la elegida en la app.
+- **Contraste:** el "+" en `brand` sobre fondos teñidos (`brandSoft`,
+  `sharedSoft`) da 4,25–4,33:1. Solo vale para cifras grandes (≥24pt):
+  nunca texto chico de ese color sobre esos fondos.
+- **El "Supermercado" de un ex espacio:** la foto de `former_memberships`
+  guarda la descripción, si la había. Si no, el detalle de solo lectura dice
+  "Gasto del 8 de octubre".
+- **Un gasto en un espacio que pagó el otro** ("Luz · pagó Martina")
+  aparece con "−" (es tu parte), aunque la plata no salió de tu bolsillo.
+  Es coherente con K9, pero conviene aclararlo en el detalle del gasto.
 
 Hecho el 14/10 antes de la auditoría (ver `git log`), además de la revisión
 de lo que carga el otro (K10 en §37):
@@ -284,8 +400,10 @@ te debe $X" (hecho, era §17) · unificar los campos de texto (hecho,
 `TextField`) · comparar con el mes pasado (descartado: compite con el radar
 y se pisa con P15) · iniciales en vez de foto (no aplica: no hay avatares).
 
-**Sin probar todavía en el iPhone:** todo lo del 14/10 y la auditoría (ver
-arriba), SA-04, varias cuotas por tarjeta y "Otro fijo" en O3, Deshacer.
+**Ya probado por Renzo en el iPhone** (16 al 19/10): la auditoría, las
+tandas 1 y 2 del rediseño, días aproximados, eliminar tarjetas, el onboarding
+y los bugs arreglados. **Sin probar todavía:** lo del 18 y 19/10 (ver la lista
+de arriba), SA-04, varias cuotas por tarjeta y "Otro fijo" en O3.
 
 ### Del Must
 **Completo.** CA-09 se cerró el 12/10. T-07, SY-02, la fecha editable, M3
@@ -367,6 +485,29 @@ datos, y cifrado/ubicación/uso para entrenar IA del proveedor. La base está en
   rollback). Nunca buscar datos del test por nombre: un dato real puede
   llamarse igual (pasó con "Casa"). Primero RED contra la base actual, después
   `db push`, después GREEN.
+- **Cada `supabase login` crea un token personal nuevo, con un tope de 20 por
+  cuenta.** Al llegar al tope el login falla ("User can have up to 20 personal
+  access tokens"): hay que borrar los viejos (`cli_…`) en
+  dashboard → Account → Access Tokens. Para no chocar de nuevo: un token fijo
+  en la variable `SUPABASE_ACCESS_TOKEN`. Nunca pegarlo en el chat.
+- **El clasificador de permisos de Claude Code bloquea `db push`** (lo
+  considera una modificación de un recurso compartido). Lo corre Renzo. Para
+  verificar después: `npx supabase migration list` (cada migración con su
+  `remote`), y en `test:rls` contar las líneas `"line": "ok N"` (la salida
+  es JSON).
+- **Antes de aplicar una migración, la app tiene que tolerar que todavía no
+  esté:** el mapper toma como false una columna `undefined` y la lectura de
+  una tabla inexistente (`PGRST205` / `42P01`) cae al comportamiento de
+  siempre. Así se pudo commitear la 0019 y la 0020 antes del push sin romper
+  nada.
+- **Eliminar una tarjeta NO borra la fila** (`deleted_at`, 0019). Si se
+  borrara, sus compras en 1 pago quedarían sin tarjeta y pasarían de
+  Comprometido (mes del vencimiento) a Gastado (mes de compra): reescribiría
+  meses pasados.
+- **Los días de una tarjeta tienen historia** (`payment_method_days`, 0020).
+  Una compra usa los días que valían cuando se pagó (`resolveCardStatement`).
+  El corte es por MES de pago: lo pagado antes del mes de la corrección
+  conserva los días viejos.
 
 ### Expo
 - **`npx expo install`, NUNCA `npm install`, para paquetes con módulo nativo.**
@@ -411,6 +552,22 @@ datos, y cifrado/ubicación/uso para entrenar IA del proveedor. La base está en
 - `lucide-react-native` es ESM: está mockeado con un Proxy.
 - Los `.spec.tsx` tienen su propio tsconfig (los globals de jest no deben ser
   visibles en producción).
+- **Un `.spec.tsx` dentro de `app/` se vuelve una ruta**: los specs de
+  pantallas van en `src/`.
+- **Windows no distingue mayúsculas:** `foo.ts` y `Foo.tsx` en la misma
+  carpeta chocan. La lógica pura lleva otro nombre (`spaceListOrder.ts` junto
+  a `SpaceListView.tsx`).
+- **RNTL busca `onPress` subiendo por los componentes:** un hijo que no
+  debería responder (un día futuro) igual "responde" si el padre tiene
+  `onPress`. En los componentes internos, usar otro nombre (`onSelect`).
+- **Navegación de pestañas testeable con `renderRouter`**
+  (`expo-router/testing-library`); hubo que sumar `standard-navigation` a
+  `transformIgnorePatterns`.
+- **Guardián de navegación:** `tools/no-redirect-in-effect.test.ts` falla si
+  algún `useEffect` llama a `replace`.
+- **Estado compartido entre pestañas:** cada pestaña queda montada, así que un
+  `useState` leído una vez al montar no se entera de cambios hechos en otra.
+  Para eso, un store con `useSyncExternalStore` (pasó con el interruptor A/B).
 
 ### Al editar código
 - **Para JSX usar siempre la tool Edit, NUNCA regex por Bash.** Me rompió
@@ -452,7 +609,8 @@ npm run verify:full        # + RLS
 npm run test:dominio       # solo el dominio (~600ms)
 npm run test:componentes   # jest-expo
 npm run lint:lenguaje      # CA-00
-npm run test:rls           # 37 asserts (necesita supabase login)
+npm run test:rls           # 92 asserts (necesita supabase login; la salida es JSON)
+npx supabase migration list  # qué migraciones están aplicadas en el remoto
 npm run test:rls:smoke     # RLS con la anon key (no necesita login)
 npm run db:push            # migraciones
 npm run db:types           # regenerar tipos desde el esquema
@@ -477,6 +635,12 @@ mem_context()   # lista las recientes de los dos, sin filtrar por proyecto
 
 `mem_search` SÍ filtra por el proyecto del cwd. Para las de la auditoría hay
 que pasar `project: "radar-sueldo-comprometido"` explícito.
+
+Las decisiones de UX del 15 al 19/10 están en engram con los topics
+`ux/decisiones-*`, `ux/rediseno-jerarquia`, `workflow/wireframe-primero`,
+`copy/cuotas-ciclo`, `db/migraciones-0019-0020` y `bug/edits-replan-cuotas`.
+Los wireframes, en el artifact
+https://claude.ai/artifact/6m96ypiCKBpUxwxDZk9M19.
 
 ---
 
@@ -553,7 +717,7 @@ El mail trae un **código de 8 dígitos** y el enlace. Cualquiera de los dos sir
 
 ---
 
-## 11. Patrones de UI y de lenguaje acordados (9 y 10/10)
+## 11. Patrones de UI y de lenguaje acordados (9 al 19/10)
 
 | Patrón | Regla | Dónde vive |
 |---|---|---|
@@ -561,7 +725,7 @@ El mail trae un **código de 8 dígitos** y el enlace. Cualquiera de los dos sir
 | **Teclado** | `Screen` ya maneja el teclado (KeyboardAvoidingView + insets). Nada de `react-native-keyboard-controller`: no viene en Expo Go | idem |
 | **Salir siempre** | Nunca `router.back()` a secas: `goBack(router)` (sin historial, va a la raíz). Cambio de árbol: `resetTo` | `src/features/shared/navigation.ts` |
 | **Abrir un espacio** | `useOpenSpace()`, nunca la ruta armada a mano: personal → dentro de la pestaña; invitado → `/space/[id]` | `src/features/spaces/` |
-| **"Con uno solo, entra directo"** | Se renderiza inline, nunca `useEffect` + `replace` (hacía loop) | `compartidos/index.tsx` |
+| **Compartidos abre siempre en la lista** (P23) | Estado A: la pestaña es la lista, aunque haya un solo espacio; `popToTopOnBlur` y abrir un espacio deja la lista debajo (`withAnchor`). Estado B: el invitado con un solo espacio entra directo, renderizado inline, nunca `useEffect` + `replace` | `compartidos/index.tsx`, `(guest)/espacios.tsx` |
 | **Paso a paso vs formulario** | Paso a paso (`StepShell`, una pregunta por pantalla) en flujos poco frecuentes y con consecuencias. Formulario único con "Más opciones" en los frecuentes (Agregar: principio 4) | `StepShell`, `MoreOptions` |
 | **"Tu parte"** | Nunca "te corresponde" en la UI: se leía como plata que te deben. "Parte" es el sinónimo del glosario §7.2 | todo `features/spaces` |
 | **El mes del espacio** | Cuenta hasta hoy, igual que el saldo. Lo que falta: "Se vienen este mes" | `calculateSpaceMonth` |
@@ -571,6 +735,15 @@ El mail trae un **código de 8 dígitos** y el enlace. Cualquiera de los dos sir
 | **Color con un solo sentido** | `danger` = errores y destructivo (`Button destructive`). `excess` (ámbar) = SOLO N-08 y la marca de exceso: sin alarma (§15). Nada se distingue solo por color (tilde en chips, borde en el mes elegido) | `colors.ts` |
 | **Campos de texto** | Siempre `TextField` (variante `shared` en lo compartido). Excepciones: `AmountInput`, el código de 8 dígitos y el monto de `SplitPicker` | `TextField` |
 | **Errores** | Por toast (`useFeedback().error`, cierra el teclado). `Alert` solo para confirmaciones | `Toast`, `useFeedback` |
-| **Audiencia al guardar** | La línea "Solo vos lo ves" / "Lo ven vos y X" va en `SaveFooter`, sobre Guardar; Guardar es teal si el destino es un espacio | `SaveFooter` |
+| **Audiencia en Agregar** | La línea "Solo vos lo ves" / "Lo ven vos y X" va debajo de los chips de destino (§12, §17) Y en `SaveFooter`, sobre Guardar; Guardar es teal si el destino es un espacio | `DestinationAudience`, `SaveFooter` |
 | **Gestión desde Perfil** | Listas propias (`/fijo/ingresos`, `/fijo/gastos`, `/tarjetas`); el alta reutiliza el formulario del onboarding con `?desde=perfil`, que guarda y vuelve. Perfil nunca entra al wizard | `app/fijo`, `app/tarjetas` |
-| **Pantalla del espacio** | Saldo → acciones → pendientes en una fila (abierta si hay fijo detenido) → mes → próximos meses en hoja → 10 movimientos y "Ver todos". Lo decide `planSpaceLayout` | `spaceLayout.ts` |
+| **Jerarquía N1/N2/N3** (15/10) | N1: la respuesta de la pantalla, con su forma visual SIEMPRE y una acción. N2: como mucho 3 puertas (`Door`: ícono, título, cifra, chevron). N3: el detalle en su propia pantalla. **Nada de desplegables para la densidad** (los rechazó). Lo gráfico nunca es secundario | todas las pantallas |
+| **Pantalla del espacio** | N1 con `BalanceScale` (la balanza: se inclina hacia quien puso de más; nivelada con tilde = "Están a mano"), la frase en dos líneas ("Martina te debe" / cifra) y las acciones. N2: Pendientes (primera y urgente si hay un fijo detenido, SA-04), Mes, Movimientos. N3: `mes`, `movimientos`, `pendientes` | `spaceLayout.ts`, `SpaceHero`, `app/space/[id]/*` |
+| **Movimientos** (16A) | Una sola pantalla: hoy y "N registros hoy · M en el mes" → filtros segmentados → franja de la semana con "Todo el mes" → la lista del día, sin navegar. Cuenta registros, nunca plata | `MovementsTabView`, `movementsTab.ts` |
+| **Signos** (15) | Todo MOVIMIENTO lleva "−" (sale) o "+" (entra). Solo lo que entra lleva color (`brand`); nunca rojo. El pago entre miembros: ⇄ a la izquierda y +/− según quien mira. **Sin signo:** el saldo, los totales del radar, Próximos pagos, el resumen estimado y Futuro. El lector de pantalla dice "gasto de", "ingreso de", "te pagaron", "pagaste" | `Money sign`, `amountSign.ts` |
+| **Cuotas: el ciclo** | "Faltan $X" · segmentos · "Ya pasaron 3 de 6 cuotas" (nunca "Vas pagando" ni "Pagado": G-06) · Próxima · Termina · Medio solo si pagaste vos | `installmentsCycle.ts` |
+| **Meses en minúscula** | Dentro de una frase, "se paga en noviembre" (RAE). La mayúscula solo va al principio de una línea o un título | `format.ts` |
+| **Montos** | Tope de $999.999.999 (`MAX_AMOUNT`, la base es `integer`). Las cifras grandes se achican solas hasta 20pt, sin abreviar nunca. En las filas se corta el nombre con "…", nunca el monto | `money.ts`, `amountFit.ts` |
+| **Días que no se saben** | "Sé el día / Más o menos (2, 15, 28, aprox.) / No sé (T-05)". Lo que sale de un "Más o menos" se muestra "~15 nov · aprox." | `DayAnswerField` |
+| **Fechas de carga** | Nada antes del día 1 del mes en curso. Un gasto de un mes pasado no cambia su fecha | `domain/calendar.ts` |
+| **Apariencia** | Automático (sigue al iPhone) · Claro · Oscuro, en Perfil. Se resuelve en el `ThemeProvider`, no con `Appearance.setColorScheme` | `ui/appearance.ts` |
