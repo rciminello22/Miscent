@@ -7,6 +7,7 @@ import {
   DisplayNameCard,
   PrivacySection,
 } from '@/features/profile/ProfileSections';
+import { AppearanceSection } from '@/features/profile/AppearanceSection';
 import { SaveAccessCard } from '@/features/profile/SaveAccessCard';
 import { useSession } from '@/features/auth/SessionProvider';
 import { Button, Card, IconButton, Screen, Stack, Text } from '@/ui/primitives';
@@ -71,6 +72,8 @@ export default function PerfilInvitado() {
             />
           </Stack>
         </Card>
+
+        <AppearanceSection />
 
         <PrivacySection />
 

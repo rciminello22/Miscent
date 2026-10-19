@@ -1,5 +1,5 @@
 import 'react-native-gesture-handler';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useFonts } from 'expo-font';
 import { Slot, SplashScreen, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -12,7 +12,9 @@ import { SessionProvider, useSession } from '@/features/auth/SessionProvider';
 import { setMagicLinkStatus } from '@/features/auth/magicLinkStatus';
 import { resetTo } from '@/features/shared/navigation';
 import { PendingInvitation } from '@/features/auth/PendingInvitation';
-import { ThemeProvider } from '@/ui/theme';
+import { statusBarStyleFor } from '@/ui/appearance';
+import { hydrateAppearance } from '@/ui/appearanceStore';
+import { ThemeProvider, useTheme } from '@/ui/theme';
 import { ToastProvider } from '@/ui/primitives';
 import { fontsToLoad } from '@/ui/tokens';
 
@@ -21,14 +23,21 @@ void SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts(fontsToLoad);
   const queryClient = useMemo(() => createQueryClient(), []);
+  // La apariencia elegida se lee con el splash todavía arriba: así no hay un
+  // frame con el tema equivocado.
+  const [appearanceReady, setAppearanceReady] = useState(false);
 
   useEffect(() => wireAppStateToQueries(), []);
 
   useEffect(() => {
-    if (fontsLoaded || fontError != null) void SplashScreen.hideAsync();
-  }, [fontsLoaded, fontError]);
+    void hydrateAppearance().then(() => setAppearanceReady(true));
+  }, []);
 
-  if (!fontsLoaded && fontError == null) return null;
+  useEffect(() => {
+    if ((fontsLoaded || fontError != null) && appearanceReady) void SplashScreen.hideAsync();
+  }, [fontsLoaded, fontError, appearanceReady]);
+
+  if ((!fontsLoaded && fontError == null) || !appearanceReady) return null;
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -37,7 +46,7 @@ export default function RootLayout() {
           <SafeAreaProvider>
             {/* §17 · §12 · el aviso al guardar sobrevive a la pantalla que guardó. */}
             <ToastProvider>
-              <StatusBar style="auto" />
+              <ThemedStatusBar />
               <MagicLinkListener />
               <PendingInvitation />
               <RouteGuard />
@@ -47,6 +56,12 @@ export default function RootLayout() {
       </SessionProvider>
     </QueryClientProvider>
   );
+}
+
+/** La barra de estado sigue al tema elegido, no solo al del sistema. */
+function ThemedStatusBar() {
+  const theme = useTheme();
+  return <StatusBar style={statusBarStyleFor(theme.scheme)} />;
 }
 
 /**

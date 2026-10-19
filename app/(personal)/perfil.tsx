@@ -3,6 +3,7 @@ import { CreditCard, Repeat } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { monthOf } from '@domain/calendar';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
+import { AppearanceSection } from '@/features/profile/AppearanceSection';
 import { selectFixedExpenses } from '@/features/fixed/fixedExpenses';
 import { selectFixedIncomes } from '@/features/fixed/fixedIncomes';
 import { selectCards } from '@/features/profile/cards';
@@ -82,6 +83,8 @@ export default function Perfil() {
             </Stack>
           </Card>
         </Stack>
+
+        <AppearanceSection />
 
         <PrivacySection />
 
