@@ -45,6 +45,40 @@ describe('UX-13 · Button destructive', () => {
   });
 });
 
+describe('Button size sm · el botón chico de una fila', () => {
+  it('se dibuja de 36 de alto, pero el área de toque llega a 44 (UX-12)', async () => {
+    const view = await renderWithTheme(
+      <Button label="Quitar" variant="secondary" size="sm" onPress={() => {}} />,
+    );
+    const button = view.getByRole('button', { name: 'Quitar' });
+    const slop = button.props.hitSlop as { top: number; bottom: number };
+
+    expect(styleOf(button).height).toBe(36);
+    expect(36 + slop.top + slop.bottom).toBeGreaterThanOrEqual(44);
+  });
+
+  it('apagado se ve apagado y no responde, pero el lector de pantalla lo encuentra con su pista', async () => {
+    const onPress = jest.fn();
+    const view = await renderWithTheme(
+      <Button
+        label="Quitar"
+        variant="secondary"
+        size="sm"
+        disabled
+        accessibilityHint="Quedan cuotas hasta marzo"
+        onPress={onPress}
+      />,
+    );
+    const button = view.getByRole('button', { name: 'Quitar' });
+
+    expect(button.props.accessibilityState).toEqual(expect.objectContaining({ disabled: true }));
+    expect(button.props.accessibilityHint).toBe('Quedan cuotas hasta marzo');
+    expect(styleOf(button).opacity).toBe(0.45);
+    await fireEvent.press(button);
+    expect(onPress).not.toHaveBeenCalled();
+  });
+});
+
 describe('UX-13 · Text tone danger', () => {
   it('pinta con el token danger', async () => {
     const view = await renderWithTheme(<Text tone="danger">No pudimos guardarlo</Text>);

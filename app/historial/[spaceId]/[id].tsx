@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { prettyLabel } from '@/features/add/categories';
 import { buildFormerHistoryDetail } from '@/features/detail/formerHistoryDetail';
 import { FormerHistoryView } from '@/features/detail/FormerHistoryView';
+import { useGoBackWhenGone } from '@/features/detail/useGoBackWhenGone';
 import { goBack } from '@/features/shared/navigation';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { Button, Screen, Stack, Text } from '@/ui/primitives';
@@ -13,9 +14,12 @@ import { Button, Screen, Stack, Text } from '@/ui/primitives';
 export default function HistorialDetalle() {
   const router = useRouter();
   const { spaceId, id } = useLocalSearchParams<{ spaceId: string; id: string }>();
-  const { facts, today } = usePersonalFacts();
+  const { facts, today, isSuccess, isFetching } = usePersonalFacts();
 
   const membership = facts.spaces.find((item) => item.facts.space.id === spaceId);
+  // Si quitaste el espacio de tu historial con esta pantalla abierta, ya no
+  // hay nada que mostrar: se vuelve. Con la consulta sin leer, no se sabe.
+  useGoBackWhenGone(isSuccess && !isFetching && membership == null);
   const detail =
     membership == null
       ? null

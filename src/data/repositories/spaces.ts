@@ -25,6 +25,7 @@ import type {
 import { supabase } from '../supabase';
 import { installmentColumns, splitColumns, toDeletedRecord, toReview, toSpaceFacts } from '../mappers';
 import { ownActiveMemberships } from '../memberships';
+import { removeFormerSpaceFailure } from '../removeFormerSpace';
 import { fetchOverrideRows, fetchRecentDeletions, throwIfError } from './personal';
 import { cleanDescription, createPersonalMovement } from './mutations';
 
@@ -368,6 +369,19 @@ export async function markReviewed(spaceId: string, sourceIds: readonly string[]
     source_ids: [...sourceIds],
   });
   if (error != null) throw new Error('No pudimos marcarlo como revisado.');
+}
+
+/**
+ * Quitar un espacio de tu historial (0021): borra la foto propia de
+ * `former_memberships`. Solo la fila de quien llama; la regla de las cuotas por
+ * venir la aplica la app antes de ofrecerlo. Si la función todavía no está en
+ * la base, falla con un error que la pantalla muestra sin romperse.
+ */
+export async function removeFormerSpace(spaceId: string): Promise<void> {
+  const { error } = await supabase.rpc('app_remove_former_space', {
+    target_space_id: spaceId,
+  });
+  if (error != null) throw removeFormerSpaceFailure(error);
 }
 
 export async function deleteMemberPayment(id: string): Promise<void> {

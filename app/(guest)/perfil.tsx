@@ -8,6 +8,7 @@ import {
   PrivacySection,
 } from '@/features/profile/ProfileSections';
 import { AppearanceSection } from '@/features/profile/AppearanceSection';
+import { FormerSpacesSection } from '@/features/profile/FormerSpacesSection';
 import { SaveAccessCard } from '@/features/profile/SaveAccessCard';
 import { useSession } from '@/features/auth/SessionProvider';
 import { Button, Card, IconButton, Screen, Stack, Text } from '@/ui/primitives';
@@ -72,6 +73,9 @@ export default function PerfilInvitado() {
             />
           </Stack>
         </Card>
+
+        {/* Solo existe si dejaste algún espacio: quitarlo de tu historial. */}
+        <FormerSpacesSection />
 
         <AppearanceSection />
 

@@ -1,5 +1,6 @@
 import { ActivityIndicator, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../theme';
+import { MIN_TARGET, hitSlopFor } from '../touch';
 import { Pressable } from './Pressable';
 import { Text } from './Text';
 
@@ -11,8 +12,13 @@ export type ButtonProps = {
    * texto `danger`: se distingue de una acción neutra sin gritar.
    */
   variant?: 'primary' | 'secondary' | 'ghost' | 'shared' | 'destructive';
-  size?: 'md' | 'lg';
+  /** `sm` es el botón de una fila (36 de alto; el toque llega a 44 con `hitSlop`). */
+  size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
+  /** Lo que el lector de pantalla dice si el texto solo no alcanza ("Quitar Con gonzalo"). */
+  accessibilityLabel?: string;
+  /** Lo que el lector de pantalla agrega: por qué está apagado, por ejemplo. */
+  accessibilityHint?: string;
   loading?: boolean;
   /** Feedback físico al confirmar algo que se guardó. */
   haptic?: 'light' | 'success' | 'none';
@@ -27,6 +33,8 @@ export function Button({
   variant = 'primary',
   size = 'md',
   disabled = false,
+  accessibilityLabel,
+  accessibilityHint,
   loading = false,
   haptic = 'light',
   icon,
@@ -55,7 +63,7 @@ export function Button({
   const bordered = variant === 'secondary' || variant === 'destructive';
   const borderColor = variant === 'destructive' ? theme.colors.danger : theme.colors.border;
 
-  const height = size === 'lg' ? 54 : 46;
+  const height = size === 'lg' ? 54 : size === 'sm' ? 36 : 46;
 
   return (
     <Pressable
@@ -63,12 +71,15 @@ export function Button({
       haptic={inactive ? 'none' : haptic}
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy: loading }}
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityHint={accessibilityHint}
+      // UX-12 · el dibujo mide 36; el área de toque llega a 44.
+      hitSlop={size === 'sm' ? hitSlopFor(MIN_TARGET, height) : undefined}
       style={[
         {
           height,
           borderRadius: theme.radius.md,
-          paddingHorizontal: theme.space['5'],
+          paddingHorizontal: size === 'sm' ? theme.space['4'] : theme.space['5'],
           backgroundColor: background,
           borderWidth: bordered ? 1 : 0,
           borderColor,
