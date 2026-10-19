@@ -260,14 +260,25 @@ describe('MovementDayList · la lista agrupada por día', () => {
 
   it('SA-02 · un espacio del que saliste no tiene detalle: la fila no es un botón', async () => {
     const former = groupRowsByDay(
-      [row({ id: 'shared:9', date: TODAY, label: 'Cena', formerSpace: true, spaceId: 'casa' })],
+      [
+        row({
+          id: 'shared:9',
+          date: TODAY,
+          label: 'Cena',
+          formerSpace: true,
+          spaceId: 'casa',
+          spaceName: 'Casa',
+        }),
+      ],
       TODAY,
     );
     const view = await renderWithTheme(
       <MovementDayList groups={former} showSpace onOpen={jest.fn()} />,
     );
 
-    expect(view.queryByRole('button', { name: 'Cena' })).toBeNull();
+    expect(view.queryByRole('button', { name: /Cena/ })).toBeNull();
     expect(view.getByText('Cena')).toBeTruthy();
+    // Sin chevron ni rol de botón, pero con la pista de por qué no se abre.
+    expect(view.getByText('Casa · Ya no sos miembro')).toBeTruthy();
   });
 });

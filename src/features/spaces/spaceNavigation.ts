@@ -48,6 +48,14 @@ export function occurrenceHref(
     : `/space/${spaceId}/fijo/${occurrence.sourceId}`;
 }
 
+/**
+ * A dónde lleva tocar un pago entre miembros fuera del espacio (Movimientos):
+ * a su detalle, que vive en /space/[id]/pagos/[pid] como el del gasto.
+ */
+export function paymentHref(spaceId: string, paymentId: string): string {
+  return `/space/${spaceId}/pagos/${paymentId}`;
+}
+
 /** Las pantallas de detalle (N3) del espacio. */
 export type SpaceDetailScreen = 'mes' | 'movimientos' | 'pendientes';
 

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   isInsideSpace,
   occurrenceHref,
+  paymentHref,
   soleSpaceId,
   spaceBackTarget,
   spaceHref,
@@ -87,6 +88,12 @@ describe('occurrenceHref', () => {
     expect(occurrenceHref('casa', { sourceKind: 'recurrence', sourceId: 'r1' })).toBe(
       '/space/casa/fijo/r1',
     );
+  });
+});
+
+describe('paymentHref · el detalle de un pago entre miembros', () => {
+  it('va a su propia pantalla, no al espacio', () => {
+    expect(paymentHref('casa', 'p1')).toBe('/space/casa/pagos/p1');
   });
 });
 

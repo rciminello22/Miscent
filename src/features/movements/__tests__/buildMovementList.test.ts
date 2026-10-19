@@ -5,6 +5,7 @@ import {
   filterMovements,
   spacesInMonth,
 } from '../buildMovementList';
+import { rowDestination } from '../movementsView';
 import {
   MARTINA,
   RENZO,
@@ -463,13 +464,91 @@ describe('SA-05 · un espacio del que saliste', () => {
 
   it('el espacio y quién pagó quedan separados, para mostrarlos por separado', () => {
     expect(rows[0]).toMatchObject({
-      spaceName: 'Casa · ya no sos miembro',
+      // El sufijo "Ya no sos miembro" lo pone la fila (rowDetail), no el nombre.
+      spaceName: 'Casa',
       payerLabel: 'pagó Martina',
     });
   });
 
   it('no se puede abrir: ya no hay acceso (SA-02)', () => {
     expect(rows[0]?.formerSpace).toBe(true);
+  });
+});
+
+describe('bug · tocar una fila REAL de Movimientos abre su detalle, nunca el espacio', () => {
+  const build = (membershipArgs: Partial<Parameters<typeof membership>[0]>, facts = spaceFacts()) =>
+    buildMovementList({
+      facts: personalFacts({
+        spaces: [membership({ facts, mySlot: RENZO, ...membershipArgs })],
+      }),
+      ...options,
+    });
+
+  it('un gasto compartido puntual → el detalle del gasto', () => {
+    const [row] = build(
+      {},
+      spaceFacts({
+        expenses: [
+          sharedExpense({ id: 'super', amount: 100_000, date: '2026-10-05', payerSlot: RENZO }),
+        ],
+      }),
+    );
+
+    expect(row?.id).toBe('shared:super');
+    expect(rowDestination(row!)).toEqual({ kind: 'href', href: '/space/casa/gasto/super' });
+  });
+
+  it('un gasto compartido en cuotas → el detalle del gasto', () => {
+    const [row] = build(
+      {},
+      spaceFacts({
+        expenses: [
+          sharedExpense({
+            id: 'lavarropas',
+            amount: 360_000,
+            date: '2026-10-14',
+            payerSlot: MARTINA,
+            installments: { count: 6, card: visa },
+          }),
+        ],
+      }),
+    );
+
+    expect(rowDestination(row!)).toEqual({ kind: 'href', href: '/space/casa/gasto/lavarropas' });
+  });
+
+  it('un pago entre miembros → el detalle del pago, NO el espacio (esa era la causa)', () => {
+    const [row] = build(
+      {},
+      spaceFacts({
+        payments: [
+          memberPayment({ fromSlot: MARTINA, toSlot: RENZO, amount: 20_000, date: '2026-10-12' }),
+        ],
+      }),
+    );
+
+    expect(row?.kind).toBe('member-payment');
+    const destination = rowDestination(row!);
+    expect(destination?.kind).toBe('href');
+    expect(destination).toEqual({
+      kind: 'href',
+      href: `/space/casa/pagos/${row!.id.replace('payment:', '')}`,
+    });
+  });
+
+  it('SA-02 · del espacio del que saliste, ni el gasto ni el pago abren nada', () => {
+    const rows = build(
+      { leftOn: '2026-10-10' },
+      spaceFacts({
+        expenses: [sharedExpense({ id: 'super', amount: 100_000, date: '2026-10-05', payerSlot: MARTINA })],
+        payments: [
+          memberPayment({ fromSlot: MARTINA, toSlot: RENZO, amount: 20_000, date: '2026-10-06' }),
+        ],
+      }),
+    );
+
+    expect(rows).toHaveLength(2);
+    for (const row of rows) expect(rowDestination(row)).toBeNull();
   });
 });
 

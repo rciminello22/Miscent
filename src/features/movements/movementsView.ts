@@ -1,7 +1,7 @@
 import { addDays, monthOf, type IsoDate, type Month } from '@domain/calendar';
 import type { Pesos } from '@domain/money';
 import { formatDayMonth, formatMonth } from '@/lib/format';
-import { occurrenceHref } from '@/features/spaces/spaceNavigation';
+import { occurrenceHref, paymentHref } from '@/features/spaces/spaceNavigation';
 import type { MovementFilter, MovementRow } from './buildMovementList';
 
 /**
@@ -93,6 +93,9 @@ export function effectiveFilter(filter: MovementFilter, spaces: readonly SpaceRe
 
 /* ── Una fila ─────────────────────────────────────────────────────────────── */
 
+/** SA-02 · lo que dice la fila de un espacio del que saliste. */
+const FORMER_MEMBER = 'Ya no sos miembro';
+
 export type RowDetail = {
   caption: string | null;
   effect: { kind: 'installments' | 'card' | 'income'; text: string } | null;
@@ -106,8 +109,17 @@ export type RowDetail = {
  * sobra (salvo uno del que ya saliste: eso se dice siempre).
  */
 export function rowDetail(row: MovementRow, options: { showSpace: boolean }): RowDetail {
+  // SA-02 · de un espacio del que saliste no hay detalle: la segunda línea dice
+  // por qué la fila no se abre. Lo demás (quién pagó, el efecto) no se ofrece.
+  if (row.formerSpace) {
+    return {
+      caption: [row.spaceName, FORMER_MEMBER].filter((part) => part != null).join(' · '),
+      effect: null,
+    };
+  }
+
   const parts: string[] = [];
-  if (row.spaceName != null && (options.showSpace || row.formerSpace)) parts.push(row.spaceName);
+  if (row.spaceName != null && options.showSpace) parts.push(row.spaceName);
   if (row.payerLabel != null) parts.push(row.payerLabel);
   if (row.note != null) parts.push(row.note);
 
@@ -119,11 +131,8 @@ export function rowDetail(row: MovementRow, options: { showSpace: boolean }): Ro
   return { caption: parts.length > 0 ? parts.join(' · ') : null, effect };
 }
 
-/** A dónde lleva tocar una fila. */
-export type RowDestination =
-  | { kind: 'href'; href: string }
-  | { kind: 'space'; spaceId: string }
-  | null;
+/** A dónde lleva tocar una fila: siempre a un detalle, o a nada. */
+export type RowDestination = { kind: 'href'; href: string } | null;
 
 /**
  * Tocar una fila abre su detalle, se haya hecho donde se haya hecho:
@@ -132,8 +141,9 @@ export type RowDestination =
  *   - un gasto compartido, el detalle del gasto (`/space/[id]/gasto/[gid]`) y
  *     NO el espacio. "Atrás" vuelve a la lista. Abrirlo no cuenta como
  *     revisado (K10): "Está bien" sigue siendo explícito.
- *   - un pago entre miembros no tiene pantalla propia: abre lo que abría, el
- *     espacio
+ *   - un pago entre miembros, el detalle del pago (`/space/[id]/pagos/[pid]`).
+ *     Antes caía en el "resto" y abría el espacio: esa era la causa de que
+ *     "tocar un movimiento de un espacio" te mandara adentro del espacio.
  *   - de un espacio del que saliste no hay detalle (SA-02)
  *
  * La lista solo trae gastos del espacio, no sus fijos: la ocurrencia de un fijo
@@ -141,14 +151,12 @@ export type RowDestination =
  */
 export function rowDestination(row: MovementRow): RowDestination {
   if (row.formerSpace) return null;
-  if (row.spaceId == null) return { kind: 'href', href: `/movimiento/${stripPrefix(row.id)}` };
-  if (row.kind === 'shared-expense') {
-    return {
-      kind: 'href',
-      href: occurrenceHref(row.spaceId, { sourceKind: 'expense', sourceId: stripPrefix(row.id) }),
-    };
+  const sourceId = stripPrefix(row.id);
+  if (row.spaceId == null) return { kind: 'href', href: `/movimiento/${sourceId}` };
+  if (row.kind === 'member-payment') {
+    return { kind: 'href', href: paymentHref(row.spaceId, sourceId) };
   }
-  return { kind: 'space', spaceId: row.spaceId };
+  return { kind: 'href', href: occurrenceHref(row.spaceId, { sourceKind: 'expense', sourceId }) };
 }
 
 /** `movement:abc` → `abc`: el id de la fila lleva de qué tabla viene. */

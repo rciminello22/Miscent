@@ -3,7 +3,6 @@ import { Alert } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import { addMonths, monthOf, type IsoDate, type Month } from '@domain/calendar';
 import { formatMonth, formatPesos } from '@/lib/format';
-import { useOpenSpace } from '@/features/spaces/useOpenSpace';
 import { useFeedback } from '@/features/shared/useFeedback';
 import { useDeleteMovement, usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import {
@@ -104,7 +103,6 @@ function capitalize(text: string): string {
 /** Tocar una fila abre su detalle; mantener presionado un movimiento propio lo elimina. */
 export function useMovementActions() {
   const router = useRouter();
-  const openSpace = useOpenSpace();
   const deleteMovement = useDeleteMovement();
   const feedback = useFeedback();
 
@@ -114,8 +112,7 @@ export function useMovementActions() {
     // Abrir el detalle NO cuenta como revisado (K10).
     const destination = rowDestination(row);
     if (destination == null) return;
-    if (destination.kind === 'space') openSpace(destination.spaceId);
-    else router.push(destination.href as Href);
+    router.push(destination.href as Href);
   }
 
   function confirmDelete(row: MovementRow) {

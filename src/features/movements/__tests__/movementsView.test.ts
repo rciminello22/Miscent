@@ -87,12 +87,12 @@ describe('rowDestination · qué abre cada tipo de fila', () => {
     ).toEqual({ kind: 'href', href: '/space/casa/gasto/g1' });
   });
 
-  it('un pago entre miembros abre lo que abría: el espacio', () => {
+  it('un pago entre miembros abre el detalle del pago, no el espacio', () => {
     expect(
       rowDestination(
         row({ id: 'payment:p1', date: TODAY, kind: 'member-payment', spaceId: 'casa' }),
       ),
-    ).toEqual({ kind: 'space', spaceId: 'casa' });
+    ).toEqual({ kind: 'href', href: '/space/casa/pagos/p1' });
   });
 
   it('SA-02 · de un espacio del que saliste no hay detalle, ni del gasto ni del pago', () => {
@@ -240,20 +240,19 @@ describe('rowDetail · la segunda línea, solo si agrega algo', () => {
     expect(rowDetail(payment, { showSpace: false }).caption).toBe('no cambia tu radar');
   });
 
-  it('un espacio del que saliste conserva su nombre aunque se filtre por él', () => {
+  it('un espacio del que saliste dice "Ya no sos miembro" (con su nombre), aunque se filtre por él', () => {
     const former = row({
       id: 'f',
       date: TODAY,
       kind: 'shared-expense',
       spaceId: 'casa',
-      spaceName: 'Casa · ya no sos miembro',
+      spaceName: 'Casa',
       payerLabel: 'pagó Martina',
       formerSpace: true,
     });
 
-    expect(rowDetail(former, { showSpace: false }).caption).toBe(
-      'Casa · ya no sos miembro · pagó Martina',
-    );
+    expect(rowDetail(former, { showSpace: false }).caption).toBe('Casa · Ya no sos miembro');
+    expect(rowDetail(former, { showSpace: true }).caption).toBe('Casa · Ya no sos miembro');
   });
 
   it('el efecto sale con su tipo: cuotas, tarjeta e ingreso', () => {

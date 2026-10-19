@@ -41,7 +41,7 @@ export type MovementRow = {
   context: string | null;
   /** La categoría, que da el ícono de la fila. `null` en un pago entre miembros. */
   category: Category | null;
-  /** "Casa" o "Casa · ya no sos miembro". `null` en lo personal. */
+  /** El nombre del espacio, solo ("Casa"). `null` en lo personal. */
   spaceName: string | null;
   /** "pagó vos" / "pagó Martina". `null` si no es un gasto compartido. */
   payerLabel: string | null;
@@ -135,9 +135,11 @@ export function buildMovementList(args: {
   for (const membership of facts.spaces) {
     const { facts: spaceFacts, mySlot } = membership;
     const other = spaceFacts.space.members.find((member) => member.slot !== mySlot)!;
-    // SA-05 · "Casa · ya no sos miembro" si salió.
-    const spaceName = spaceContext(spaceFacts.space.name, membership.leftOn != null);
     const formerSpace = membership.leftOn != null;
+    // SA-05 · "Casa · ya no sos miembro" si salió (para `context`). La fila
+    // arma su segunda línea con el nombre solo y `formerSpace`.
+    const spaceName = spaceFacts.space.name;
+    const spaceLabel = spaceContext(spaceName, formerSpace);
     // Opción B · lo que cargó el otro y todavía no revisé.
     const pending = pendingReview(spaceFacts, mySlot, membership.reviews);
     const tagFor = (sourceId: string) => {
@@ -187,7 +189,7 @@ export function buildMovementList(args: {
         amount: myShare,
         total: expense.amount,
         // §16 · "Casa · pagó Martina"
-        context: `${spaceName} · ${payerLabel}`,
+        context: `${spaceLabel} · ${payerLabel}`,
         category: expense.category,
         spaceName,
         payerLabel,
@@ -217,7 +219,7 @@ export function buildMovementList(args: {
         date: payment.date,
         amount: payment.amount,
         total: null,
-        context: spaceName,
+        context: spaceLabel,
         category: null,
         spaceName,
         payerLabel: null,
