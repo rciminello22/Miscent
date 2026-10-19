@@ -104,7 +104,7 @@ export type RowDetail = {
 /**
  * Lo que va bajo el título de la fila, solo si agrega algo: el espacio y quién
  * pagó, "no cambia tu radar" (P-04) y el efecto ("Se paga en noviembre", "6
- * cuotas de $30.000", "Ingreso registrado"). La fecha la da el encabezado del
+ * cuotas de $30.000", "Extra"). La fecha la da el encabezado del
  * día. `showSpace` es falso dentro de la lista de un espacio, donde el nombre
  * sobra (salvo uno del que ya saliste: eso se dice siempre).
  */

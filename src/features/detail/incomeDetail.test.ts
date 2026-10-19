@@ -87,7 +87,7 @@ describe('oneOffIncomeDetail · un ingreso puntual', () => {
     expect(detail.facts[1]?.value).toBe('30 de diciembre de 2025');
   });
 
-  it('"Extra" es una sola constante de copy: la lista sigue diciendo "Ingreso registrado"', () => {
+  it('"Extra" es una sola constante de copy, la misma que usa la lista', () => {
     expect(ONE_OFF_INCOME_LABEL).toBe('Extra');
     const detail = oneOffIncomeDetail(income, TODAY);
 

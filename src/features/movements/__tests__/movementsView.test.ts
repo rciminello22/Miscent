@@ -268,10 +268,10 @@ describe('rowDetail · la segunda línea, solo si agrega algo', () => {
       }).effect,
     ).toEqual({ kind: 'card', text: 'Se paga en noviembre' });
     expect(
-      rowDetail(row({ id: 'a', date: TODAY, effect: 'Ingreso registrado', effectKind: 'income' }), {
+      rowDetail(row({ id: 'a', date: TODAY, effect: 'Extra', effectKind: 'income' }), {
         showSpace: true,
       }).effect,
-    ).toEqual({ kind: 'income', text: 'Ingreso registrado' });
+    ).toEqual({ kind: 'income', text: 'Extra' });
   });
 
   it('el nombre de un medio de pago (efectivo, débito) no agrega nada: no se muestra', () => {

@@ -221,7 +221,7 @@ describe('MovementDayList · la lista agrupada por día', () => {
           kind: 'personal-income',
           category: 'sueldo',
           amount: 1_200_000,
-          effect: 'Ingreso registrado',
+          effect: 'Extra',
           effectKind: 'income',
         }),
         row({

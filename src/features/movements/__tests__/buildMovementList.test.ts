@@ -5,6 +5,7 @@ import {
   filterMovements,
   spacesInMonth,
 } from '../buildMovementList';
+import { ONE_OFF_INCOME_LABEL } from '@/features/detail/incomeDetail';
 import { rowDestination } from '../movementsView';
 import {
   MARTINA,
@@ -233,7 +234,7 @@ describe('§16 · la lista de Movimientos', () => {
     });
   });
 
-  it('un ingreso se rotula "Ingreso registrado"', () => {
+  it('un ingreso puntual se rotula "Extra", igual que en su detalle', () => {
     const facts = personalFacts({
       movements: [
         movement({ kind: 'income', amount: 1_200_000, date: '2026-10-05', category: 'sueldo' }),
@@ -241,7 +242,9 @@ describe('§16 · la lista de Movimientos', () => {
     });
 
     const rows = buildMovementList({ facts, ...options });
-    expect(rows[0]).toMatchObject({ kind: 'personal-income', effect: 'Ingreso registrado' });
+    expect(rows[0]).toMatchObject({ kind: 'personal-income', effect: 'Extra' });
+    expect(rows[0]?.effect).toBe(ONE_OFF_INCOME_LABEL);
+    expect(JSON.stringify(rows)).not.toContain('Ingreso registrado');
   });
 
   it('P-04 · un pago entre miembros lleva la nota "no cambia tu radar"', () => {

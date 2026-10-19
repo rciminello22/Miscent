@@ -5,6 +5,7 @@ import type { Pesos } from '@domain/money';
 import { pendingReview } from '@domain/review';
 import { resolveShares, shareOf, splitInstallmentShares } from '@domain/split';
 import type { Category, PaymentMethod, PersonalFacts } from '@domain/types';
+import { ONE_OFF_INCOME_LABEL } from '@/features/detail/incomeDetail';
 import { reviewTag } from '@/features/spaces/reviewCopy';
 import { spaceContext } from '@/features/spaces/departureCopy';
 
@@ -45,7 +46,7 @@ export type MovementRow = {
   spaceName: string | null;
   /** "pagó vos" / "pagó Martina". `null` si no es un gasto compartido. */
   payerLabel: string | null;
-  /** §16 · "1 pago · se paga en noviembre", "6 cuotas de $30.000", "Ingreso registrado". */
+  /** §16 · "1 pago · se paga en noviembre", "6 cuotas de $30.000", "Extra". */
   effect: string | null;
   /** Qué clase de efecto es, para elegir su ícono. `method` es solo el nombre del medio. */
   effectKind: 'installments' | 'card' | 'income' | 'method' | null;
@@ -101,7 +102,8 @@ export function buildMovementList(args: {
     let effect: string | null = null;
     let effectKind: MovementRow['effectKind'] = null;
     if (movement.kind === 'income') {
-      effect = 'Ingreso registrado';
+      // Un ingreso puntual se llama igual en la lista y en su detalle.
+      effect = ONE_OFF_INCOME_LABEL;
       effectKind = 'income';
     } else if (movement.installments != null) {
       const [first] = installmentAmounts(movement.amount, movement.installments.count);

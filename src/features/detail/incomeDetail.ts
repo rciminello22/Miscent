@@ -10,9 +10,9 @@ import type { Fact } from './installmentsCycle';
  */
 
 /**
- * Cómo se llama un ingreso que entró una sola vez, EN EL DETALLE. La lista sigue
- * diciendo "Ingreso registrado": el usuario todavía no decidió si se unifica.
- * Cambiarlo acá cambia el detalle entero.
+ * Cómo se llama un ingreso que entró una sola vez, en el detalle Y en la lista
+ * de Movimientos (el usuario decidió unificarlos). Cambiarlo acá cambia los dos.
+ * "Ingresos registrados" del radar es otra cosa: el total (glosario §7.2).
  */
 export const ONE_OFF_INCOME_LABEL = 'Extra';
 
