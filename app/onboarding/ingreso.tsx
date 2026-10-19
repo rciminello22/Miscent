@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { goBack } from '@/features/shared/navigation';
@@ -7,7 +7,12 @@ import { AmountInput } from '@/features/add/AmountInput';
 import { Field } from '@/features/add/fields';
 import { StepShell } from '@/features/onboarding/StepShell';
 import { onboardingBranches, onboardingProgress } from '@/features/onboarding/onboardingProgress';
-import { useCreateRecurrence, usePersonalFacts } from '@/features/shared/usePersonalFacts';
+import { incomeSaveAction, type SavedIncome } from '@/features/onboarding/ingresoSave';
+import {
+  useCreateRecurrence,
+  usePersonalFacts,
+  useUpdateIncome,
+} from '@/features/shared/usePersonalFacts';
 import { useToday } from '@/features/shared/useToday';
 import { DayAnswerField } from '@/features/onboarding/DayAnswerField';
 import { dayAnswerToStored, emptyAnswer } from '@/features/onboarding/dayAnswer';
@@ -33,6 +38,7 @@ export default function Ingreso() {
   const standalone = desde === 'perfil';
   const today = useToday();
   const createRecurrence = useCreateRecurrence();
+  const updateIncome = useUpdateIncome();
   const { facts } = usePersonalFacts();
   // UX-22 · la barra cuenta los pasos que de verdad se recorren.
   const progress = onboardingProgress('ingreso', onboardingBranches(facts, today));
@@ -40,28 +46,39 @@ export default function Ingreso() {
   const [amount, setAmount] = useState(0);
   // T-02 · sin respuesta de antemano: nadie queda con un día que no eligió.
   const [dayAnswer, setDayAnswer] = useState(emptyAnswer());
-  const [saving, setSaving] = useState(false);
+  // El ingreso que este paso ya creó: la pantalla sigue montada en el stack y,
+  // al volver y tocar Continuar de nuevo, no se crea un segundo sueldo.
+  const saved = useRef<SavedIncome | null>(null);
+  // El botón sigue a la mutación, no a un estado propio: no puede quedar cargando.
+  const saving = createRecurrence.isPending || updateIncome.isPending;
 
   async function save() {
     if (amount <= 0) return;
-    setSaving(true);
 
     try {
       const stored = dayAnswerToStored(dayAnswer);
-      await createRecurrence.mutateAsync({
-        kind: 'income',
-        amount,
-        category: 'sueldo',
-        dayOfMonth: stored.day,
-        dayApprox: stored.approx,
-        startMonth: monthOf(today),
-        endMonth: null,
-        paymentMethodId: null,
-      });
+      const draft = { amount, dayOfMonth: stored.day, dayApprox: stored.approx };
+      const action = incomeSaveAction(saved.current, draft);
+
+      if (action.kind === 'create') {
+        const id = await createRecurrence.mutateAsync({
+          kind: 'income',
+          ...draft,
+          category: 'sueldo',
+          startMonth: monthOf(today),
+          endMonth: null,
+          paymentMethodId: null,
+        });
+        saved.current = { id, draft };
+      } else if (action.kind === 'update') {
+        await updateIncome.mutateAsync({ id: action.id, ...draft });
+        saved.current = { id: action.id, draft };
+      }
+
       if (standalone) goBack(router);
       else router.push('/onboarding/tarjetas');
     } catch {
-      setSaving(false);
+      // Sigue en la pantalla con el botón libre para reintentar.
     }
   }
 

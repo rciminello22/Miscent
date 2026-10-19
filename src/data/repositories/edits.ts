@@ -471,6 +471,29 @@ export async function correctRecurrence(
   if (error != null) throw new Error('No pudimos guardar los cambios.');
 }
 
+/**
+ * Onboarding · Ingreso: el usuario vuelve al paso y corrige el ingreso que
+ * recién creó. Update plano (monto y día): el recurrente nació hace instantes,
+ * así que no hay tramos de antes (`past_terms`) que cuidar.
+ */
+export async function updateOnboardingIncome(
+  recurrenceId: string,
+  input: { amount: Pesos; dayOfMonth: number | null; dayApprox: boolean },
+): Promise<void> {
+  const { error } = await supabase
+    .from('recurrences')
+    .update({
+      amount: input.amount,
+      ...recurrenceDayColumns(
+        { dayOfMonth: input.dayOfMonth, dayApprox: input.dayApprox },
+        { clearOnExact: true },
+      ),
+    })
+    .eq('id', recurrenceId);
+
+  if (error != null) throw new Error('No pudimos guardar los cambios.');
+}
+
 export async function deleteRecurrenceById(recurrenceId: string): Promise<void> {
   const { error } = await supabase.from('recurrences').delete().eq('id', recurrenceId);
   if (error != null) throw new Error('No pudimos eliminar el fijo.');

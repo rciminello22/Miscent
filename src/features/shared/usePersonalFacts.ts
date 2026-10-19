@@ -4,7 +4,9 @@ import { addMonths, monthOf } from '@domain/calendar';
 import { expandPersonalOccurrences, type PersonalExpansion } from '@domain/occurrences';
 import type { PersonalFacts } from '@domain/types';
 import { queryKeys } from '@/data/queryClient';
+import type { Pesos } from '@domain/money';
 import { fetchPersonalFacts } from '@/data/repositories/personal';
+import { updateOnboardingIncome } from '@/data/repositories/edits';
 import {
   createPaymentMethod,
   createPersonalMovement,
@@ -108,6 +110,17 @@ export function useCreatePaymentMethod() {
       await invalidate();
       return id;
     },
+  });
+}
+
+/** Onboarding · Ingreso: corrige el ingreso que el mismo paso creó antes. */
+export function useUpdateIncome() {
+  const invalidate = useInvalidateFacts();
+
+  return useMutation({
+    mutationFn: (input: { id: string; amount: Pesos; dayOfMonth: number | null; dayApprox: boolean }) =>
+      updateOnboardingIncome(input.id, input),
+    onSuccess: () => void invalidate(),
   });
 }
 

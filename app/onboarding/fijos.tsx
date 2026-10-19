@@ -146,8 +146,11 @@ export default function Fijos() {
       }
       router.replace('/onboarding/listo');
     } catch (cause) {
-      setSaving(false);
       feedback.error('No pudimos guardar tus fijos', cause);
+    } finally {
+      // Éxito o falla, el botón se libera: si la pantalla queda en el stack, no
+      // puede quedar cargando para siempre.
+      setSaving(false);
     }
   }
 

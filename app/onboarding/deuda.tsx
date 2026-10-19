@@ -197,7 +197,7 @@ export default function Deuda() {
       help="Abrí tu último resumen o la app del banco. Si no te acordás de algo, dejalo vacío y cargalo después."
       saving={save.isPending}
       continueDisabled={needsDueDate}
-      onContinue={() => void save.mutateAsync()}
+      onContinue={() => save.mutate()}
       onSkip={next}
       continueLabel={index + 1 < cards.length ? 'Siguiente tarjeta' : 'Continuar'}
     >
