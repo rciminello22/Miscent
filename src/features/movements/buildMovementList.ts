@@ -3,7 +3,7 @@ import { resolveCardPayment } from '@domain/cards';
 import { installmentAmounts } from '@domain/installments';
 import type { Pesos } from '@domain/money';
 import { pendingReview } from '@domain/review';
-import { resolveShares, shareOf } from '@domain/split';
+import { resolveShares, shareOf, splitInstallmentShares } from '@domain/split';
 import type { Category, PaymentMethod, PersonalFacts } from '@domain/types';
 import { reviewTag } from '@/features/spaces/reviewCopy';
 import { spaceContext } from '@/features/spaces/departureCopy';
@@ -163,8 +163,13 @@ export function buildMovementList(args: {
       let effect: string | null = null;
       let effectKind: MovementRow['effectKind'] = null;
       if (expense.installments != null) {
-        const [first] = installmentAmounts(expense.amount, expense.installments.count);
-        effect = `${expense.installments.count} cuotas de ${formatAmount(first ?? 0)}`;
+        // K9 · la cifra principal es tu parte, así que la cuota también: la
+        // misma división por cuota que usa el dominio (Q-09 / CA-51).
+        const count = expense.installments.count;
+        const amounts = installmentAmounts(expense.amount, count);
+        const [firstShares] = splitInstallmentShares(amounts, expense.amount, expense.split);
+        const mine = firstShares == null ? 0 : shareOf(firstShares, mySlot);
+        effect = `${count} cuotas de ${formatAmount(mine)}`;
         effectKind = 'installments';
       } else if (iPaid) {
         effect = cardEffect(method, expense.date, monthName);

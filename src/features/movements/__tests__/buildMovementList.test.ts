@@ -210,6 +210,74 @@ describe('§16 · la lista de Movimientos', () => {
     expect(rows[0]?.effect).toBeNull();
   });
 
+  describe('K9 · la línea de cuotas de un compartido va sobre TU PARTE', () => {
+    const lavarropas = (args: Parameters<typeof sharedExpense>[0]) =>
+      buildMovementList({
+        facts: personalFacts({
+          spaces: [
+            membership({
+              facts: spaceFacts({ expenses: [sharedExpense(args)] }),
+              mySlot: RENZO,
+            }),
+          ],
+        }),
+        ...options,
+      })[0]!;
+
+    it('50/50: $360.000 en 6 cuotas, tu parte $180.000 → "6 cuotas de $30.000"', () => {
+      const result = lavarropas({
+        amount: 360_000,
+        date: '2026-10-14',
+        payerSlot: RENZO,
+        installments: { count: 6, card: visa },
+      });
+
+      expect(result.amount).toBe(180_000);
+      expect(result.effect).toBe('6 cuotas de $30.000');
+    });
+
+    it('lo mismo si pagó el otro: la parte es la tuya, no depende de quién pagó', () => {
+      const result = lavarropas({
+        amount: 360_000,
+        date: '2026-10-14',
+        payerSlot: MARTINA,
+        installments: { count: 6, card: visa },
+      });
+
+      expect(result.effect).toBe('6 cuotas de $30.000');
+    });
+
+    it('reparto personalizado: cada cuota se divide en la misma proporción (CA-51)', () => {
+      const mine = lavarropas({
+        amount: 360_000,
+        date: '2026-10-14',
+        payerSlot: RENZO,
+        split: { mode: 'custom', shareSlot1: 90_000, shareSlot2: 270_000 },
+        installments: { count: 6, card: visa },
+      });
+      expect(mine.amount).toBe(90_000);
+      expect(mine.effect).toBe('6 cuotas de $15.000');
+    });
+
+    it('lo personal sigue sobre el total (es todo tuyo)', () => {
+      const rows = buildMovementList({
+        facts: personalFacts({
+          movements: [
+            movement({
+              amount: 180_000,
+              date: '2026-10-14',
+              paymentMethodId: visa.id,
+              installments: { count: 6, card: visa },
+            }),
+          ],
+        }),
+        ...options,
+      });
+
+      expect(rows[0]?.effect).toBe('6 cuotas de $30.000');
+    });
+  });
+
   it('§12 · cada fila declara su audiencia', () => {
     const casa = spaceFacts({
       expenses: [sharedExpense({ amount: 100_000, date: '2026-10-05', payerSlot: RENZO })],
