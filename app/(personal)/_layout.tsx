@@ -75,6 +75,9 @@ function PersonalTabs() {
           name="compartidos"
           options={{
             title: 'Compartidos',
+            // P23 · la pestaña abre SIEMPRE en la lista: al salir, su stack
+            // vuelve a [lista]. Sin esto restauraba el último espacio abierto.
+            popToTopOnBlur: true,
             tabBarIcon: ({ color, size }) => <Users size={size - 2} color={color} />,
           }}
         />

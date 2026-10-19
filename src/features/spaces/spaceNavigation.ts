@@ -23,6 +23,16 @@ export function spaceHref(args: { accountState: AccountState; spaceId: string })
   return `/(personal)/compartidos/${args.spaceId}`;
 }
 
+/**
+ * Opciones de navegación al abrir un espacio. Con cuenta personal, `withAnchor`
+ * arma el stack de la pestaña como [lista, espacio] (la `initialRouteName` de
+ * Compartidos): así "Volver" tiene la lista debajo y `popToTopOnBlur` deja la
+ * pestaña en la lista. El invitado no tiene pestaña ni lista debajo.
+ */
+export function spaceOpenOptions(accountState: AccountState): { withAnchor: boolean } {
+  return { withAnchor: accountState === 'personal' };
+}
+
 /** Las pantallas de detalle (N3) del espacio. */
 export type SpaceDetailScreen = 'mes' | 'movimientos' | 'pendientes';
 

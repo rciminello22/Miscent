@@ -1,7 +1,12 @@
 import { useCallback } from 'react';
 import { useRouter, type Href } from 'expo-router';
 import { useSession } from '@/features/auth/SessionProvider';
-import { spaceHref, spaceSubHref, type SpaceDetailScreen } from './spaceNavigation';
+import {
+  spaceHref,
+  spaceOpenOptions,
+  spaceSubHref,
+  type SpaceDetailScreen,
+} from './spaceNavigation';
 import { resetTo } from '@/features/shared/navigation';
 import { rememberSpaceOpened } from './useSpaceOpenTimes';
 
@@ -26,9 +31,14 @@ export function useOpenSpace() {
       // 3ii · la lista de Compartidos ordena por el último abierto.
       void rememberSpaceOpened(spaceId);
 
+      // P23 · el ancla pone la lista de espacios DEBAJO del espacio. Sin ella,
+      // abrir un espacio desde otra pestaña dejaba el stack en [espacio] y
+      // `popToTopOnBlur` no tenía a dónde volver: la pestaña reabría adentro.
+      const options = spaceOpenOptions(state);
+
       if (mode === 'reset') resetTo(router, href);
-      else if (mode === 'replace') router.replace(href);
-      else router.push(href);
+      else if (mode === 'replace') router.replace(href, options);
+      else router.push(href, options);
     },
     [router, state],
   );

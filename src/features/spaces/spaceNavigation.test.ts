@@ -4,6 +4,7 @@ import {
   soleSpaceId,
   spaceBackTarget,
   spaceHref,
+  spaceOpenOptions,
   spaceSubHref,
 } from './spaceNavigation';
 
@@ -66,6 +67,16 @@ describe('spaceHref', () => {
 
   it('invitado: siempre su pantalla sin pestañas', () => {
     expect(spaceHref({ accountState: 'guest', spaceId: 'casa' })).toBe('/space/casa');
+  });
+});
+
+describe('spaceOpenOptions · la lista de espacios queda debajo (P23)', () => {
+  it('con cuenta personal, abre con el ancla de la pestaña', () => {
+    expect(spaceOpenOptions('personal')).toEqual({ withAnchor: true });
+  });
+
+  it('el invitado no tiene pestaña ni lista debajo', () => {
+    expect(spaceOpenOptions('guest')).toEqual({ withAnchor: false });
   });
 });
 
