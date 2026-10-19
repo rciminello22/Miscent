@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   isInsideSpace,
+  occurrenceHref,
   soleSpaceId,
   spaceBackTarget,
   spaceHref,
@@ -67,6 +68,25 @@ describe('spaceHref', () => {
 
   it('invitado: siempre su pantalla sin pestañas', () => {
     expect(spaceHref({ accountState: 'guest', spaceId: 'casa' })).toBe('/space/casa');
+  });
+});
+
+/**
+ * El detalle de una ocurrencia (gasto o fijo) vive en /space/[id]/… para los dos
+ * árboles: un solo lugar arma la ruta. Un gasto se edita desde su detalle; un
+ * fijo, desde el fijo (§21), no desde un mes suelto.
+ */
+describe('occurrenceHref', () => {
+  it('un gasto va a su detalle', () => {
+    expect(occurrenceHref('casa', { sourceKind: 'expense', sourceId: 'g1' })).toBe(
+      '/space/casa/gasto/g1',
+    );
+  });
+
+  it('un fijo va al fijo', () => {
+    expect(occurrenceHref('casa', { sourceKind: 'recurrence', sourceId: 'r1' })).toBe(
+      '/space/casa/fijo/r1',
+    );
   });
 });
 

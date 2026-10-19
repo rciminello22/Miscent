@@ -267,7 +267,8 @@ export function LedgerRow({
       scaleOnPress={false}
       accessibilityRole="button"
       accessibilityLabel={[title, caption, authorship].filter((part) => part != null).join('. ')}
-      style={{ paddingVertical: theme.space['3'] }}
+      // 44pt: el área mínima tocable (HIG), aunque la fila tenga una sola línea.
+      style={{ paddingVertical: theme.space['3'], minHeight: 44 }}
     >
       {row}
     </Pressable>

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
+import { occurrenceHref } from './spaceNavigation';
 import type { SpaceOccurrence } from '@domain/occurrences';
 import type { MemberPayment } from '@domain/types';
 import { prettyLabel } from '@/features/add/categories';
@@ -51,13 +52,7 @@ export function SpaceMovementsScreen({ spaceId, inTabs }: { spaceId: string; inT
   const days = useMemo(() => groupMovementsByDay(movements), [movements]);
 
   function openOccurrence(occurrence: SpaceOccurrence) {
-    // Un gasto se edita desde su detalle; un fijo, desde el fijo (§21: los dos
-    // lo editan), no desde un mes suelto.
-    router.push(
-      occurrence.sourceKind === 'expense'
-        ? `/space/${spaceId}/gasto/${occurrence.sourceId}`
-        : `/space/${spaceId}/fijo/${occurrence.sourceId}`,
-    );
+    router.push(occurrenceHref(spaceId, occurrence) as Href);
   }
 
   const hasPayments = movements.some((movement) => movement.kind === 'payment');

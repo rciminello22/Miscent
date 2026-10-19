@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
+import { occurrenceHref } from './spaceNavigation';
 import type { SpaceOccurrence } from '@domain/occurrences';
 import type { MemberPayment } from '@domain/types';
 import { prettyLabel } from '@/features/add/categories';
@@ -56,11 +57,7 @@ export function SpacePendingScreen({ spaceId, inTabs }: { spaceId: string; inTab
   }, [derived, today]);
 
   function openOccurrence(occurrence: SpaceOccurrence) {
-    router.push(
-      occurrence.sourceKind === 'expense'
-        ? `/space/${spaceId}/gasto/${occurrence.sourceId}`
-        : `/space/${spaceId}/fijo/${occurrence.sourceId}`,
-    );
+    router.push(occurrenceHref(spaceId, occurrence) as Href);
   }
 
   const reviewCount = pendings.counts.toReview;

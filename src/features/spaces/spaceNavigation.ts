@@ -33,6 +33,21 @@ export function spaceOpenOptions(accountState: AccountState): { withAnchor: bool
   return { withAnchor: accountState === 'personal' };
 }
 
+/**
+ * A dónde lleva tocar una ocurrencia (una cuota, un gasto, un fijo). Un gasto se
+ * edita desde su detalle; un fijo, desde el fijo (§21: los dos lo editan), no
+ * desde un mes suelto. Las pantallas de detalle viven en /space/[id]/… y las
+ * usan los dos árboles: un solo lugar arma la ruta.
+ */
+export function occurrenceHref(
+  spaceId: string,
+  occurrence: { sourceKind: 'expense' | 'recurrence'; sourceId: string },
+): string {
+  return occurrence.sourceKind === 'expense'
+    ? `/space/${spaceId}/gasto/${occurrence.sourceId}`
+    : `/space/${spaceId}/fijo/${occurrence.sourceId}`;
+}
+
 /** Las pantallas de detalle (N3) del espacio. */
 export type SpaceDetailScreen = 'mes' | 'movimientos' | 'pendientes';
 

@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
+import type { SpaceOccurrence } from '@domain/occurrences';
 import { ArrowRightLeft, CalendarClock, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import {
   addMonths,
@@ -19,6 +20,7 @@ import { initialOf } from './balanceScaleState';
 import { monthBounds, parseMonthParam, stepMonths } from './spaceMonth';
 import { LedgerRow, MemberContribution } from './SpaceRows';
 import { SpaceDetailShell } from './SpaceDetailShell';
+import { occurrenceHref } from './spaceNavigation';
 import { useSpace } from './useSpaces';
 
 /**
@@ -75,6 +77,12 @@ export function SpaceMonthScreen({
   const monthName = formatMonth(selected, current);
   const heading = monthName.charAt(0).toUpperCase() + monthName.slice(1);
 
+  // Lo que todavía no vence también se abre: un gasto en cuotas del mes que
+  // viene solo se puede editar o eliminar desde acá (U7, CA-28).
+  function openOccurrence(occurrence: SpaceOccurrence) {
+    router.push(occurrenceHref(spaceId, occurrence) as Href);
+  }
+
   const stepper = (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
       <StepButton
@@ -109,7 +117,13 @@ export function SpaceMonthScreen({
           {stepper}
 
           {isFuture ? (
-            <FutureMonth derived={derived} month={selected} today={today} view={view} />
+            <FutureMonth
+              derived={derived}
+              month={selected}
+              today={today}
+              view={view}
+              onOpen={openOccurrence}
+            />
           ) : (
             <PastOrCurrentMonth
               derived={derived}
@@ -118,6 +132,7 @@ export function SpaceMonthScreen({
               current={current}
               isCurrent={isCurrent}
               today={today}
+              onOpen={openOccurrence}
             />
           )}
         </Stack>
@@ -154,6 +169,7 @@ function PastOrCurrentMonth({
   current,
   isCurrent,
   today,
+  onOpen,
 }: {
   derived: Derived;
   view: ReturnType<typeof calculateSpaceMonth>;
@@ -161,6 +177,7 @@ function PastOrCurrentMonth({
   current: Month;
   isCurrent: boolean;
   today: string;
+  onOpen: (occurrence: SpaceOccurrence) => void;
 }) {
   const { other, me, mySlot } = derived;
   const max = Math.max(view.viewer.put, view.other.put, 1);
@@ -284,6 +301,7 @@ function PastOrCurrentMonth({
                   .filter((part) => part != null)
                   .join(' · ')}
                 amount={occurrence.amount}
+                onPress={() => onOpen(occurrence)}
               />
               {index < comingThisMonth.length - 1 && <Divider />}
             </View>
@@ -300,11 +318,13 @@ function FutureMonth({
   month,
   today,
   view,
+  onOpen,
 }: {
   derived: Derived;
   month: Month;
   today: string;
   view: ReturnType<typeof calculateSpaceMonth>;
+  onOpen: (occurrence: SpaceOccurrence) => void;
 }) {
   const { other, me } = derived;
   const items = derived.occurrences
@@ -351,6 +371,7 @@ function FutureMonth({
                   .join(' · ')}
                 amount={occurrence.amount}
                 myShare={myShare}
+                onPress={() => onOpen(occurrence)}
               />
               {index < items.length - 1 && <Divider />}
             </View>
