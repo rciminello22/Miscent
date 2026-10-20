@@ -1,7 +1,7 @@
 # Handoff · Radar del sueldo comprometido
 
 Contexto para retomar el proyecto en una sesión nueva.
-Última actualización: 20 de octubre de 2026 · rediseño de UX terminado · migraciones hasta la 0021 aplicadas (pgTAP 98/98) · todo commiteado en `master`, **sin push** · **lo próximo: branding** · la app todavía NO está lista para las tiendas (ver §5).
+Última actualización: 20 de octubre de 2026 · rediseño de UX terminado, con P26 y P27 (espacios que dejaste detrás de una puerta, aviso de lo que elimina el otro) · migraciones hasta la 0021 aplicadas (pgTAP 98/98) · todo commiteado en `master`, **sin push** · **lo próximo: branding** · la app todavía NO está lista para las tiendas (ver §5).
 
 ---
 
@@ -193,9 +193,9 @@ npm run verify:full  # + los de RLS
 
 | Nivel | Qué | Cuántos |
 |---|---|---|
-| 1 · Dominio y reglas puras (vitest) | Casos A–G, CA-*, casos de uso, identidad, navegación, Agregar, contraste WCAG de los tokens, historia de días de tarjeta | 1295 |
+| 1 · Dominio y reglas puras (vitest) | Casos A–G, CA-*, casos de uso, identidad, navegación, Agregar, contraste WCAG de los tokens, historia de días de tarjeta, espacios que dejaste, aviso de eliminaciones | 1318 |
 | 2 · Autorización (pgTAP) | PR-01, PR-02, CA-11..13, CA-47, CA-48, SY-02, SA-06, D-01, P7, §26, anónimos, permisos de funciones, días aproximados, `payment_method_days`, quitar un espacio del historial | 98 |
-| 3 · Componentes (jest-expo) | El lenguaje **obligatorio**, navegación de pestañas (`renderRouter`) | 422 |
+| 3 · Componentes (jest-expo) | El lenguaje **obligatorio**, navegación de pestañas (`renderRouter`) | 434 |
 | 4 · Lint de lenguaje | **Automatiza CA-00** | en CI |
 
 El nivel 4 ya cazó **4 errores míos** ("te quedaría", "el saldo", "Te quedan N
@@ -209,7 +209,7 @@ cuotas"). El nivel 3 encontró **2 bugs reales**.
 
 **Estado (20/10):** las 21 migraciones están aplicadas al remoto (la 0019 y
 la 0020 el 16/10, la 0021 el 20/10) · pgTAP **98/98** · `npm run verify` en
-verde (vitest 1295, jest 422, CA-00) · **todo commiteado en `master`, sin
+verde (vitest 1318, jest 434, CA-00) · **todo commiteado en `master`, sin
 push** (unos 60 commits desde `697b52b`). **El rediseño de UX está terminado.**
 
 **Los wireframes (la referencia visual de todo lo que sigue):**
@@ -232,22 +232,33 @@ la sesión del 15 al 19/10, que se pierde. Para editarlo en otra sesión:
    (sección siguiente).
 
 **Hecho el 19 y 20/10 · Bloque 17, "Quitar un espacio de tu historial"**
-(opción a).
+(opción a), y su rediseño del 20/10 (P26).
    Quien salió de un espacio puede quitar la foto de ese espacio
-   (`former_memberships`) de su historial, de una vez y **solo si no
-   quedan cuotas por venir**. Al quitarla cambia el radar de los meses
-   pasados donde contaba su parte, y eso se dice en la confirmación.
-   - **Implementado el 19/10** (`266372a`, `11d51c5`). Está en Perfil, en
-     la sección "Espacios que dejaste", con la hoja de confirmación, sin
-     Deshacer. Con cuotas por venir, el botón queda apagado con la frase.
-   - **La migración 0021** (`app_remove_former_space`: una RPC
-     `security definer` que borra solo la foto propia) se aplicó el 20/10.
-     pgTAP 98/98.
-   - **Duda abierta:** hoy bloquea cualquier pago por venir de la foto (también
-     un fijo o una compra en 1 pago con vencimiento futuro), pero la frase
-     habla de "cuotas". Recomendado: dejar la regla y cambiar la frase por
-     "Todavía quedan pagos de X hasta noviembre: cuando terminen lo vas a
-     poder quitar." (en `formerSpaces.ts`). Falta el OK de Renzo.
+   (`former_memberships`) de su historial. Al quitarla cambia el radar de los
+   meses pasados donde contaba su parte, y eso se dice en la confirmación.
+   - **Implementado el 19/10** (`266372a`, `11d51c5`) y **la migración 0021**
+     (`app_remove_former_space`: una RPC `security definer` que borra solo la
+     foto propia), aplicada el 20/10. pgTAP 98/98.
+   - **Rediseño del 20/10 (P26), solo de la app, sin migración:**
+     - ya no vive en Perfil ni como tarjetas sueltas en la lista: en
+       Compartidos hay UNA puerta al final, "Espacios que dejaste" (con "1
+       espacio" / "2 espacios"), que abre su N3 (`compartidos/dejados`, y
+       `(guest)/dejados` para el invitado) con el resumen fijo del saldo (P6)
+       y "Quitar de tu historial". Todo vive en `features/spaces`
+       (`FormerSpacesDoor`, `FormerSpacesScreen`, `formerSpaces.ts`);
+     - **se puede quitar siempre**: ya no se bloquea con pagos por venir. La
+       confirmación suma una fila de Futuro ("Tu parte de lo que queda por
+       pagar de X (hasta noviembre) deja de verse en tu Futuro ($N en total)")
+       y mantiene la del radar de los meses pasados, que es lo irreversible.
+       Se dice "pagos", no "cuotas";
+     - el invitado con UN solo espacio no ve la lista (su espacio es su
+       pantalla), así que la puerta también está en su Perfil.
+   - **Aviso de lo que eliminó el otro (P27):** eliminar sigue sin pedir
+     aprobación (K3 / X-02). Debajo del N1 del espacio, una línea discreta
+     ("Martina eliminó Super · $100.000 · ayer (y 2 más)") que abre "Actividad
+     reciente", mientras haya algo de los últimos 7 días. No guarda "visto"
+     (haría falta base); sin notificaciones (SY-01). Lógica en
+     `otherDeletions.ts`, pieza en `DeletionNotice.tsx`.
 
 ### ⚠ La app NO está lista para App Store ni Play Store
 
@@ -323,6 +334,12 @@ el build propio conviene hacerlo antes del piloto, no después.
    - corregir los días (la hoja "antes → ahora" y Deshacer), y verificar
      que un mes pasado no cambie;
    - eliminar una tarjeta con y sin pagos por venir.
+7. **Espacios que dejaste (20/10):**
+   - en Compartidos, una puerta al final de la lista (no existe si no
+     dejaste ninguno), y Perfil sin esa sección;
+   - dentro, el saldo fijo de cuando saliste y "Quitar de tu historial",
+     también con pagos por venir (la hoja avisa de Futuro);
+   - el aviso de lo que eliminó el otro, debajo del N1 de un espacio.
 
 **Qué se hizo del 15 al 19/10, después de la auditoría** (detalle en
 engram, `ux/decisiones-*`, y en los wireframes):
@@ -378,7 +395,9 @@ engram, `ux/decisiones-*`, y en los wireframes):
   - los pagos entre miembros que abrían el espacio.
 
 **Decisiones nuevas en la spec (§38):** P23 (Compartidos siempre en la
-lista), P24 (eliminar tarjetas), P25 (una sola ayuda en el radar). La fila
+lista), P24 (eliminar tarjetas), P25 (una sola ayuda en el radar), P26
+(espacios que dejaste detrás de una puerta, se pueden quitar siempre con aviso)
+y P27 (eliminar sin aprobación, con un aviso de 7 días al otro). La fila
 de §14 y la de "Eliminar" de §22 quedaron actualizadas.
 
 **Qué se hizo en la auditoría del 14 y 15/10 (por etapa):**
@@ -791,6 +810,8 @@ El mail trae un **código de 8 dígitos** y el enlace. Cualquiera de los dos sir
 | **Teclado** | `Screen` ya maneja el teclado (KeyboardAvoidingView + insets). Nada de `react-native-keyboard-controller`: no viene en Expo Go | idem |
 | **Salir siempre** | Nunca `router.back()` a secas: `goBack(router)` (sin historial, va a la raíz). Cambio de árbol: `resetTo` | `src/features/shared/navigation.ts` |
 | **Abrir un espacio** | `useOpenSpace()`, nunca la ruta armada a mano: personal → dentro de la pestaña; invitado → `/space/[id]` | `src/features/spaces/` |
+| **Espacios que dejaste** (P26, 20/10) | Una puerta (`dashed`, con "N espacios") al final de la lista de Compartidos y en el Perfil del invitado; abre su N3 con el saldo fijo (P6) y "Quitar de tu historial". Se quita SIEMPRE: la hoja avisa de Futuro (si quedan pagos) y de los meses pasados del radar. Nunca en Perfil ni como tarjetas sueltas | `FormerSpacesDoor`, `FormerSpacesScreen`, `formerSpaces.ts` |
+| **Lo que elimina el otro** (P27, 20/10) | Sin aprobación (K3). Un aviso discreto bajo el N1 del espacio, 7 días, que abre "Actividad reciente"; nunca una cuarta puerta | `DeletionNotice`, `otherDeletions.ts` |
 | **Compartidos abre siempre en la lista** (P23) | Estado A: la pestaña es la lista, aunque haya un solo espacio; `popToTopOnBlur` y abrir un espacio deja la lista debajo (`withAnchor`). Estado B: el invitado con un solo espacio entra directo, renderizado inline, nunca `useEffect` + `replace` | `compartidos/index.tsx`, `(guest)/espacios.tsx` |
 | **Paso a paso vs formulario** | Paso a paso (`StepShell`, una pregunta por pantalla) en flujos poco frecuentes y con consecuencias. Formulario único con "Más opciones" en los frecuentes (Agregar: principio 4) | `StepShell`, `MoreOptions` |
 | **"Tu parte"** | Nunca "te corresponde" en la UI: se leía como plata que te deben. "Parte" es el sinónimo del glosario §7.2 | todo `features/spaces` |
