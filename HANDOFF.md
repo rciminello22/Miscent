@@ -1,7 +1,7 @@
 # Handoff · Radar del sueldo comprometido
 
 Contexto para retomar el proyecto en una sesión nueva.
-Última actualización: 19 de octubre de 2026 · rediseño de jerarquía visual aplicado · migraciones hasta la 0020 aplicadas · todo commiteado en `master`, **sin push**.
+Última actualización: 20 de octubre de 2026 · rediseño de UX terminado · migraciones hasta la 0021 aplicadas (pgTAP 98/98) · todo commiteado en `master`, **sin push** · **lo próximo: branding** · la app todavía NO está lista para las tiendas (ver §5).
 
 ---
 
@@ -164,7 +164,7 @@ radar/
 | Área | Estado |
 |---|---|
 | Dominio (§29 completo) | ✅ Los 7 casos de §29.1 pasan exactos |
-| Supabase + RLS | ✅ 16 tablas, 20 migraciones · **92/92 asserts** contra el remoto (16/10) |
+| Supabase + RLS | ✅ 16 tablas, 21 migraciones · **98/98 asserts** contra el remoto (20/10) |
 | Rediseño de jerarquía (15 a 19/10) | ✅ Sistema N1/N2/N3 en todas las pantallas · ver "Por dónde seguir" y §11 |
 | UI base | ✅ Tokens claro/oscuro, motion, 14 primitivas propias, teclado y footer fijo (§11) |
 | O1 · O2 · O3 | ✅ Completos, con T-07/Q-06 derivados del último cierre |
@@ -193,9 +193,9 @@ npm run verify:full  # + los de RLS
 
 | Nivel | Qué | Cuántos |
 |---|---|---|
-| 1 · Dominio y reglas puras (vitest) | Casos A–G, CA-*, casos de uso, identidad, navegación, Agregar, contraste WCAG de los tokens, historia de días de tarjeta | 1263 |
-| 2 · Autorización (pgTAP) | PR-01, PR-02, CA-11..13, CA-47, CA-48, SY-02, SA-06, D-01, P7, §26, anónimos, permisos de funciones, días aproximados, `payment_method_days` | 92 |
-| 3 · Componentes (jest-expo) | El lenguaje **obligatorio**, navegación de pestañas (`renderRouter`) | 399 |
+| 1 · Dominio y reglas puras (vitest) | Casos A–G, CA-*, casos de uso, identidad, navegación, Agregar, contraste WCAG de los tokens, historia de días de tarjeta | 1295 |
+| 2 · Autorización (pgTAP) | PR-01, PR-02, CA-11..13, CA-47, CA-48, SY-02, SA-06, D-01, P7, §26, anónimos, permisos de funciones, días aproximados, `payment_method_days`, quitar un espacio del historial | 98 |
+| 3 · Componentes (jest-expo) | El lenguaje **obligatorio**, navegación de pestañas (`renderRouter`) | 422 |
 | 4 · Lint de lenguaje | **Automatiza CA-00** | en CI |
 
 El nivel 4 ya cazó **4 errores míos** ("te quedaría", "el saldo", "Te quedan N
@@ -207,10 +207,10 @@ cuotas"). El nivel 3 encontró **2 bugs reales**.
 
 ### ▶ Por dónde seguir (actualizado el 19/10)
 
-**Estado:** las 20 migraciones están aplicadas al remoto (la 0019 y la 0020,
-el 16/10) · pgTAP **92/92** · `npm run verify` en verde (vitest 1263, jest
-399, CA-00) · **todo commiteado en `master`, sin push** (unos 55 commits desde
-`697b52b`).
+**Estado (20/10):** las 21 migraciones están aplicadas al remoto (la 0019 y
+la 0020 el 16/10, la 0021 el 20/10) · pgTAP **98/98** · `npm run verify` en
+verde (vitest 1295, jest 422, CA-00) · **todo commiteado en `master`, sin
+push** (unos 60 commits desde `697b52b`). **El rediseño de UX está terminado.**
 
 **Los wireframes (la referencia visual de todo lo que sigue):**
 **https://claude.ai/artifact/6m96ypiCKBpUxwxDZk9M19** ("Jerarquía visual
@@ -220,7 +220,19 @@ la sesión del 15 al 19/10, que se pierde. Para editarlo en otra sesión:
 `Artifact read` de esa URL, editar la copia local y republicar con `url`.
 
 **Lo próximo, en orden:**
-1. **Bloque 17 · "Quitar un espacio de tu historial"** (decidido: opción a).
+1. **Branding: nombre, logo e identidad visual** (P17 en §38, pendiente
+   desde la spec). Es lo próximo porque de eso dependen el nombre de la app,
+   el ícono, la pantalla de inicio, el identificador del paquete y el dominio
+   (para el mail y los links de invitación). Ver "La app NO está lista para
+   las tiendas", más abajo. Hacerlo con la metodología de wireframes:
+   opciones dibujadas lado a lado.
+2. **Que Renzo pruebe en el iPhone** lo del 18 al 20/10 (lista de abajo).
+3. **Pendientes abiertos** (más abajo).
+4. **Preparar la app para las tiendas**, después del branding y del piloto
+   (sección siguiente).
+
+**Hecho el 19 y 20/10 · Bloque 17, "Quitar un espacio de tu historial"**
+(opción a).
    Quien salió de un espacio puede quitar la foto de ese espacio
    (`former_memberships`) de su historial, de una vez y **solo si no
    quedan cuotas por venir**. Al quitarla cambia el radar de los meses
@@ -228,17 +240,63 @@ la sesión del 15 al 19/10, que se pierde. Para editarlo en otra sesión:
    - **Implementado el 19/10** (`266372a`, `11d51c5`). Está en Perfil, en
      la sección "Espacios que dejaste", con la hoja de confirmación, sin
      Deshacer. Con cuotas por venir, el botón queda apagado con la frase.
-   - **FALTA APLICAR la migración 0021** (`app_remove_former_space`, RPC
-     `security definer` que borra solo la foto propia). Con eso los asserts
-     pgTAP pasan de 92 a 98. Hasta aplicarla, "Quitar" muestra un toast de
-     error y no se rompe nada. Lo aplica Renzo: `login`, `db push`,
-     `db:types` y `test:rls`.
+   - **La migración 0021** (`app_remove_former_space`: una RPC
+     `security definer` que borra solo la foto propia) se aplicó el 20/10.
+     pgTAP 98/98.
    - **Duda abierta:** hoy bloquea cualquier pago por venir de la foto (también
      un fijo o una compra en 1 pago con vencimiento futuro), pero la frase
-     habla de "cuotas". Para que bloqueen solo las cuotas, se cambia
-     `isUpcoming` en `formerSpaces.ts`.
-2. **Que Renzo pruebe en el iPhone** lo del 18 y 19/10 (lista de abajo).
-3. **Pendientes abiertos** (más abajo).
+     habla de "cuotas". Recomendado: dejar la regla y cambiar la frase por
+     "Todavía quedan pagos de X hasta noviembre: cuando terminen lo vas a
+     poder quitar." (en `formerSpaces.ts`). Falta el OK de Renzo.
+
+### ⚠ La app NO está lista para App Store ni Play Store
+
+**Hoy la app solo corre en Expo Go**, en el iPhone de Renzo, con
+`npm run start:tunnel`. Funcionalmente el MVP está completo, pero publicarla
+en las tiendas necesita cosas que todavía no existen. **Por qué no está
+lista:**
+
+| Falta | Por qué bloquea | Estado |
+|---|---|---|
+| **Branding** (nombre, ícono, pantalla de inicio, colores de marca) | Las tiendas piden nombre, ícono de 1024px, capturas y descripción. El identificador del paquete (`com.<marca>.<app>`) se elige una vez y **no se puede cambiar** después de publicar | P17 pendiente |
+| **Build propio con EAS** | Expo Go no se publica. Hace falta `eas build` (iOS y Android) con `bundleIdentifier` y `package` en `app.json`, ícono, splash, versión y número de build | No existe |
+| **Cuentas de desarrollador** | Apple Developer Program (pago anual) y Google Play Console (pago único) | Sin crear |
+| **Links de invitación https** | Hoy son `exp://` o `radar://`, que WhatsApp no vuelve tocables. Hace falta un dominio, una página puente y Universal Links / App Links | Pendiente (§5, "Antes de producción") |
+| **Redirect del login** | La allowlist de Supabase apunta a la URL del tunnel de Expo Go. Con el build propio hay que sumar el esquema y el dominio definitivos | Pendiente |
+| **Mail transaccional** | Hoy el código de 8 dígitos sale por Gmail con contraseña de aplicación. Para producción: un proveedor (Resend o Postmark) con el dominio de la marca | Pendiente |
+| **Textos legales y de privacidad** | Las dos tiendas exigen una URL de política de privacidad y declarar qué datos se recolectan (App Privacy en Apple, Data safety en Google). **P9, P10 y P11 bloquean publicar cualquier texto de privacidad** (§34), y P12 (validación legal, Ley 25.326) va antes de salir del círculo cercano | Pendiente (decisiones de Renzo) |
+| **Revisión de Apple** | Pide una cuenta demo con datos para el revisor. Si algún día se suma login con Google, la guideline 4.8 obliga a ofrecer Sign in with Apple. La eliminación de cuenta dentro de la app (§28) ya está hecha | A preparar |
+| **Invitados anónimos** | Falta un CAPTCHA contra la creación masiva de usuarios anónimos. Si un invitado pierde el teléfono antes de guardar su email, pierde el acceso | Pendiente |
+| **Google Play** | La consola pide declarar si la app tiene funciones financieras, la clasificación de contenido y el público objetivo | A completar |
+| **`npm audit`** | Había 67 vulnerabilidades, casi todas de herramientas de desarrollo. Revisar antes del primer build | Pendiente |
+
+**Cómo encararlo, en orden (después del branding):**
+1. **Branding cerrado:** nombre, ícono y paleta. Con eso se decide el
+   identificador del paquete y se compra el dominio.
+2. **Configurar EAS:** `bunx`/`npx eas-cli` (`eas init`, `eas.json` con
+   perfiles `development`, `preview` y `production`). Completar `app.json`
+   con nombre, `bundleIdentifier`, `package`, ícono, splash y `scheme`
+   definitivo. Ver la doc de Expo SDK 57 antes de tocar nada (AGENTS.md:
+   "Expo has changed, do not trust your training data").
+3. **Un build interno para el piloto** (§35: 1 a 2 meses con personas
+   cercanas): TestFlight en iOS y prueba interna en Play. Así el piloto deja
+   de depender de Expo Go y del tunnel.
+4. **En paralelo con el piloto:** dominio, página puente y Universal Links
+   para las invitaciones · mail transaccional con el dominio · sumar los
+   redirect definitivos a Supabase (revisar `config diff` antes de cualquier
+   `config push`) · CAPTCHA para anónimos · `npm audit`.
+5. **Decidir P9, P10 y P11**, escribir la política de privacidad y validar con
+   un profesional (P12). Recién ahí se pueden completar App Privacy y Data
+   safety.
+6. **Publicación:** capturas, descripción, cuenta demo para la revisión,
+   `eas submit`. Las actualizaciones de JS después pueden ir con
+   `eas update`.
+
+**¿Es lo último?** La **publicación** sí: es el paso final. Pero no todo lo de
+la tabla espera al final. El branding va primero porque destraba el resto, y
+el build propio conviene hacerlo antes del piloto, no después.
+
+### El rediseño de UX (15 al 20/10): qué probar, qué se hizo y qué quedó
 
 **Para probar en el iPhone (recargar la app antes):**
 1. **Movimientos (16A):**
@@ -399,7 +457,9 @@ como **P21** y **P22** (§38), para vetarlas si hace falta.
 - §35 métricas del piloto: elegir proveedor toca P11 (decisión de Renzo).
 - P9–P11 antes de publicar privacidad; P12 (legal) antes de salir del
   círculo cercano.
-- Build propio (EAS), SMTP transaccional, links https de invitación.
+- Build propio (EAS), SMTP transaccional, links https de invitación: todo
+  esto está en "⚠ La app NO está lista para App Store ni Play Store".
+- **Branding (P17): nombre, logo e identidad.** Es lo próximo.
 
 **Ideas de la prueba real**, resueltas en la auditoría: "Con esto, Martina
 te debe $X" (hecho, era §17) · unificar los campos de texto (hecho,
@@ -615,7 +675,7 @@ npm run verify:full        # + RLS
 npm run test:dominio       # solo el dominio (~600ms)
 npm run test:componentes   # jest-expo
 npm run lint:lenguaje      # CA-00
-npm run test:rls           # 92 asserts (necesita supabase login; la salida es JSON)
+npm run test:rls           # 98 asserts (necesita supabase login; la salida es JSON)
 npx supabase migration list  # qué migraciones están aplicadas en el remoto
 npm run test:rls:smoke     # RLS con la anon key (no necesita login)
 npm run db:push            # migraciones
