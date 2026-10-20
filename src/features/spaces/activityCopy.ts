@@ -40,10 +40,15 @@ export function activityLine(
   return `${verb} ${what} · ${amount}`;
 }
 
+/** El día de un instante, en la fecha del teléfono. */
+export function localDateOf(at: string): IsoDate {
+  const date = new Date(at);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 /** "hoy", "ayer" o "5 oct", en la fecha del teléfono. */
 export function activityWhen(at: string, today: IsoDate): string {
-  const date = new Date(at);
-  const local = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const local = localDateOf(at);
   if (local === today) return 'hoy';
   if (local === addDays(today, -1)) return 'ayer';
   return formatDayMonth(local);

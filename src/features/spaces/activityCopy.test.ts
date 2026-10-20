@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { ActivityEvent } from '@domain/activity';
-import { activityLine, activityWhen } from './activityCopy';
+import { activityLine, activityWhen, localDateOf } from './activityCopy';
 
 const label = (category: string) => category.charAt(0).toUpperCase() + category.slice(1);
 const ctx = { mySlot: 1 as const, otherName: 'Martina', categoryLabel: label };
@@ -49,5 +49,9 @@ describe('Should 6 · las líneas de la actividad', () => {
     expect(activityWhen(local('2026-10-14T15:00:00'), '2026-10-14')).toBe('hoy');
     expect(activityWhen(local('2026-10-13T15:00:00'), '2026-10-14')).toBe('ayer');
     expect(activityWhen(local('2026-10-05T15:00:00'), '2026-10-14')).toBe('5 oct');
+  });
+
+  it('el día de un instante, en la fecha del teléfono', () => {
+    expect(localDateOf(new Date('2026-10-14T15:00:00').toISOString())).toBe('2026-10-14');
   });
 });
