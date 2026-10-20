@@ -4,6 +4,7 @@ import { monthOf, type IsoDate } from '@domain/calendar';
 import { expandSpaceOccurrences, spaceHorizon } from '@domain/occurrences';
 import { pendingDeletions, pendingReview } from '@domain/review';
 import { recentActivity } from '@domain/activity';
+import { recentDeletionsByOther } from './otherDeletions';
 import {
   calculateSharedBalance,
   calculateSpaceMonth,
@@ -95,6 +96,12 @@ export function deriveSpace(data: SpaceQueryData, today: IsoDate) {
     pendingDeletions: pendingDeletions(deletions, mySlot, reviews),
     /** Should 6 · quién cargó, editó o eliminó qué, lo más reciente primero. */
     activity: recentActivity(facts, deletions),
+    /** P27 · lo que eliminó el otro en los últimos 7 días (sin el tope de 20 de `activity`). */
+    recentDeletions: recentDeletionsByOther(
+      recentActivity(facts, deletions, Number.POSITIVE_INFINITY),
+      mySlot,
+      today,
+    ),
   };
 }
 

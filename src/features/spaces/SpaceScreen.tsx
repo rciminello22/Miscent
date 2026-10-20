@@ -20,6 +20,8 @@ import { ActivityList } from './ActivityList';
 import { GuestWelcome, PersonalMoneyCard } from './GuestCards';
 import { useRememberedFlag } from '@/features/shared/useRememberedFlag';
 import { activityLine, activityWhen } from './activityCopy';
+import { DeletionNotice } from './DeletionNotice';
+import { deletionNoticeText } from './otherDeletions';
 import {
   AudienceBadge,
   Door,
@@ -213,6 +215,13 @@ export function SpaceScreen({
 
   const showPay = !balance.settled && settlement != null;
 
+  // P27 · lo que eliminó el otro esta semana, sin tener que abrir la actividad.
+  const deletionNotice = deletionNoticeText(
+    derived.recentDeletions,
+    { mySlot: derived.mySlot, otherName: other.displayName, categoryLabel: prettyLabel },
+    today,
+  );
+
   // N1 · §24: "Martina · todavía no entró · Invitar" y "ex miembro" (P7). La
   // invitación es UNA sola, en el panel: el lugar vacío del otro.
   const inviteNote =
@@ -382,6 +391,11 @@ export function SpaceScreen({
             onAdd={() => router.push(`/space/${spaceId}/agregar`)}
           />
         </Animated.View>
+
+        {/* P27 · lo que eliminó el otro (7 días): un aviso, no una cuarta puerta. */}
+        {deletionNotice != null && (
+          <DeletionNotice text={deletionNotice} onPress={() => setActivityOpen(true)} />
+        )}
 
         {/* N2 · como mucho tres puertas. */}
         {layout.doors.map((door, index) => (
