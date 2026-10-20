@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSpaces } from '@/features/spaces/useSpaces';
 import { CreateSpaceCard } from '@/features/spaces/SpaceCard';
 import { SpaceList } from '@/features/spaces/SpaceList';
-import { FormerSpaces } from '@/features/spaces/FormerSpaces';
+import { FormerSpacesDoor } from '@/features/spaces/FormerSpacesDoor';
 import { EmptyState, ErrorState, Row, Skeleton, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 import { useBottomPadding } from '@/ui/useBottomPadding';
@@ -84,8 +84,8 @@ export default function Compartidos() {
           </Stack>
         )}
 
-        {/* P6 · el resumen fijo de los espacios de los que salió. */}
-        <FormerSpaces />
+        {/* P26 · los espacios que dejó: una puerta, no una tarjeta por espacio. */}
+        <FormerSpacesDoor />
       </Stack>
     </ScrollView>
   );

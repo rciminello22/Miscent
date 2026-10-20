@@ -24,6 +24,15 @@ export function spaceHref(args: { accountState: AccountState; spaceId: string })
 }
 
 /**
+ * P26 · a dónde lleva la puerta "Espacios que dejaste": una pantalla propia
+ * (N3). Con cuenta personal vive dentro de la pestaña Compartidos (la barra
+ * queda visible); el invitado la ve sin pestañas.
+ */
+export function formerSpacesHref(accountState: AccountState): string {
+  return accountState === 'guest' ? '/(guest)/dejados' : '/(personal)/compartidos/dejados';
+}
+
+/**
  * Opciones de navegación al abrir un espacio. Con cuenta personal, `withAnchor`
  * arma el stack de la pestaña como [lista, espacio] (la `initialRouteName` de
  * Compartidos): así "Volver" tiene la lista debajo y `popToTopOnBlur` deja la

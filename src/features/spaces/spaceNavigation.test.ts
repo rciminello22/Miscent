@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  formerSpacesHref,
   isInsideSpace,
   occurrenceHref,
   paymentHref,
@@ -141,6 +142,25 @@ describe('spaceSubHref', () => {
     expect(
       spaceSubHref({ accountState: 'guest', spaceId: 'casa', screen: 'mes', month: '2026-11' }),
     ).toBe('/space/casa/mes?mes=2026-11');
+  });
+});
+
+/**
+ * P26 · "Espacios que dejaste" es una pantalla propia (N3) detrás de una puerta
+ * en la lista de espacios: dentro de la pestaña Compartidos con cuenta personal,
+ * y sin pestañas para el invitado.
+ */
+describe('formerSpacesHref', () => {
+  it('con cuenta personal, dentro de la pestaña Compartidos', () => {
+    expect(formerSpacesHref('personal')).toBe('/(personal)/compartidos/dejados');
+  });
+
+  it('el invitado la ve sin pestañas', () => {
+    expect(formerSpacesHref('guest')).toBe('/(guest)/dejados');
+  });
+
+  it('dentro de la pestaña cuenta como "adentro" y el Agregar flotante se oculta', () => {
+    expect(isInsideSpace('/compartidos/dejados')).toBe(true);
   });
 });
 

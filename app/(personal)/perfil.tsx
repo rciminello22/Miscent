@@ -4,7 +4,6 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { monthOf } from '@domain/calendar';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { AppearanceSection } from '@/features/profile/AppearanceSection';
-import { FormerSpacesSection } from '@/features/profile/FormerSpacesSection';
 import { selectFixedExpenses } from '@/features/fixed/fixedExpenses';
 import { selectFixedIncomes } from '@/features/fixed/fixedIncomes';
 import { selectCards } from '@/features/profile/cards';
@@ -84,9 +83,6 @@ export default function Perfil() {
             </Stack>
           </Card>
         </Stack>
-
-        {/* Solo existe si dejaste algún espacio: quitarlo de tu historial. */}
-        <FormerSpacesSection />
 
         <AppearanceSection />
 

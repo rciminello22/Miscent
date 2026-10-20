@@ -11,7 +11,13 @@ import {
   visa,
 } from '@domain/__tests__/fixtures';
 import type { Member } from '@domain/types';
-import { listFormerSpaces, movementsLine, removalCopy, upcomingPayments } from './formerSpaces';
+import {
+  formerSpacesCaption,
+  listFormerSpaces,
+  movementsLine,
+  removalCopy,
+  upcomingPayments,
+} from './formerSpaces';
 
 /**
  * Quitar un espacio de tu historial (19/10). TS puro.
@@ -72,6 +78,9 @@ describe('listFormerSpaces · los espacios que dejaste', () => {
       name: 'Con gonzalo',
       leftOn: '2026-10-12',
       leftLine: 'Saliste el 12 de octubre',
+      otherName: 'Gonzalo',
+      // P6 · la frase fija del saldo a la fecha de salida.
+      balanceLine: 'Al salir, Gonzalo te debía $12.000.',
     });
   });
 
@@ -86,6 +95,17 @@ describe('listFormerSpaces · los espacios que dejaste', () => {
     const rows = listFormerSpaces(personalFacts({ spaces: [older, active, completo()] }), TODAY);
 
     expect(rows.map((row) => row.name)).toEqual(['Con gonzalo', 'Viaje']);
+  });
+});
+
+describe('formerSpacesCaption · lo que dice la puerta de Compartidos', () => {
+  it('un espacio, en singular', () => {
+    expect(formerSpacesCaption(1)).toBe('1 espacio');
+  });
+
+  it('varios, en plural', () => {
+    expect(formerSpacesCaption(2)).toBe('2 espacios');
+    expect(formerSpacesCaption(11)).toBe('11 espacios');
   });
 });
 

@@ -8,7 +8,7 @@ import {
   PrivacySection,
 } from '@/features/profile/ProfileSections';
 import { AppearanceSection } from '@/features/profile/AppearanceSection';
-import { FormerSpacesSection } from '@/features/profile/FormerSpacesSection';
+import { FormerSpacesDoor } from '@/features/spaces/FormerSpacesDoor';
 import { SaveAccessCard } from '@/features/profile/SaveAccessCard';
 import { useSession } from '@/features/auth/SessionProvider';
 import { Button, Card, IconButton, Screen, Stack, Text } from '@/ui/primitives';
@@ -74,8 +74,9 @@ export default function PerfilInvitado() {
           </Stack>
         </Card>
 
-        {/* Solo existe si dejaste algún espacio: quitarlo de tu historial. */}
-        <FormerSpacesSection />
+        {/* El invitado con un solo espacio no ve la lista (su espacio es su
+            pantalla): la puerta a los que dejó queda acá. No existe si no dejó ninguno. */}
+        <FormerSpacesDoor />
 
         <AppearanceSection />
 

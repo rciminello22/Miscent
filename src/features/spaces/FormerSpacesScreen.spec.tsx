@@ -10,22 +10,33 @@ import {
 import type { Member } from '@domain/types';
 import { fireEvent, renderWithTheme, waitFor } from '@/test/render';
 import { ToastProvider } from '@/ui/primitives';
-import { FormerSpacesSection } from './FormerSpacesSection';
+import { FormerSpacesScreen } from './FormerSpacesScreen';
 
 /**
- * Quitar un espacio de tu historial · el container: conecta los hechos de la
- * cuenta personal con la lista, la hoja y la llamada al servidor.
+ * "Espacios que dejaste" (P26) · el container: conecta los hechos de la cuenta
+ * personal con la lista, la hoja y la llamada al servidor.
  */
 
 const mockRemove = jest.fn();
 let mockFacts: ReturnType<typeof personalFacts>;
 
-jest.mock('expo-router', () => ({ useRouter: () => ({ push: jest.fn() }) }));
+const mockBack = jest.fn();
+let mockAccountState: 'personal' | 'guest' = 'personal';
+
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ push: jest.fn(), back: mockBack, replace: jest.fn(), canGoBack: () => true }),
+}));
 jest.mock('@/features/auth/SessionProvider', () => ({
-  useSession: () => ({ session: { user: { id: 'u1' } } }),
+  useSession: () => ({ session: { user: { id: 'u1' } }, accountState: mockAccountState }),
 }));
 jest.mock('@/features/shared/usePersonalFacts', () => ({
-  usePersonalFacts: () => ({ facts: mockFacts, today: '2026-10-19' }),
+  usePersonalFacts: () => ({
+    facts: mockFacts,
+    today: '2026-10-19',
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  }),
 }));
 jest.mock('@/data/repositories/mutations', () => ({
   deletePersonalMovement: jest.fn(),
@@ -76,7 +87,7 @@ async function renderSection() {
   const view = await renderWithTheme(
     <QueryClientProvider client={client}>
       <ToastProvider>
-        <FormerSpacesSection />
+        <FormerSpacesScreen inTabs />
       </ToastProvider>
     </QueryClientProvider>,
   );
@@ -85,26 +96,52 @@ async function renderSection() {
 
 const QUITAR = { name: 'Quitar Con gonzalo de tu historial' };
 
+
 beforeEach(() => {
+  mockBack.mockReset();
+  mockAccountState = 'personal';
   mockRemove.mockReset();
   mockRemove.mockResolvedValue(undefined);
   mockFacts = personalFacts({ spaces: [conGonzalo()] });
 });
 
-describe('FormerSpacesSection', () => {
-  it('sin espacios dejados no aparece nada (un espacio activo no cuenta)', async () => {
+describe('FormerSpacesScreen', () => {
+  it('sin espacios dejados lo dice (un espacio activo no cuenta)', async () => {
     mockFacts = personalFacts({ spaces: [conGonzalo({ leftOn: null })] });
     const { view } = await renderSection();
 
-    expect(view.queryByText('Espacios que dejaste')).toBeNull();
+    expect(view.queryByText('Con gonzalo')).toBeNull();
+    expect(view.getByText('No tenés espacios dejados en tu historial.')).toBeTruthy();
   });
 
-  it('muestra el espacio que dejaste', async () => {
+  it('muestra el espacio que dejaste con el saldo fijo de cuando saliste (P6)', async () => {
     const { view } = await renderSection();
 
     expect(view.getByText('Espacios que dejaste')).toBeTruthy();
     expect(view.getByText('Con gonzalo')).toBeTruthy();
     expect(view.getByText('Saliste el 12 de octubre')).toBeTruthy();
+    expect(view.getByText('Al salir, le debías $6.000 a Gonzalo.')).toBeTruthy();
+    expect(
+      view.getByText(
+        'Tu parte de las cuotas que quedaban sigue en tu Futuro. Lo que cambie después lo ve Gonzalo.',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('el invitado no tiene Futuro: el aviso es solo de quién ve lo que cambia', async () => {
+    mockAccountState = 'guest';
+    const { view } = await renderSection();
+
+    expect(view.getByText('Lo que cambie después lo ve Gonzalo.')).toBeTruthy();
+    expect(view.queryByText(/sigue en tu Futuro/)).toBeNull();
+  });
+
+  it('"Volver" sale de la pantalla', async () => {
+    const { view } = await renderSection();
+
+    await fireEvent.press(view.getByRole('button', { name: 'Volver' }));
+
+    expect(mockBack).toHaveBeenCalledTimes(1);
   });
 
   it('"Quitar" abre la hoja con lo que cambia, y todavía no llama a nada', async () => {

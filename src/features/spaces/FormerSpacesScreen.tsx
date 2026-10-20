@@ -1,20 +1,29 @@
 import { useMemo, useState } from 'react';
+import { useRouter } from 'expo-router';
+import { useSession } from '@/features/auth/SessionProvider';
+import { goBack } from '@/features/shared/navigation';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
 import { FormerSpacesList } from './FormerSpacesList';
 import { listFormerSpaces, removalCopy } from './formerSpaces';
 import { RemoveFormerSpaceSheet } from './RemoveFormerSpaceSheet';
+import { SpaceDetailShell } from './SpaceDetailShell';
 import { useRemoveFormerSpace } from './useRemoveFormerSpace';
 
 /**
- * Perfil · "Espacios que dejaste" y quitarlos del historial. Container: conecta
- * los hechos de la cuenta personal con la lista (`FormerSpacesList`), la hoja de
- * confirmación (`RemoveFormerSpaceSheet`) y la llamada al servidor.
+ * "Espacios que dejaste" (N3, P26): la pantalla detrás de la puerta de la lista
+ * de Compartidos. Container: conecta los hechos de la cuenta personal con la
+ * lista (`FormerSpacesList`), la hoja de confirmación (`RemoveFormerSpaceSheet`)
+ * y la llamada al servidor.
  *
- * Sirve a los dos perfiles (con cuenta personal y de invitado): no pinta nada si
- * no dejaste ningún espacio.
+ * La muestran los dos árboles, como el detalle de un espacio: dentro de la
+ * pestaña Compartidos (Estado A, `inTabs`) y sin pestañas para el invitado
+ * (Estado B). Al quitar el último, queda la pantalla vacía y el aviso explica qué
+ * cambió; "Volver" sigue funcionando.
  */
-export function FormerSpacesSection() {
-  const { facts, today } = usePersonalFacts();
+export function FormerSpacesScreen({ inTabs }: { inTabs: boolean }) {
+  const router = useRouter();
+  const { accountState } = useSession();
+  const { facts, today, isLoading, isError, refetch } = usePersonalFacts();
   const remove = useRemoveFormerSpace();
   const [pendingId, setPendingId] = useState<string | null>(null);
 
@@ -38,8 +47,20 @@ export function FormerSpacesSection() {
   }
 
   return (
-    <>
-      <FormerSpacesList rows={rows} onRemove={setPendingId} />
+    <SpaceDetailShell
+      title="Espacios que dejaste"
+      otherName={null}
+      inTabs={inTabs}
+      loading={isLoading}
+      error={isError}
+      onBack={() => goBack(router)}
+      onRetry={refetch}
+    >
+      <FormerSpacesList
+        rows={rows}
+        keepsFuture={accountState === 'personal'}
+        onRemove={setPendingId}
+      />
       <RemoveFormerSpaceSheet
         copy={copy?.sheet ?? null}
         loading={remove.isPending}
@@ -49,6 +70,6 @@ export function FormerSpacesSection() {
           if (!remove.isPending) setPendingId(null);
         }}
       />
-    </>
+    </SpaceDetailShell>
   );
 }

@@ -6,7 +6,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { CircleUser } from 'lucide-react-native';
 import { useSpaces } from '@/features/spaces/useSpaces';
 import { SpaceList } from '@/features/spaces/SpaceList';
-import { FormerSpaces } from '@/features/spaces/FormerSpaces';
+import { FormerSpacesDoor } from '@/features/spaces/FormerSpacesDoor';
 import { PERSONAL_CARD_NOT_NOW, SpaceScreen } from '@/features/spaces/SpaceScreen';
 import { soleSpaceId } from '@/features/spaces/spaceNavigation';
 import { useRememberedFlag } from '@/features/shared/useRememberedFlag';
@@ -130,8 +130,8 @@ export default function Espacios() {
           </>
         )}
 
-        {/* P6 · el resumen fijo de los espacios de los que salió. */}
-        <FormerSpaces />
+        {/* P26 · los espacios que dejó: una puerta, no una tarjeta por espacio. */}
+        <FormerSpacesDoor />
 
         {/* §33 U1 · "Tu plata personal" */}
         <Animated.View entering={FadeInDown.duration(duration.deliberate)}>

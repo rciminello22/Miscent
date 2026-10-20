@@ -4,10 +4,11 @@ import { expandPersonalOccurrences, spaceHorizon, type PersonalOccurrence } from
 import { calculateSharedBalance } from '@domain/shared-balance';
 import type { PaymentMethod, PersonalFacts } from '@domain/types';
 import { formatLongDate, formatMonth, formatPesos } from '@/lib/format';
-import { departureBalanceSentence } from '@/features/spaces/balanceCopy';
+import { departureBalanceSentence } from './balanceCopy';
 
 /**
- * Quitar un espacio de tu historial (19/10). TS puro: se testea en node.
+ * Los espacios que dejaste y quitarlos de tu historial (19/10). TS puro: se
+ * testea en node.
  *
  * Al salir de un espacio, el servidor guarda una foto privada
  * (`former_memberships`, 0018) que el dominio lee con `leftOn`. Quitarla saca el
@@ -29,6 +30,10 @@ export type FormerSpaceRow = {
   leftOn: IsoDate;
   /** "Saliste el 12 de octubre" */
   leftLine: string;
+  /** El nombre del otro miembro, tal como estaba en la foto. */
+  otherName: string;
+  /** P6 · el saldo FIJO al salir: "Al salir, Gonzalo te debía $12.000." */
+  balanceLine: string;
 };
 
 export type RemovalSheet = {
@@ -97,16 +102,26 @@ export function listFormerSpaces(facts: PersonalFacts, today: IsoDate): FormerSp
   for (const membership of facts.spaces) {
     if (membership.leftOn == null) continue;
     const name = membership.facts.space.name;
+    const other = membership.facts.space.members.find((member) => member.slot !== membership.mySlot)!;
+    // El saldo a la fecha de salida: el dominio lo calcula sobre la foto, no hay un número guardado.
+    const balance = calculateSharedBalance(membership.facts, membership.mySlot, membership.leftOn);
 
     rows.push({
       spaceId: membership.facts.space.id,
       name,
       leftOn: membership.leftOn,
       leftLine: `Saliste el ${formatLongDate(membership.leftOn)}`,
+      otherName: other.displayName,
+      balanceLine: departureBalanceSentence(balance),
     });
   }
 
   return rows.sort((a, b) => (a.leftOn < b.leftOn ? 1 : a.leftOn > b.leftOn ? -1 : 0));
+}
+
+/** La cifra de la puerta de Compartidos: "1 espacio" / "2 espacios". */
+export function formerSpacesCaption(count: number): string {
+  return count === 1 ? '1 espacio' : `${count} espacios`;
 }
 
 /** "Sus 9 gastos desaparecen de Movimientos." con el plural que corresponde. */
