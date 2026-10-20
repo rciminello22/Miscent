@@ -826,8 +826,10 @@ export type Database = {
         }
         Returns: undefined
       }
-      // MANUAL (0021, sin aplicar): regenerar con `npm run db:types` después del push.
-      app_remove_former_space: { Args: { target_space_id: string }; Returns: undefined }
+      app_remove_former_space: {
+        Args: { target_space_id: string }
+        Returns: undefined
+      }
       app_remove_member_access: {
         Args: { target_space_id: string }
         Returns: undefined
