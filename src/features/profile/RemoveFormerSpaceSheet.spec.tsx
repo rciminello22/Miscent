@@ -16,6 +16,10 @@ const copy: RemovalSheet = {
       kind: 'radar',
       text: 'Tu radar de agosto, septiembre y octubre deja de contar tu parte de Con gonzalo ($84.000 en total).',
     },
+    {
+      kind: 'future',
+      text: 'Tu parte de lo que queda por pagar de Con gonzalo (hasta noviembre) deja de verse en tu Futuro ($150.000 en total).',
+    },
     { kind: 'movements', text: 'Sus 9 gastos desaparecen de Movimientos.' },
     { kind: 'summary', text: 'El resumen "Al salir, Gonzalo te debía $12.000" deja de verse.' },
   ],
@@ -33,7 +37,7 @@ describe('RemoveFormerSpaceSheet', () => {
     expect(view.queryByRole('button', { name: 'Cancelar' })).toBeNull();
   });
 
-  it('el título, lo que cambia en tres filas y la tarjeta para el otro', async () => {
+  it('el título, lo que cambia en filas (Futuro incluido) y la tarjeta para el otro', async () => {
     const view = await renderWithTheme(
       <RemoveFormerSpaceSheet copy={copy} onConfirm={jest.fn()} onClose={jest.fn()} />,
     );

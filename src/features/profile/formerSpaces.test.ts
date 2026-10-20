@@ -11,7 +11,7 @@ import {
   visa,
 } from '@domain/__tests__/fixtures';
 import type { Member } from '@domain/types';
-import { listFormerSpaces, movementsLine, removalCopy, upcomingUntil } from './formerSpaces';
+import { listFormerSpaces, movementsLine, removalCopy, upcomingPayments } from './formerSpaces';
 
 /**
  * Quitar un espacio de tu historial (19/10). TS puro.
@@ -72,8 +72,6 @@ describe('listFormerSpaces · los espacios que dejaste', () => {
       name: 'Con gonzalo',
       leftOn: '2026-10-12',
       leftLine: 'Saliste el 12 de octubre',
-      blockedLine: null,
-      canRemove: true,
     });
   });
 
@@ -91,8 +89,8 @@ describe('listFormerSpaces · los espacios que dejaste', () => {
   });
 });
 
-describe('quedan cuotas por venir → no se puede quitar', () => {
-  it('una cuota con fecha de pago posterior a hoy lo bloquea, con el mes de la última', () => {
+describe('pagos por venir → se puede quitar, con aviso', () => {
+  it('una cuota con fecha de pago posterior a hoy cuenta, con el mes de la última y tu parte', () => {
     const cuotas = sharedExpense({
       id: 'c',
       amount: 60_000,
@@ -102,16 +100,25 @@ describe('quedan cuotas por venir → no se puede quitar', () => {
     });
     const source = conGonzalo({ expenses: [agosto, cuotas] });
 
-    expect(upcomingUntil(source, [], TODAY)).toBe('2026-12');
-
-    const [row] = listFormerSpaces(personalFacts({ spaces: [source] }), TODAY);
-    expect(row!.canRemove).toBe(false);
-    expect(row!.blockedLine).toBe(
-      'Todavía quedan cuotas de Con gonzalo hasta diciembre: cuando terminen la vas a poder quitar.',
-    );
+    // Dos cuotas de $30.000 (noviembre y diciembre): tu mitad de cada una.
+    expect(upcomingPayments(source, [], TODAY)).toEqual({ until: '2026-12', total: 30_000 });
   });
 
-  it('si la última cuota cae en otro año, el mes lleva el año', () => {
+  it('con pagos por venir el espacio igual está en la lista: ya no hay nada bloqueado', () => {
+    const cuotas = sharedExpense({
+      id: 'c',
+      amount: 60_000,
+      date: '2026-10-08',
+      payerSlot: GONZALO,
+      installments: { count: 2, card: null },
+    });
+    const [row] = listFormerSpaces(personalFacts({ spaces: [conGonzalo({ expenses: [cuotas] })] }), TODAY);
+
+    expect(row).not.toHaveProperty('canRemove');
+    expect(row).not.toHaveProperty('blockedLine');
+  });
+
+  it('si el último pago cae en otro año, el mes lleva el año', () => {
     const cuotas = sharedExpense({
       id: 'c',
       amount: 150_000,
@@ -119,11 +126,11 @@ describe('quedan cuotas por venir → no se puede quitar', () => {
       payerSlot: GONZALO,
       installments: { count: 5, card: null },
     });
-    const [row] = listFormerSpaces(personalFacts({ spaces: [conGonzalo({ expenses: [cuotas] })] }), TODAY);
 
-    expect(row!.blockedLine).toBe(
-      'Todavía quedan cuotas de Con gonzalo hasta marzo de 2027: cuando terminen la vas a poder quitar.',
-    );
+    expect(upcomingPayments(conGonzalo({ expenses: [cuotas] }), [], TODAY)).toEqual({
+      until: '2027-03',
+      total: 75_000,
+    });
   });
 
   it('con una cuota con tarjeta, cuenta la fecha de pago y no la de compra', () => {
@@ -142,10 +149,10 @@ describe('quedan cuotas por venir → no se puede quitar', () => {
     });
 
     // Compró el 20/8 (antes del cierre del 25): vencen el 5/9, 5/10 y 5/11.
-    expect(upcomingUntil(source, [visa], TODAY)).toBe('2026-11');
+    expect(upcomingPayments(source, [visa], TODAY)?.until).toBe('2026-11');
   });
 
-  it('las cuotas que ya vencieron no bloquean', () => {
+  it('las cuotas que ya vencieron no cuentan', () => {
     const cuotas = sharedExpense({
       id: 'c',
       amount: 90_000,
@@ -153,13 +160,11 @@ describe('quedan cuotas por venir → no se puede quitar', () => {
       payerSlot: GONZALO,
       installments: { count: 3, card: null },
     });
-    const source = conGonzalo({ expenses: [cuotas] });
 
-    expect(upcomingUntil(source, [], TODAY)).toBeNull();
-    expect(listFormerSpaces(personalFacts({ spaces: [source] }), TODAY)[0]!.canRemove).toBe(true);
+    expect(upcomingPayments(conGonzalo({ expenses: [cuotas] }), [], TODAY)).toBeNull();
   });
 
-  it('una cuota que vence hoy no es "por venir": es posterior a hoy o no es', () => {
+  it('un pago que vence hoy no es "por venir": es posterior a hoy o no es', () => {
     const cuotas = sharedExpense({
       id: 'c',
       amount: 60_000,
@@ -168,10 +173,10 @@ describe('quedan cuotas por venir → no se puede quitar', () => {
       installments: { count: 2, card: null },
     });
 
-    expect(upcomingUntil(conGonzalo({ expenses: [cuotas] }), [], TODAY)).toBeNull();
+    expect(upcomingPayments(conGonzalo({ expenses: [cuotas] }), [], TODAY)).toBeNull();
   });
 
-  it('un fijo que se cortó con tu salida no bloquea', () => {
+  it('un fijo que se cortó con tu salida no cuenta', () => {
     const alquiler = sharedRecurrence({
       amount: 100_000,
       dayOfMonth: 28,
@@ -179,11 +184,29 @@ describe('quedan cuotas por venir → no se puede quitar', () => {
       payerSlot: GONZALO,
     });
 
-    expect(upcomingUntil(conGonzalo({ recurrences: [alquiler] }), [], TODAY)).toBeNull();
+    expect(upcomingPayments(conGonzalo({ recurrences: [alquiler] }), [], TODAY)).toBeNull();
   });
 
-  it('los gastos de una sola vez no bloquean', () => {
-    expect(upcomingUntil(completo(), [], TODAY)).toBeNull();
+  it('los gastos de una sola vez ya pagados no cuentan', () => {
+    expect(upcomingPayments(completo(), [], TODAY)).toBeNull();
+  });
+
+  it('una compra en 1 pago que todavía no vence también cuenta', () => {
+    const unPago = sharedExpense({
+      id: 'u',
+      amount: 80_000,
+      date: '2026-10-10',
+      payerSlot: RENZO,
+    });
+    const source = membership({
+      facts: conGonzalo({ expenses: [unPago] }).facts,
+      mySlot: RENZO,
+      paymentDetails: [{ sourceId: 'u', slot: RENZO, paymentMethodId: 'visa' }],
+      leftOn: LEFT,
+    });
+
+    // Cierre el 25: la compra del 10/10 vence el 5/11, después de hoy.
+    expect(upcomingPayments(source, [visa], TODAY)).toEqual({ until: '2026-11', total: 40_000 });
   });
 });
 
@@ -323,6 +346,60 @@ describe('removalCopy · la hoja de confirmación', () => {
 
     expect(removalCopy(conGonzalo({ expenses: [tuyo] }), [], TODAY).sheet.rows[0]!.text).toContain(
       '($70.000 en total)',
+    );
+  });
+});
+
+describe('removalCopy · con pagos por venir', () => {
+  // Noviembre y diciembre: $25.000 de tu parte cada una.
+  const cuotas = sharedExpense({
+    id: 'c',
+    amount: 100_000,
+    date: '2026-10-08',
+    payerSlot: GONZALO,
+    installments: { count: 2, card: null },
+  });
+
+  it('sin pagos por venir no hay fila de Futuro', () => {
+    const kinds = removalCopy(completo(), [], TODAY).sheet.rows.map((row) => row.kind);
+
+    expect(kinds).toEqual(['radar', 'movements', 'summary']);
+  });
+
+  it('con pagos por venir suma una fila de Futuro con el mes y el total, y el radar sigue', () => {
+    const { sheet } = removalCopy(conGonzalo({ expenses: [cuotas] }), [], TODAY);
+
+    expect(sheet.rows.map((row) => row.kind)).toEqual(['radar', 'future', 'movements', 'summary']);
+    expect(sheet.rows[0]!.text).toBe(
+      'Tu radar de noviembre y diciembre deja de contar tu parte de Con gonzalo ($50.000 en total).',
+    );
+    expect(sheet.rows[1]).toEqual({
+      kind: 'future',
+      text: 'Tu parte de lo que queda por pagar de Con gonzalo (hasta diciembre) deja de verse en tu Futuro ($50.000 en total).',
+    });
+    expect(sheet.warning).toBe('No se puede deshacer.');
+  });
+
+  it('si tu parte de lo que queda es cero, no se dice un total', () => {
+    const ajeno = sharedExpense({
+      id: 'x',
+      amount: 90_000,
+      date: '2026-10-08',
+      payerSlot: GONZALO,
+      split: { mode: 'custom', shareSlot1: 0, shareSlot2: 90_000 },
+      installments: { count: 2, card: null },
+    });
+
+    expect(removalCopy(conGonzalo({ expenses: [ajeno] }), [], TODAY).sheet.rows[1]!.text).toBe(
+      'Tu parte de lo que queda por pagar de Con gonzalo (hasta diciembre) deja de verse en tu Futuro.',
+    );
+  });
+
+  it('el aviso de después también nombra el Futuro', () => {
+    const { toast } = removalCopy(conGonzalo({ expenses: [cuotas] }), [], TODAY);
+
+    expect(toast.detail).toBe(
+      'Tu radar de noviembre a diciembre ya no lo cuenta. Tu Futuro ya no cuenta lo que quedaba hasta diciembre.',
     );
   });
 });

@@ -1,18 +1,19 @@
 import { View } from 'react-native';
-import { CalendarRange, Info, Receipt, Users, type LucideIcon } from 'lucide-react-native';
+import { CalendarClock, CalendarRange, Info, Receipt, Users, type LucideIcon } from 'lucide-react-native';
 import { Button, Card, Row, Sheet, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 import type { RemovalSheet } from './formerSpaces';
 
 const ICONS: Record<RemovalSheet['rows'][number]['kind'], LucideIcon> = {
   radar: CalendarRange,
+  future: CalendarClock,
   movements: Receipt,
   summary: Info,
 };
 
 /**
  * Quitar un espacio de tu historial · la confirmación. Dice qué cambia en tu
- * cuenta (tres filas con ícono), que para el otro no cambia nada y, en negrita
+ * cuenta (tres filas con ícono, cuatro si quedan pagos por venir: Futuro), que para el otro no cambia nada y, en negrita
  * y antes de los botones, que no se puede deshacer. "Quitar" es `destructive`
  * y "Cancelar" es `ghost`. Sin "Deshacer": la foto no se puede rearmar.
  * Presentacional: `copy` en `null` es la hoja cerrada.

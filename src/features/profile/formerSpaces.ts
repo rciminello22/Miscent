@@ -15,9 +15,10 @@ import { departureBalanceSentence } from '@/features/spaces/balanceCopy';
  * en que estuvo, sus filas dejan de verse en Movimientos y el resumen del saldo
  * al salir desaparece. Para el otro miembro no cambia nada.
  *
- * La regla de cuándo se ofrece es de la app, no de la base: solo si no quedan
- * cuotas por venir (para no sacar compromisos que siguen). La calcula el
- * dominio sobre la foto.
+ * Se puede quitar SIEMPRE (P26, 20/10). Antes se bloqueaba mientras quedaran
+ * cuotas por venir; ahora la hoja de confirmación avisa de lo que desaparece de
+ * Futuro (`upcomingPayments`) además de los meses pasados del radar. Los dos
+ * avisos salen del dominio sobre la foto.
  */
 
 export type Membership = PersonalFacts['spaces'][number];
@@ -28,15 +29,12 @@ export type FormerSpaceRow = {
   leftOn: IsoDate;
   /** "Saliste el 12 de octubre" */
   leftLine: string;
-  /** La frase de las cuotas que quedan; `null` si se puede quitar. */
-  blockedLine: string | null;
-  canRemove: boolean;
 };
 
 export type RemovalSheet = {
   title: string;
   intro: string;
-  rows: { kind: 'radar' | 'movements' | 'summary'; text: string }[];
+  rows: { kind: 'radar' | 'future' | 'movements' | 'summary'; text: string }[];
   /** "Para Gonzalo no cambia nada, ni para nadie más." */
   reassurance: string;
   warning: string;
@@ -65,26 +63,31 @@ function occurrencesOf(
 
 /**
  * ¿Falta pagar algo de este espacio? Una fecha de pago posterior a hoy, o un mes
- * sin día conocido (T-05) que todavía no terminó: ante la duda no se saca un
- * compromiso que sigue.
+ * sin día conocido (T-05) que todavía no terminó: ante la duda se avisa.
  */
 function isUpcoming(occurrence: PersonalOccurrence, today: IsoDate): boolean {
   if (occurrence.paymentDate != null) return occurrence.paymentDate > today;
   return compareMonths(occurrence.month, monthOf(today)) >= 0;
 }
 
-/** El mes de la última cuota por venir, o `null` si no queda ninguna. */
-export function upcomingUntil(
+/**
+ * Lo que todavía no se pagó de este espacio y quitarlo sacaría de Futuro: el
+ * mes del último pago y la suma de TU parte (K9). `null` si no queda ninguno.
+ * Son pagos, no solo cuotas: una compra en 1 pago que aún no vence también cuenta.
+ */
+export function upcomingPayments(
   membership: Membership,
   paymentMethods: readonly PaymentMethod[],
   today: IsoDate,
-): Month | null {
-  let last: Month | null = null;
+): { until: Month; total: Pesos } | null {
+  let until: Month | null = null;
+  let total = 0;
   for (const occurrence of occurrencesOf(membership, paymentMethods, today)) {
     if (!isUpcoming(occurrence, today)) continue;
-    if (last == null || compareMonths(occurrence.month, last) > 0) last = occurrence.month;
+    total += occurrence.myShare;
+    if (until == null || compareMonths(occurrence.month, until) > 0) until = occurrence.month;
   }
-  return last;
+  return until == null ? null : { until, total };
 }
 
 /** Los espacios de los que saliste, el más reciente primero. */
@@ -94,18 +97,12 @@ export function listFormerSpaces(facts: PersonalFacts, today: IsoDate): FormerSp
   for (const membership of facts.spaces) {
     if (membership.leftOn == null) continue;
     const name = membership.facts.space.name;
-    const until = upcomingUntil(membership, facts.paymentMethods, today);
 
     rows.push({
       spaceId: membership.facts.space.id,
       name,
       leftOn: membership.leftOn,
       leftLine: `Saliste el ${formatLongDate(membership.leftOn)}`,
-      blockedLine:
-        until == null
-          ? null
-          : `Todavía quedan cuotas de ${name} hasta ${formatMonth(until, monthOf(today))}: cuando terminen la vas a poder quitar.`,
-      canRemove: until == null,
     });
   }
 
@@ -191,6 +188,8 @@ export function removalCopy(
   const other = membership.facts.space.members.find((member) => member.slot !== membership.mySlot)!;
   const { months, total } = impactOf(membership, paymentMethods, today);
   const reference = membership.leftOn == null ? monthOf(today) : monthOf(membership.leftOn);
+  const upcoming = upcomingPayments(membership, paymentMethods, today);
+  const upcomingMonth = upcoming == null ? null : formatMonth(upcoming.until, monthOf(today));
 
   const radar =
     months.length === 0
@@ -205,12 +204,29 @@ export function removalCopy(
   );
   const summary = departureBalanceSentence(balance).replace(/\.$/, '');
 
+  // Futuro: lo que queda por pagar deja de verse (tu parte, K9).
+  const future: RemovalSheet['rows'] =
+    upcoming == null
+      ? []
+      : [
+          {
+            kind: 'future',
+            text: `Tu parte de lo que queda por pagar de ${name} (hasta ${upcomingMonth}) deja de verse en tu Futuro${upcoming.total > 0 ? ` (${formatPesos(upcoming.total, { sign: 'never' })} en total)` : ''}.`,
+          },
+        ];
+
+  const after = [
+    months.length === 0 ? null : `Tu radar de ${rangePhrase(months, reference)} ya no lo cuenta.`,
+    upcoming == null ? null : `Tu Futuro ya no cuenta lo que quedaba hasta ${upcomingMonth}.`,
+  ].filter((part): part is string => part != null);
+
   return {
     sheet: {
       title: `¿Quitar ${name} de tu historial?`,
       intro: 'Esto es lo que cambia en tu cuenta:',
       rows: [
         { kind: 'radar', text: radar },
+        ...future,
         {
           kind: 'movements',
           text: movementsLine(membership.facts.expenses.length, membership.facts.payments.length),
@@ -222,8 +238,7 @@ export function removalCopy(
     },
     toast: {
       title: `Quitaste ${name} de tu historial`,
-      detail:
-        months.length === 0 ? null : `Tu radar de ${rangePhrase(months, reference)} ya no lo cuenta.`,
+      detail: after.length === 0 ? null : after.join(' '),
     },
   };
 }

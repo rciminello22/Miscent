@@ -162,19 +162,32 @@ describe('FormerSpacesSection', () => {
     expect(invalidate).not.toHaveBeenCalled();
   });
 
-  it('con cuotas por venir: botón apagado, la frase a la vista y tocarlo no abre nada', async () => {
+  it('con pagos por venir se puede quitar: la hoja avisa de Futuro y el radar sigue', async () => {
     mockFacts = personalFacts({ spaces: [conGonzalo({ cuotas: true })] });
     const { view } = await renderSection();
 
-    expect(
-      view.getByText(
-        'Todavía quedan cuotas de Con gonzalo hasta diciembre: cuando terminen la vas a poder quitar.',
-      ),
-    ).toBeTruthy();
-
     await fireEvent.press(view.getByRole('button', QUITAR));
 
-    expect(view.queryByText('¿Quitar Con gonzalo de tu historial?')).toBeNull();
+    expect(view.getByText('¿Quitar Con gonzalo de tu historial?')).toBeTruthy();
+    expect(
+      view.getByText(
+        'Tu parte de lo que queda por pagar de Con gonzalo (hasta diciembre) deja de verse en tu Futuro ($75.000 en total).',
+      ),
+    ).toBeTruthy();
+    expect(view.getByText(/^Tu radar de /)).toBeTruthy();
+    expect(view.getByText('No se puede deshacer.')).toBeTruthy();
     expect(mockRemove).not.toHaveBeenCalled();
+  });
+
+  it('confirmar con pagos por venir quita y el aviso nombra el Futuro', async () => {
+    mockFacts = personalFacts({ spaces: [conGonzalo({ cuotas: true })] });
+    const { view } = await renderSection();
+    await fireEvent.press(view.getByRole('button', QUITAR));
+
+    await fireEvent.press(view.getByRole('button', { name: 'Quitar' }));
+
+    await waitFor(() => expect(view.getByText('Quitaste Con gonzalo de tu historial')).toBeTruthy());
+    expect(mockRemove).toHaveBeenCalledWith('gonzalo');
+    expect(view.getByText(/Tu Futuro ya no cuenta lo que quedaba hasta diciembre\./)).toBeTruthy();
   });
 });
