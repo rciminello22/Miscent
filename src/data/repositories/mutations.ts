@@ -318,6 +318,38 @@ export async function createRecurrence(
   return data.id;
 }
 
+/**
+ * Varios fijos PERSONALES de una vez (O3, "Fijos"): un solo upsert, que es una
+ * sola sentencia, así que entran todos o ninguno (H-16). Con el id de cada
+ * borrador, reintentar o volver y continuar no los duplica.
+ */
+export async function createRecurrences(
+  userId: string,
+  inputs: readonly (NewRecurrence & { id: string })[],
+): Promise<void> {
+  if (inputs.length === 0) return;
+  const { error } = await supabase.from('recurrences').upsert(
+    inputs.map((input) => ({
+      id: input.id,
+      kind: input.kind,
+      amount: input.amount,
+      category: input.category,
+      description: cleanDescription(input.description),
+      ...recurrenceDayColumns({ dayOfMonth: input.dayOfMonth, dayApprox: input.dayApprox }),
+      start_month: input.startMonth,
+      end_month: input.endMonth,
+      owner_user_id: userId,
+      space_id: null,
+      payment_method_id: input.paymentMethodId,
+      payer_slot: null,
+      split_mode: null,
+      share_slot_1: null,
+      share_slot_2: null,
+    })),
+  );
+  if (error != null) throw new Error('No pudimos guardar tus fijos.');
+}
+
 /** F-03 · "Este mes fue distinto": luz, gas, ingresos variables. */
 export async function setRecurrenceOverride(
   recurrenceId: string,

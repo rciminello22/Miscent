@@ -14,6 +14,9 @@ import {
   useUpdateIncome,
 } from '@/features/shared/usePersonalFacts';
 import { useToday } from '@/features/shared/useToday';
+import { useFeedback } from '@/features/shared/useFeedback';
+import { useSession } from '@/features/auth/SessionProvider';
+import { draftId, newId } from '@/data/ids';
 import { DayAnswerField } from '@/features/onboarding/DayAnswerField';
 import { dayAnswerToStored, emptyAnswer } from '@/features/onboarding/dayAnswer';
 import { Card, Stack, Text } from '@/ui/primitives';
@@ -49,6 +52,14 @@ export default function Ingreso() {
   // El ingreso que este paso ya creó: la pantalla sigue montada en el stack y,
   // al volver y tocar Continuar de nuevo, no se crea un segundo sueldo.
   const saved = useRef<SavedIncome | null>(null);
+  const feedback = useFeedback();
+  const { session } = useSession();
+  // H-16 · en el onboarding, el sueldo tiene un id por sesión: aunque el paso
+  // se vuelva a montar (atrás y adelante), continuar pisa el mismo. Desde
+  // Perfil es un alta nueva cada vez.
+  const [incomeId] = useState(() =>
+    standalone ? newId() : draftId(`${session?.user.id ?? ''}:onboarding-ingreso`, 'sueldo'),
+  );
   // El botón sigue a la mutación, no a un estado propio: no puede quedar cargando.
   const saving = createRecurrence.isPending || updateIncome.isPending;
 
@@ -62,6 +73,7 @@ export default function Ingreso() {
 
       if (action.kind === 'create') {
         const id = await createRecurrence.mutateAsync({
+          id: incomeId,
           kind: 'income',
           ...draft,
           category: 'sueldo',
@@ -77,8 +89,10 @@ export default function Ingreso() {
 
       if (standalone) goBack(router);
       else router.push('/onboarding/tarjetas');
-    } catch {
-      // Sigue en la pantalla con el botón libre para reintentar.
+    } catch (cause) {
+      // H-16 · antes se tragaba el error. Sigue en la pantalla, con lo escrito
+      // y el botón libre: reintentar usa el mismo id y no crea otro sueldo.
+      feedback.error('No pudimos guardar tu ingreso', cause);
     }
   }
 

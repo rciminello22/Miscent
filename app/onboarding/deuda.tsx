@@ -9,8 +9,16 @@ import { activePaymentMethods, lastClosedStatement } from '@domain/cards';
 import { alreadyInSpaces } from '@domain/duplicates';
 import { formatMonth, formatPesos } from '@/lib/format';
 import { queryKeys } from '@/data/queryClient';
-import { createDeclaredStatement } from '@/data/repositories/mutations';
-import { supabase } from '@/data/supabase';
+import { saveCardDebt } from '@/data/repositories/mutations';
+import {
+  cardDebtAlreadySaved,
+  cardDebtContinueAction,
+  cardDebtDraftKey,
+  emptyCardDebtForm,
+  readCardDebtDraft,
+  writeCardDebtDraft,
+  type CardDebtForm,
+} from '@/features/onboarding/cardDebtDraft';
 import { useSession } from '@/features/auth/SessionProvider';
 import { useFeedback } from '@/features/shared/useFeedback';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
@@ -61,28 +69,47 @@ export default function Deuda() {
   const cards = activePaymentMethods(facts.paymentMethods).filter((method) => method.kind === 'card');
   const [index, setIndex] = useState(0);
   const card = cards[index];
+  const userId = session?.user.id ?? '';
 
-  const [lastPaid, setLastPaid] = useState<'yes' | 'no'>('yes');
-  const [pendingAmount, setPendingAmount] = useState(0);
-  // null = el usuario no la tocó: vale la que se deduce de la tarjeta.
-  const [pendingDueDate, setPendingDueDate] = useState<IsoDate | null>(null);
+  // H-01 · el formulario de cada tarjeta vive en un borrador por usuario y
+  // tarjeta: volver atrás y entrar de nuevo al paso lo encuentra como estaba.
+  const draftFor = (cardId: string | undefined) =>
+    (cardId != null ? readCardDebtDraft(cardDebtDraftKey(userId, cardId)) : null) ?? emptyCardDebtForm();
+  const [form, setForm] = useState<CardDebtForm>(() => draftFor(card?.id));
+  const { lastPaid, pendingAmount, pendingDueDate, purchases, recentSpending } = form;
+
+  function change(patch: Partial<CardDebtForm>) {
+    setForm((previous) => {
+      const next = { ...previous, ...patch };
+      if (card != null) writeCardDebtDraft(cardDebtDraftKey(userId, card.id), next);
+      return next;
+    });
+  }
+  const setLastPaid = (value: 'yes' | 'no') => change({ lastPaid: value });
+  const setPendingAmount = (value: number) => change({ pendingAmount: value });
+  const setPendingDueDate = (value: IsoDate | null) => change({ pendingDueDate: value });
+  const setRecentSpending = (value: number) => change({ recentSpending: value });
+
   // Q-06 · una o más compras en cuotas del último resumen.
-  const keys = useRef(0);
+  const keys = useRef(purchases.length);
   const newKey = () => String(++keys.current);
-  const [purchases, setPurchases] = useState<ExistingPurchase[]>(() => [emptyPurchase('0')]);
-  const [recentSpending, setRecentSpending] = useState(0);
 
   function updatePurchase(key: string, patch: Partial<ExistingPurchase>) {
-    setPurchases((previous) =>
-      previous.map((purchase) => (purchase.key === key ? { ...purchase, ...patch } : purchase)),
-    );
+    change({
+      purchases: purchases.map((purchase) => (purchase.key === key ? { ...purchase, ...patch } : purchase)),
+    });
   }
   function addPurchase() {
-    setPurchases((previous) => [...previous, emptyPurchase(newKey())]);
+    change({ purchases: [...purchases, emptyPurchase(newKey())] });
   }
   function removePurchase(key: string) {
-    setPurchases((previous) => previous.filter((purchase) => purchase.key !== key));
+    change({ purchases: purchases.filter((purchase) => purchase.key !== key) });
   }
+
+  // Volvió a entrar al paso (por ejemplo, después de cerrar la app) y esta
+  // tarjeta ya tenía lo suyo guardado: se avisa, y seguir sin tocar nada no lo borra.
+  const alreadySaved = card != null && cardDebtAlreadySaved(facts, card.id);
+  const continueAction = cardDebtContinueAction({ form, alreadySaved });
 
   /**
    * El resumen que el usuario tiene en la mano: el último CERRADO. De él salen
@@ -106,62 +133,32 @@ export default function Deuda() {
   const dueDate = pendingDueDate ?? lastStatement?.dueDate ?? null;
   const needsDueDate = lastPaid === 'no' && pendingAmount > 0 && dueDate == null;
 
+  /**
+   * H-01 · T-07, Q-06 y T-08 de esta tarjeta en UNA transacción que reemplaza
+   * lo que este paso ya había guardado para ella: continuar dos veces, volver
+   * atrás y seguir, o reintentar después de una falla dejan cada cosa una vez.
+   * Si falla, el formulario queda como estaba para reintentar.
+   */
   const save = useMutation({
     mutationFn: async () => {
       if (card == null || session == null) return;
-      const userId = session.user.id;
+      if (continueAction === 'keep') return;
 
-      // T-07 · resumen pendiente declarado.
-      if (lastPaid === 'no' && pendingAmount > 0 && dueDate != null) {
-        await createDeclaredStatement(userId, {
-          paymentMethodId: card.id,
-          amount: pendingAmount,
-          dueDate,
-        });
-      }
+      await saveCardDebt(session.user.id, {
+        cardId: card.id,
+        pending:
+          lastPaid === 'no' && pendingAmount > 0 && dueDate != null
+            ? { amount: pendingAmount, dueDate }
+            : null,
+        // Q-06 · por cada compra, las cuotas que faltan, desde el mes siguiente
+        // al último resumen.
+        purchases: purchasesToSave(purchases, { lastStatementMonth, impactDay: card.dueDay }),
+        // T-08 · consumos desde el último cierre: 1 pago, fecha hoy.
+        recentSpending,
+        today,
+      });
 
-      // Q-06 · por cada compra, las cuotas que faltan, desde el mes siguiente
-      // al último resumen.
-      const toSave = purchasesToSave(purchases, { lastStatementMonth, impactDay: card.dueDay });
-      if (toSave.length > 0) {
-        const { error } = await supabase.from('personal_movements').insert(
-          toSave.map((purchase) => ({
-            user_id: userId,
-            kind: 'expense' as const,
-            amount: purchase.remainingTotal,
-            date: today,
-            category: 'otros' as const,
-            description: purchase.description,
-            payment_method_id: card.id,
-            installments_count: purchase.plan.count,
-            first_installment_month: purchase.plan.firstMonth,
-            installment_impact_day: purchase.plan.impactDay,
-            installments_approximate: purchase.plan.approximate,
-          })),
-        );
-        // supabase-js no lanza: sin esto, un error dejaba el Futuro vacío en silencio.
-        if (error != null) throw new Error('No pudimos guardar las cuotas.');
-      }
-
-      // T-08 · consumos desde el último cierre: 1 pago, fecha hoy.
-      if (recentSpending > 0) {
-        const { error } = await supabase.from('personal_movements').insert({
-          user_id: userId,
-          kind: 'expense',
-          amount: recentSpending,
-          date: today,
-          category: 'otros',
-          description: 'Consumos previos (aprox.)',
-          payment_method_id: card.id,
-          installments_count: null,
-          first_installment_month: null,
-          installment_impact_day: null,
-          installments_approximate: false,
-        });
-        if (error != null) throw new Error('No pudimos guardar los consumos.');
-      }
-
-      await queryClient.invalidateQueries({ queryKey: queryKeys.personalFacts(userId) });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.personalFacts(session.user.id) });
     },
     onSuccess: () => next(),
     onError: (error: Error) => feedback.error('No pudimos guardarlo', error),
@@ -170,11 +167,7 @@ export default function Deuda() {
   function next() {
     if (index + 1 < cards.length) {
       setIndex(index + 1);
-      setLastPaid('yes');
-      setPendingAmount(0);
-      setPendingDueDate(null);
-      setPurchases([emptyPurchase(newKey())]);
-      setRecentSpending(0);
+      setForm(draftFor(cards[index + 1]?.id));
       return;
     }
     // §11 paso 4 · antes de los fijos: los gastos de sus espacios que pagó.
@@ -202,6 +195,15 @@ export default function Deuda() {
       continueLabel={index + 1 < cards.length ? 'Siguiente tarjeta' : 'Continuar'}
     >
       <Stack gap="6">
+        {alreadySaved && (
+          <Card tone="sunken">
+            <Text variant="small">
+              Ya guardaste lo de esta tarjeta. Si cargás algo acá, reemplaza lo que guardaste;
+              si no tocás nada, queda como está.
+            </Text>
+          </Card>
+        )}
+
         {/* T-07 */}
         <Field label="¿Pagaste el último resumen?">
           <Segmented

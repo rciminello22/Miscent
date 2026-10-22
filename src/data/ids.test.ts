@@ -1,5 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { newId } from './ids';
+import { draftId, newId } from './ids';
+
+describe('draftId · el mismo borrador, el mismo id (H-16)', () => {
+  it('volver a montar el paso da el mismo id para la misma clave', () => {
+    expect(draftId('user-1:fijos', 'alquiler')).toBe(draftId('user-1:fijos', 'alquiler'));
+  });
+
+  it('otra clave u otro usuario, otro id', () => {
+    expect(draftId('user-1:fijos', 'alquiler')).not.toBe(draftId('user-1:fijos', 'internet'));
+    expect(draftId('user-1:fijos', 'alquiler')).not.toBe(draftId('user-2:fijos', 'alquiler'));
+  });
+});
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 

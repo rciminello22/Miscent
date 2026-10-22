@@ -11,12 +11,14 @@ import {
   createPaymentMethod,
   createPersonalMovement,
   createRecurrence,
+  createRecurrences,
   deletePersonalMovement,
   type NewPaymentMethod,
   type NewPersonalMovement,
   type NewRecurrence,
 } from '@/data/repositories/mutations';
 import { useSession } from '@/features/auth/SessionProvider';
+import { loadState } from './loadState';
 import { useToday } from './useToday';
 
 const EMPTY: PersonalFacts = {
@@ -62,7 +64,9 @@ export function usePersonalFacts() {
     });
   }, [facts, today]);
 
-  return { ...query, facts, expansion, today };
+  // H-03 · `facts` es EMPTY también cuando la lectura falló: las pantallas
+  // deciden con `state`, nunca con un `facts` vacío.
+  return { ...query, facts, expansion, today, state: loadState(query) };
 }
 
 /** Invalida la lectura después de escribir, para que todo se recalcule. */
@@ -120,6 +124,17 @@ export function useUpdateIncome() {
   return useMutation({
     mutationFn: (input: { id: string; amount: Pesos; dayOfMonth: number | null; dayApprox: boolean }) =>
       updateOnboardingIncome(input.id, input),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+/** O3 "Fijos" · todos de una vez, cada uno con el id de su borrador (H-16). */
+export function useCreateRecurrences() {
+  const { session } = useSession();
+  const invalidate = useInvalidateFacts();
+
+  return useMutation({
+    mutationFn: (inputs: (NewRecurrence & { id: string })[]) => createRecurrences(session!.user.id, inputs),
     onSuccess: () => void invalidate(),
   });
 }

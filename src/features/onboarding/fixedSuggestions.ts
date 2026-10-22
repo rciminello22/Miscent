@@ -67,6 +67,8 @@ export type CustomFixed = {
 };
 
 export type FixedToSave = {
+  /** La sugerencia ("luz") o `custom:N`: de acá sale el id que lo hace idempotente (H-16). */
+  key: string;
   category: Category;
   description: string | null;
   amount: Pesos;
@@ -86,6 +88,7 @@ export function fixedToSave(
     if (draft == null || draft.amount <= 0) return [];
     return [
       {
+        key: suggestion.key,
         category: suggestion.category,
         description: suggestion.description,
         amount: draft.amount,
@@ -98,7 +101,13 @@ export function fixedToSave(
     const name = custom.name.trim();
     if (custom.amount <= 0 || name === '') return [];
     return [
-      { category: custom.category, description: name, amount: custom.amount, dayOfMonth: custom.dayOfMonth },
+      {
+        key: `custom:${custom.key}`,
+        category: custom.category,
+        description: name,
+        amount: custom.amount,
+        dayOfMonth: custom.dayOfMonth,
+      },
     ];
   });
 

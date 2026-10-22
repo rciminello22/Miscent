@@ -23,7 +23,9 @@ import {
 } from '@/features/onboarding/fixedSuggestions';
 import { Field } from '@/features/add/fields';
 import { useFeedback } from '@/features/shared/useFeedback';
-import { useCreateRecurrence, usePersonalFacts } from '@/features/shared/usePersonalFacts';
+import { useCreateRecurrences, usePersonalFacts } from '@/features/shared/usePersonalFacts';
+import { draftId } from '@/data/ids';
+import { useSession } from '@/features/auth/SessionProvider';
 import { useToday } from '@/features/shared/useToday';
 import { Button, Card, Pressable, Row, Stack, Text, TextField } from '@/ui/primitives';
 import { duration, stagger } from '@/ui/motion';
@@ -55,7 +57,8 @@ export default function Fijos() {
   const today = useToday();
   const feedback = useFeedback();
   const { facts } = usePersonalFacts();
-  const createRecurrence = useCreateRecurrence();
+  const createRecurrences = useCreateRecurrences();
+  const { session } = useSession();
   // UX-22 · Pagados contestado ya no tiene gastos pendientes; si se pasó por ese
   // paso, `pagados` viene en la ruta y el total lo cuenta.
   const { pagados } = useLocalSearchParams<{ pagados?: string }>();
@@ -132,9 +135,12 @@ export default function Fijos() {
   async function save() {
     setSaving(true);
     try {
-      for (const fixed of toSave) {
-        await createRecurrence.mutateAsync({
-          kind: 'expense',
+      // H-16 · todos en una escritura (entran todos o ninguno) y cada uno con
+      // el id de su borrador: reintentar, o volver y continuar, no duplica.
+      await createRecurrences.mutateAsync(
+        toSave.map((fixed) => ({
+          id: draftId(`${session?.user.id ?? ''}:onboarding-fijos`, fixed.key),
+          kind: 'expense' as const,
           amount: fixed.amount,
           category: fixed.category,
           description: fixed.description,
@@ -142,8 +148,8 @@ export default function Fijos() {
           startMonth: monthOf(today),
           endMonth: null,
           paymentMethodId: null,
-        });
-      }
+        })),
+      );
       router.replace('/onboarding/listo');
     } catch (cause) {
       feedback.error('No pudimos guardar tus fijos', cause);

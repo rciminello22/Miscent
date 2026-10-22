@@ -18,6 +18,10 @@ jest.mock('@/features/shared/usePersonalFacts', () => ({
   useUpdateIncome: () => ({ mutateAsync: mockUpdate, isPending: false }),
 }));
 
+const mockError = jest.fn();
+jest.mock('@/features/shared/useFeedback', () => ({ useFeedback: () => ({ error: mockError }) }));
+jest.mock('@/features/auth/SessionProvider', () => ({ useSession: () => ({ session: { user: { id: 'u1' } } }) }));
+
 // TextInput real: el monto se escribe como lo haría el usuario.
 async function typeAmount(view: Awaited<ReturnType<typeof renderWithTheme>>, text: string) {
   await fireEvent.changeText(view.getByLabelText('Monto en pesos'), text);
@@ -32,6 +36,25 @@ describe('Onboarding · Ingreso', () => {
     mockPush.mockReset();
     mockCreate.mockReset();
     mockUpdate.mockReset();
+  });
+
+  // H-16 · antes el error se tragaba sin aviso.
+  it('si falla el guardado, lo dice, conserva el monto y el reintento usa el mismo id', async () => {
+    mockError.mockReset();
+    mockCreate.mockRejectedValueOnce(new Error('red')).mockResolvedValueOnce('r1');
+    const view = await renderWithTheme(<Ingreso />);
+    await typeAmount(view, '1000000');
+
+    await fireEvent.press(await continueButton(view));
+    await waitFor(() => expect(mockError).toHaveBeenCalledTimes(1));
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(view.getByDisplayValue('1.000.000')).toBeTruthy();
+
+    await fireEvent.press(await continueButton(view));
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/onboarding/tarjetas'));
+    const [first, second] = mockCreate.mock.calls.map(([input]) => input.id);
+    expect(first).toBeDefined();
+    expect(second).toBe(first);
   });
 
   it('al guardar sigue a tarjetas y el botón no queda cargando al volver', async () => {

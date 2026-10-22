@@ -15,6 +15,25 @@ type CryptoLike = {
   getRandomValues?: (array: Uint8Array) => Uint8Array;
 };
 
+const draftIds = new Map<string, string>();
+
+/**
+ * El id de un borrador que puede volver a montarse: un paso del onboarding al
+ * que se vuelve atrás. Mientras dure la sesión de la app, la misma clave da el
+ * mismo id, así que continuar otra vez pisa lo guardado en vez de sumarlo
+ * (H-16). `scope` lleva el usuario: dos cuentas en el mismo teléfono no
+ * comparten borradores.
+ */
+export function draftId(scope: string, key: string): string {
+  const full = `${scope}:${key}`;
+  let id = draftIds.get(full);
+  if (id == null) {
+    id = newId();
+    draftIds.set(full, id);
+  }
+  return id;
+}
+
 export function newId(): string {
   const crypto = (globalThis as { crypto?: CryptoLike }).crypto;
   if (typeof crypto?.randomUUID === 'function') return crypto.randomUUID();

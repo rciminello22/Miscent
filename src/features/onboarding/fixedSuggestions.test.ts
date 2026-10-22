@@ -76,9 +76,16 @@ describe('lo que se guarda', () => {
     );
 
     expect(result).toEqual([
-      { category: 'alquiler', description: null, amount: 500_000, dayOfMonth: 10 },
-      { category: 'servicios', description: 'Luz', amount: 40_000, dayOfMonth: 15 },
+      { key: 'alquiler', category: 'alquiler', description: null, amount: 500_000, dayOfMonth: 10 },
+      { key: 'luz', category: 'servicios', description: 'Luz', amount: 40_000, dayOfMonth: 15 },
     ]);
+  });
+
+  // H-16 · la clave le da a cada fijo su id: volver a guardar pisa, no suma.
+  it('cada fijo lleva una clave estable, distinta para las sugerencias y los propios', () => {
+    const custom: CustomFixed = { key: '1', name: 'Gimnasio', category: 'gimnasio', amount: 20_000, dayOfMonth: 5 };
+    const keys = fixedToSave({ luz: { amount: 40_000, dayOfMonth: 15 } }, [custom]).map((item) => item.key);
+    expect(keys).toEqual(['luz', 'custom:1']);
   });
 
   it('un fijo propio: "Monotributo" en Impuestos', () => {
@@ -91,7 +98,7 @@ describe('lo que se guarda', () => {
     };
 
     expect(fixedToSave({}, [monotributo])).toEqual([
-      { category: 'impuestos', description: 'Monotributo', amount: 35_000, dayOfMonth: 20 },
+      { key: 'custom:c1', category: 'impuestos', description: 'Monotributo', amount: 35_000, dayOfMonth: 20 },
     ]);
   });
 

@@ -100,6 +100,18 @@ export default function Tarjetas() {
   const preview = answered ? resolveCardPayment(previewCard, today) : null;
 
   const canAdd = name.trim().length > 0 && !addCard.isPending;
+  // H-16 · una tarjeta escrita y sin guardar: "Continuar" la guarda primero, en
+  // vez de descartarla en silencio. Si falla, se queda acá con lo escrito.
+  const pendingCard = !standalone && adding && name.trim().length > 0;
+
+  async function savePendingAndContinue() {
+    try {
+      await addCard.mutateAsync();
+      router.push('/onboarding/deuda');
+    } catch {
+      // `onError` ya avisó; el formulario queda como estaba.
+    }
+  }
 
   return (
     <StepShell
@@ -109,18 +121,25 @@ export default function Tarjetas() {
       description="Con el día de cierre y el de vencimiento, la app sabe en qué resumen cae cada compra."
       help="Solo el nombre y los días. Nunca el número de la tarjeta."
       continueLabel={
-        standalone ? 'Guardar tarjeta' : cards.length > 0 ? 'Continuar' : 'No uso tarjetas'
+        standalone
+          ? 'Guardar tarjeta'
+          : pendingCard
+            ? 'Guardar y continuar'
+            : cards.length > 0
+              ? 'Continuar'
+              : 'No uso tarjetas'
       }
       continueDisabled={standalone && !canAdd}
-      saving={standalone && addCard.isPending}
+      saving={(standalone || pendingCard) && addCard.isPending}
       onContinue={() => {
         if (standalone) addCard.mutate();
+        else if (pendingCard) void savePendingAndContinue();
         else router.push(cards.length > 0 ? '/onboarding/deuda' : '/onboarding/fijos');
       }}
       onSkip={
         standalone
           ? () => goBack(router)
-          : cards.length > 0
+          : cards.length > 0 || pendingCard
             ? undefined
             : () => router.push('/onboarding/fijos')
       }
