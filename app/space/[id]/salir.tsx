@@ -9,10 +9,12 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { formatInstallment, formatMonth } from '@/lib/format';
 import { prettyLabel } from '@/features/add/categories';
 import { queryKeys } from '@/data/queryClient';
-import { supabase } from '@/data/supabase';
+import { leaveSpace, LeaveChangedError } from '@/data/repositories/spaces';
 import { useSession } from '@/features/auth/SessionProvider';
 import { balanceSentence } from '@/features/spaces/balanceCopy';
+import { leaveDeletesSpace, leaveDeletionCopy } from '@/features/spaces/leaveConsequences';
 import { buildLeaveSummary } from '@/features/spaces/leaveSummary';
+import { SpaceRecordFallback } from '@/features/spaces/SpaceRecordFallback';
 import { useSpace } from '@/features/spaces/useSpaces';
 import {
   Button,
@@ -58,8 +60,10 @@ export default function Salir() {
 
   const { session } = useSession();
   const feedback = useFeedback();
-  const { derived, today } = useSpace(spaceId);
+  const { derived, today, state, refetch } = useSpace(spaceId);
   const [confirming, setConfirming] = useState(false);
+  // H-07 · si sos el último con acceso, salir elimina el espacio (SA-06).
+  const deletesSpace = derived != null && leaveDeletesSpace(derived.facts, derived.mySlot);
 
   const summary = useMemo(() => {
     if (derived == null) return null;
@@ -72,10 +76,8 @@ export default function Salir() {
   }, [derived, today]);
 
   const leave = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.rpc('app_leave_space', { target_space_id: spaceId });
-      if (error != null) throw new Error('No pudimos sacarte del espacio.');
-    },
+    // El servidor sale solo si sigue pasando lo que esta pantalla mostró.
+    mutationFn: () => leaveSpace(spaceId, deletesSpace),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.spaces }),
@@ -87,22 +89,106 @@ export default function Salir() {
     },
     onError: (error: Error) => {
       setConfirming(false);
+      // El otro entró o salió mientras tanto: se vuelve a leer y la pantalla
+      // muestra las consecuencias de ahora.
+      if (error instanceof LeaveChangedError) void refetch();
       feedback.error('No pudimos hacerlo', error);
     },
   });
 
   if (derived == null || summary == null) {
     return (
-      <Screen>
-        <Text variant="body" tone="secondary">
-          Cargando…
-        </Text>
-      </Screen>
+      <SpaceRecordFallback state={state} onRetry={() => void refetch()} missing="No encontramos este espacio." />
     );
   }
 
   const { facts } = derived;
   const hasDebt = !summary.balance.settled;
+
+  if (deletesSpace) {
+    const copy = leaveDeletionCopy(facts, summary.otherMemberName);
+    return (
+      <Screen>
+        <Stack gap="7">
+          <Row justify="space-between" align="center">
+            <Text variant="heading">Salir de {facts.space.name}</Text>
+            <IconButton
+              label="Cerrar"
+              onPress={() => goBack(router)}
+              icon={<X size={18} color={theme.colors.textSecondary} />}
+            />
+          </Row>
+
+          <Stack gap="3">
+            <SectionHeader title={copy.title} />
+            <Text variant="body" tone="secondary">
+              {copy.why}
+            </Text>
+          </Stack>
+
+          <Card>
+            <Stack gap="3">
+              {copy.lost.map((line) => (
+                <Text key={line} variant="small">
+                  {line}
+                </Text>
+              ))}
+            </Stack>
+          </Card>
+
+          <Card tone="sunken">
+            <Text variant="small" tone="secondary">
+              {copy.kept}
+            </Text>
+          </Card>
+
+          <Stack gap="3">
+            {!confirming ? (
+              <>
+                <Button
+                  label="Salir igual"
+                  variant="secondary"
+                  size="lg"
+                  fullWidth
+                  onPress={() => setConfirming(true)}
+                />
+                <Button
+                  label="Mejor no"
+                  variant="ghost"
+                  fullWidth
+                  haptic="none"
+                  onPress={() => goBack(router)}
+                />
+              </>
+            ) : (
+              <Animated.View entering={FadeInDown.duration(duration.base)}>
+                <Stack gap="3">
+                  <Card tone="sunken">
+                    <Text variant="smallMedium">{copy.confirm}</Text>
+                  </Card>
+                  <Button
+                    label={copy.action}
+                    variant="destructive"
+                    size="lg"
+                    fullWidth
+                    loading={leave.isPending}
+                    onPress={() => void leave.mutateAsync()}
+                  />
+                  <Button
+                    label="Cancelar"
+                    variant="ghost"
+                    fullWidth
+                    haptic="none"
+                    onPress={() => setConfirming(false)}
+                  />
+                </Stack>
+              </Animated.View>
+            )}
+          </Stack>
+        </Stack>
+      </Screen>
+    );
+  }
 
   return (
     <Screen>
