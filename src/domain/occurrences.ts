@@ -648,12 +648,31 @@ function expandMembership(
     );
 }
 
+/**
+ * T-03 · lo más lejos que puede caer el pago de un cargo con tarjeta: un cargo
+ * después del cierre cierra el mes siguiente y vence, como mucho, el otro. Lo
+ * fija un test que recorre todas las combinaciones de días.
+ */
+export const CARD_PAYMENT_LAG_MONTHS = 2;
+
+/**
+ * El horizonte es de meses de PAGO: el radar de octubre necesita el fijo que
+ * ocurrió el 28/8 y vence el 5/10 (H-02). Por eso los fijos, que son lo único
+ * que se expande por mes, se recorren desde `CARD_PAYMENT_LAG_MONTHS` antes y
+ * se descarta lo que se paga antes del horizonte. Cada ocurrencia lleva el id
+ * de su mes de cargo, así que ampliar el rango nunca la duplica.
+ */
 export function expandPersonalOccurrences(
   facts: PersonalFacts,
   horizon: MonthHorizon,
 ): PersonalExpansion {
   const occurrences: PersonalOccurrence[] = [];
   const incomes: PersonalIncome[] = [];
+  const chargeHorizon: MonthHorizon = {
+    from: addMonths(horizon.from, -CARD_PAYMENT_LAG_MONTHS),
+    to: horizon.to,
+  };
+  const paidInHorizon = (month: Month) => compareMonths(month, horizon.from) >= 0;
 
   for (const movement of facts.movements) {
     const expansion = expandPersonalMovement(movement, facts.paymentMethods);
@@ -667,10 +686,10 @@ export function expandPersonalOccurrences(
       recurrence,
       facts.overrides,
       facts.paymentMethods,
-      horizon,
+      chargeHorizon,
     );
-    occurrences.push(...expansion.occurrences);
-    incomes.push(...expansion.incomes);
+    occurrences.push(...expansion.occurrences.filter((occurrence) => paidInHorizon(occurrence.month)));
+    incomes.push(...expansion.incomes.filter((income) => paidInHorizon(income.month)));
   }
 
   for (const statement of facts.declaredStatements) {
@@ -678,7 +697,13 @@ export function expandPersonalOccurrences(
   }
 
   for (const membership of facts.spaces) {
-    occurrences.push(...expandMembership(membership, facts.paymentMethods, horizon));
+    occurrences.push(
+      ...expandMembership(membership, facts.paymentMethods, chargeHorizon).filter(
+        // Solo los fijos dependen de la ventana: los gastos y las cuotas del
+        // espacio se expanden siempre enteros, como antes.
+        (occurrence) => !occurrence.isRecurrence || paidInHorizon(occurrence.month),
+      ),
+    );
   }
 
   return { occurrences, incomes };
