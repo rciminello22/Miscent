@@ -5,7 +5,7 @@ import { formatInstallment, formatMonth } from '@/lib/format';
 import { prettyLabel } from '@/features/add/categories';
 import { spaceContext } from '@/features/spaces/departureCopy';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
-import { AudienceIcon, Card, Money, Row, Skeleton, Stack, Text } from '@/ui/primitives';
+import { AudienceIcon, Card, ErrorState, Money, Row, Skeleton, Stack, Text } from '@/ui/primitives';
 import { FutureDetailShell } from './FutureDetailShell';
 
 /**
@@ -13,14 +13,16 @@ import { FutureDetailShell } from './FutureDetailShell';
  * cuota va, cuándo termina y cuánto falta (tu parte).
  */
 export function FutureInstallmentsScreen() {
-  const { expansion, today, isLoading, refetch } = usePersonalFacts();
+  const { expansion, today, state, refetch } = usePersonalFacts();
   const from = addMonths(monthOf(today), 1);
   const plans = useMemo(() => activeInstallmentPlans(expansion, today), [expansion, today]);
 
   return (
     <FutureDetailShell title="Tus cuotas" onRefresh={refetch}>
-      {isLoading ? (
+      {state === 'loading' ? (
         <Skeleton height={72} />
+      ) : state === 'error' ? (
+        <ErrorState onRetry={() => void refetch()} />
       ) : plans.length === 0 ? (
         <Text variant="small" tone="secondary">
           No tenés compras en cuotas activas.

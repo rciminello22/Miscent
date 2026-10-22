@@ -6,6 +6,7 @@ import { FixedDetail } from '@/features/fixed/FixedDetail';
 import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
 import { reviewTag } from '@/features/spaces/reviewCopy';
 import { fixedAuthorLine } from '@/features/fixed/fixedCopy';
+import { SpaceRecordFallback } from '@/features/spaces/SpaceRecordFallback';
 import { useMarkReviewed, useSpace } from '@/features/spaces/useSpaces';
 import { balanceSentence } from '@/features/spaces/balanceCopy';
 import { calculateSharedBalance } from '@domain/shared-balance';
@@ -29,12 +30,17 @@ export default function FijoCompartido() {
   const spaceId = id ?? '';
   const { session } = useSession();
   const feedback = useFeedback();
-  const { derived, today } = useSpace(spaceId);
+  const { derived, today, state, refetch } = useSpace(spaceId);
   const markReviewed = useMarkReviewed(spaceId);
 
   const recurrence = derived?.facts.recurrences.find((item) => item.id === fid) ?? null;
 
-  if (derived == null) return null;
+  // H-03 · antes devolvía una pantalla vacía mientras cargaba o si fallaba.
+  if (derived == null) {
+    return (
+      <SpaceRecordFallback state={state} onRetry={() => void refetch()} missing="No encontramos este espacio." />
+    );
+  }
   const { other, mySlot } = derived;
 
   // CA-28 · "Eliminar en un espacio confirma con el nuevo saldo". Un fijo se

@@ -2,6 +2,7 @@ import { RefreshControl, ScrollView } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHideFab } from '@/features/shared/fabVisibility';
+import { ErrorState } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 import { useBottomPadding } from '@/ui/useBottomPadding';
 import { parseDayParam } from './calendarGrid';
@@ -45,23 +46,28 @@ export function MovementsScreen() {
         />
       }
     >
-      {/* Al cambiar de mes el día y la semana se reinician. */}
-      <MovementsTabView
-        key={movements.month}
-        month={movements.month}
-        monthLabel={movements.monthLabel}
-        today={movements.today}
-        rows={movements.rows}
-        segments={movements.segments}
-        filter={movements.filter}
-        initialDay={parseDayParam(params.dia, movements.month)}
-        isLoading={movements.isLoading}
-        onFilterChange={movements.setFilter}
-        onPreviousMonth={movements.goToPrevious}
-        onNextMonth={movements.goToNext}
-        onOpenRow={actions.open}
-        onLongPressRow={actions.confirmDelete}
-      />
+      {movements.state === 'error' ? (
+        // H-03 · sin poder leer, "0 registros" y una lista vacía serían falsos.
+        <ErrorState onRetry={() => void movements.refresh()} />
+      ) : (
+        // Al cambiar de mes el día y la semana se reinician.
+        <MovementsTabView
+          key={movements.month}
+          month={movements.month}
+          monthLabel={movements.monthLabel}
+          today={movements.today}
+          rows={movements.rows}
+          segments={movements.segments}
+          filter={movements.filter}
+          initialDay={parseDayParam(params.dia, movements.month)}
+          isLoading={movements.state === 'loading'}
+          onFilterChange={movements.setFilter}
+          onPreviousMonth={movements.goToPrevious}
+          onNextMonth={movements.goToNext}
+          onOpenRow={actions.open}
+          onLongPressRow={actions.confirmDelete}
+        />
+      )}
     </ScrollView>
   );
 }

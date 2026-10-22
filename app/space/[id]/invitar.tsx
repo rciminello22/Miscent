@@ -14,15 +14,19 @@ import {
   invitationLink,
   revokeInvitation,
 } from '@/data/repositories/invitations';
+import { SpaceRecordFallback } from '@/features/spaces/SpaceRecordFallback';
 import { useSpace } from '@/features/spaces/useSpaces';
 import { useFeedback } from '@/features/shared/useFeedback';
+import { loadState } from '@/features/shared/loadState';
 import {
   Button,
   Card,
   Divider,
+  ErrorState,
   IconButton,
   Row,
   Screen,
+  Skeleton,
   Stack,
   Text,
 } from '@/ui/primitives';
@@ -47,7 +51,7 @@ export default function Invitar() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const spaceId = id ?? '';
 
-  const { derived } = useSpace(spaceId);
+  const { derived, state: spaceState, refetch: refetchSpace } = useSpace(spaceId);
   const [token, setToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -80,6 +84,7 @@ export default function Invitar() {
 
   const link = token != null ? invitationLink(token) : null;
   const hasActive = state.data?.status === 'active';
+  const invitationState = loadState(state);
 
   function confirmRegenerate() {
     if (!hasActive) {
@@ -99,11 +104,11 @@ export default function Invitar() {
 
   if (derived == null) {
     return (
-      <Screen>
-        <Text variant="body" tone="secondary">
-          Cargando…
-        </Text>
-      </Screen>
+      <SpaceRecordFallback
+        state={spaceState}
+        onRetry={() => void refetchSpace()}
+        missing="No encontramos este espacio."
+      />
     );
   }
 
@@ -135,7 +140,15 @@ export default function Invitar() {
           </Stack>
         </Card>
 
-        {link == null ? (
+        {link == null && invitationState !== 'ready' ? (
+          // H-03 · sin saber si ya hay una invitación, "Generar" anularía la que
+          // mandaste sin avisarte. Primero hay que poder leerla.
+          invitationState === 'loading' ? (
+            <Skeleton height={54} />
+          ) : (
+            <ErrorState onRetry={() => void state.refetch()} />
+          )
+        ) : link == null ? (
           <Stack gap="4">
             {hasActive && state.data != null && (
               <Card>

@@ -7,7 +7,8 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { addMonths, dayOf, monthOf } from '@domain/calendar';
 import { planInstallments } from '@domain/installments';
 import { activePaymentMethods, resolveCardPayment } from '@domain/cards';
-import { resolveShares } from '@domain/split';
+import { fitSplitToTotal, resolveShares } from '@domain/split';
+import { newId } from '@/data/ids';
 import type { Category, Split } from '@domain/types';
 import { formatMonth, formatPesos } from '@/lib/format';
 import { installmentsNotice } from '@/features/shared/installmentsNotice';
@@ -133,7 +134,13 @@ export default function Agregar() {
   const [destination, setDestination] = useState<string | null>(null);
   // §17 campos 5 y 6 · solo con un espacio elegido.
   const [payerIsMe, setPayerIsMe] = useState(true);
-  const [split, setSplit] = useState<Split>({ mode: 'even' });
+  // H-04 · el reparto que escribió la persona, ajustado al total de ahora:
+  // corregir el monto después de "Personalizado" ya no rompe C-02.
+  const [typedSplit, setSplit] = useState<Split>({ mode: 'even' });
+  const split = fitSplitToTotal(typedSplit, amount);
+  // H-13 / H-14 · un id por tipo de alta, el mismo en cada reintento: un doble
+  // toque o una respuesta perdida no crean un segundo registro.
+  const ids = useRef({ movement: newId(), recurrence: newId(), shared: newId(), sharedRecurrence: newId() });
 
   const { data: spaces } = useSpaces();
   const { derived: space } = useSpace(destination ?? '');
@@ -288,6 +295,7 @@ export default function Agregar() {
 
         if (repeats) {
           const id = await createSharedRecurrence.mutateAsync({
+            id: ids.current.sharedRecurrence,
             spaceId: space.facts.space.id,
             amount,
             category,
@@ -302,6 +310,7 @@ export default function Agregar() {
           feedback.saved({ audience, detail: effect, undo: { kind: 'recurrence', id, spaceId } });
         } else {
           const id = await createSharedExpense.mutateAsync({
+            id: ids.current.shared,
             spaceId: space.facts.space.id,
             amount,
             date,
@@ -335,6 +344,7 @@ export default function Agregar() {
       if (repeats && kind === 'expense') {
         // §21 · un fijo mensual, no un gasto puntual.
         const id = await createRecurrence.mutateAsync({
+          id: ids.current.recurrence,
           kind: 'expense',
           amount,
           category,
@@ -347,6 +357,7 @@ export default function Agregar() {
         feedback.saved({ audience: PRIVATE, detail: effect, undo: { kind: 'recurrence', id } });
       } else {
         const id = await createMovement.mutateAsync({
+          id: ids.current.movement,
           kind,
           amount,
           date,

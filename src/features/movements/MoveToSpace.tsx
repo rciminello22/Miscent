@@ -5,6 +5,7 @@ import { Users } from 'lucide-react-native';
 import type { PersonalMovement } from '@domain/types';
 import { halve } from '@domain/money';
 import { formatPesos } from '@/lib/format';
+import { newId } from '@/data/ids';
 import { queryKeys } from '@/data/queryClient';
 import { movePersonalToSpace } from '@/data/repositories/edits';
 import { useSession } from '@/features/auth/SessionProvider';
@@ -55,6 +56,9 @@ export function MoveToSpace({
   const feedback = useFeedback();
   const { data: spaces } = useSpaces();
   const [moving, setMoving] = useState(false);
+  // H-12 · el id del gasto compartido que nace, el mismo en cada reintento:
+  // si la respuesta se pierde, reintentar no lo duplica.
+  const [newExpenseId] = useState(newId);
 
   const shares = halve(movement.amount);
 
@@ -68,6 +72,7 @@ export function MoveToSpace({
         // C-05 · el medio de pago sigue siendo privado de quien pagó, así que
         // viaja con el gasto pero no se vuelve visible para el otro.
         keepPaymentMethod: true,
+        newExpenseId,
       }),
     onSuccess: async (_id, args) => {
       await Promise.all([

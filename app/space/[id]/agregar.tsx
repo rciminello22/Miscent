@@ -7,7 +7,9 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { addMonths, dayOf, monthOf } from '@domain/calendar';
 import { activePaymentMethods, resolveCardPayment } from '@domain/cards';
 import { planInstallments } from '@domain/installments';
-import { resolveShares } from '@domain/split';
+import { fitSplitToTotal, resolveShares } from '@domain/split';
+import { newId } from '@/data/ids';
+import { SpaceRecordFallback } from '@/features/spaces/SpaceRecordFallback';
 import type { Category, Split } from '@domain/types';
 import { formatDayMonth, formatMonth, formatPesos } from '@/lib/format';
 import { installmentsNotice } from '@/features/shared/installmentsNotice';
@@ -82,7 +84,7 @@ export default function AgregarCompartido() {
   const spaceId = id ?? '';
 
   const { accountState } = useSession();
-  const { derived, today } = useSpace(spaceId);
+  const { derived, today, state, refetch } = useSpace(spaceId);
   const { facts: personalFacts, expansion } = usePersonalFacts();
 
   const createExpense = useCreateSharedExpense(spaceId);
@@ -92,7 +94,15 @@ export default function AgregarCompartido() {
   const [amount, setAmount] = useState(0);
   const [category, setCategory] = useState<Category | null>(null);
   const [payerIsMe, setPayerIsMe] = useState(true);
-  const [split, setSplit] = useState<Split>({ mode: 'even' });
+  // H-04 · se guarda el reparto que escribió la persona; el que se usa sale
+  // ajustado al total de ahora. Corregir el monto después de "Personalizado"
+  // ya no deja partes que no suman (se caía en pleno render).
+  const [typedSplit, setSplit] = useState<Split>({ mode: 'even' });
+  const split = fitSplitToTotal(typedSplit, amount);
+  // H-14 · el id del gasto (o del fijo) nuevo, el mismo en cada reintento de
+  // este formulario. Uno por tabla: cambiar "Se repite" entre intentos no mezcla.
+  const expenseId = useRef(newId());
+  const recurrenceId = useRef(newId());
   // §17 campo 7 · "Medio de pago: Último usado" (ver app/agregar.tsx).
   const lastUsedMethodId = useMemo(
     () =>
@@ -194,11 +204,7 @@ export default function AgregarCompartido() {
 
   if (derived == null) {
     return (
-      <Screen>
-        <Text variant="body" tone="secondary">
-          Cargando…
-        </Text>
-      </Screen>
+      <SpaceRecordFallback state={state} onRetry={() => void refetch()} missing="No encontramos este espacio." />
     );
   }
 
@@ -274,6 +280,7 @@ export default function AgregarCompartido() {
       const audience = spaceAudience(derived!.facts.space.name, other);
       if (repeats) {
         const id = await createRecurrence.mutateAsync({
+          id: recurrenceId.current,
           spaceId,
           amount,
           category,
@@ -288,6 +295,7 @@ export default function AgregarCompartido() {
         feedback.saved({ audience, detail: effect, undo: { kind: 'recurrence', id, spaceId } });
       } else {
         const id = await createExpense.mutateAsync({
+          id: expenseId.current,
           spaceId,
           amount,
           date,

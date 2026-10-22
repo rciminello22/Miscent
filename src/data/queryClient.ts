@@ -29,6 +29,10 @@ export function createQueryClient(): QueryClient {
       },
       mutations: {
         retry: 0,
+        // H-13 · sin red, una escritura FALLA y lo dice, en vez de quedar en
+        // pausa y ejecutarse sola al volver la conexión, con la persona ya en
+        // otra pantalla. Reintentar es seguro: cada alta lleva su id (`newId`).
+        networkMode: 'always',
       },
     },
   });

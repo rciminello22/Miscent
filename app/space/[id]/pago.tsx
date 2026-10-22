@@ -11,6 +11,8 @@ import { AmountInput } from '@/features/add/AmountInput';
 import { Field, Segmented } from '@/features/add/fields';
 import { PastDateField } from '@/features/add/DateField';
 import { balanceSentence } from '@/features/spaces/balanceCopy';
+import { newId } from '@/data/ids';
+import { SpaceRecordFallback } from '@/features/spaces/SpaceRecordFallback';
 import { useCreateMemberPayment, useSpace } from '@/features/spaces/useSpaces';
 import { spaceAudience, useFeedback } from '@/features/shared/useFeedback';
 import {
@@ -52,9 +54,11 @@ export default function Pago() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const spaceId = id ?? '';
 
-  const { derived, today } = useSpace(spaceId);
+  const { derived, today, state, refetch } = useSpace(spaceId);
   const createPayment = useCreateMemberPayment(spaceId);
   const feedback = useFeedback();
+  // H-13 · el mismo id en cada reintento: el pago no se registra dos veces.
+  const [paymentId] = useState(newId);
 
   const [amount, setAmount] = useState(0);
   const [direction, setDirection] = useState<'theyPay' | 'iPay'>('theyPay');
@@ -107,11 +111,7 @@ export default function Pago() {
 
   if (derived == null) {
     return (
-      <Screen>
-        <Text variant="body" tone="secondary">
-          Cargando…
-        </Text>
-      </Screen>
+      <SpaceRecordFallback state={state} onRetry={() => void refetch()} missing="No encontramos este espacio." />
     );
   }
 
@@ -127,6 +127,7 @@ export default function Pago() {
 
     try {
       const id = await createPayment.mutateAsync({
+        id: paymentId,
         spaceId,
         fromSlot: result.fromSlot,
         toSlot: result.toSlot,

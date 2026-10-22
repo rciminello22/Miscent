@@ -31,6 +31,7 @@ import {
   AudienceBadge,
   Door,
   EmptyState,
+  ErrorState,
   Row,
   Sheet,
   Skeleton,
@@ -57,7 +58,7 @@ export default function Futuro() {
   const insets = useSafeAreaInsets();
   const bottomPad = useBottomPadding({ tabs: true, fab: true });
   const router = useRouter();
-  const { facts, expansion, today, isLoading, refetch } = usePersonalFacts();
+  const { facts, expansion, today, state, refetch } = usePersonalFacts();
 
   // §23.1 · las barras siguen arrancando en el mes que viene.
   const from = addMonths(monthOf(today), 1);
@@ -165,11 +166,14 @@ export default function Futuro() {
           <AudienceBadge audience={{ kind: 'private' }} />
         </Row>
 
-        {isLoading ? (
+        {state === 'loading' ? (
           <Stack gap="3">
             <Skeleton height={160} />
             <Skeleton height={72} />
           </Stack>
+        ) : state === 'error' ? (
+          // H-03 · sin poder leer, "No tenés nada comprometido" sería falso.
+          <ErrorState onRetry={() => void refetch()} />
         ) : !hasCommitments && !hasPaymentsThisMonth ? (
           <EmptyState
             title="No tenés nada comprometido todavía."

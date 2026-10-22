@@ -28,6 +28,7 @@ import {
   type NewSharedExpense,
 } from '@/data/repositories/spaces';
 import { useSession } from '@/features/auth/SessionProvider';
+import { loadState } from '@/features/shared/loadState';
 import { useToday } from '@/features/shared/useToday';
 
 /** §14 · la lista de espacios del usuario. */
@@ -62,7 +63,8 @@ export function useSpace(spaceId: string) {
     [query.data, today],
   );
 
-  return { ...query, derived, today };
+  // H-03 · sin `derived` puede ser "cargando" o "no se pudo leer": nunca "ya no existe".
+  return { ...query, derived, today, state: loadState(query) };
 }
 
 /** Lo que trae el repositorio de un espacio. */

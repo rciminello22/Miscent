@@ -7,7 +7,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { installmentAmounts } from '@domain/installments';
 import { calculateSharedBalance } from '@domain/shared-balance';
-import { resolveShares } from '@domain/split';
+import { fitSplitToTotal, resolveShares } from '@domain/split';
+import { newId } from '@/data/ids';
+import { SpaceRecordFallback } from '@/features/spaces/SpaceRecordFallback';
 import type { Category, SharedExpense, Split } from '@domain/types';
 import { formatDayMonth, formatPesos } from '@/lib/format';
 import { amountSpeech } from '@/features/movements/amountSign';
@@ -91,7 +93,11 @@ export default function GastoCompartido() {
 
   const { session, accountState } = useSession();
   const feedback = useFeedback();
-  const { derived, today } = useSpace(spaceId);
+  const { derived, today, state, refetch } = useSpace(spaceId);
+  // H-12 / H-14 · ids de lo que nace acá (recrearlo, pasarlo a personal), los
+  // mismos en cada reintento.
+  const [recreatedId] = useState(newId);
+  const [movedId] = useState(newId);
   const markReviewed = useMarkReviewed(spaceId);
   const { facts: personalFacts } = usePersonalFacts();
 
@@ -112,7 +118,11 @@ export default function GastoCompartido() {
   const [amount, setAmount] = useState(expense?.amount ?? 0);
   const [category, setCategory] = useState<Category | null>(expense?.category ?? null);
   const [payerIsMe, setPayerIsMe] = useState(expense?.payerSlot === derived?.mySlot);
-  const [split, setSplit] = useState<Split>(expense?.split ?? { mode: 'even' });
+  // H-05 · el reparto que se ve y se guarda sale ajustado al monto de ahora:
+  // corregir el total de un personalizado mandaba las partes viejas y la base
+  // lo rechazaba (C-02).
+  const [typedSplit, setSplit] = useState<Split>(expense?.split ?? { mode: 'even' });
+  const split = fitSplitToTotal(typedSplit, amount);
   const [installmentCount, setInstallmentCount] = useState<number | null>(
     expense?.installments?.count ?? null,
   );
@@ -202,6 +212,7 @@ export default function GastoCompartido() {
       if (snapshot == null || derived == null || category == null) return;
 
       await createSharedExpense({
+        id: recreatedId,
         spaceId,
         amount,
         date,
@@ -244,6 +255,7 @@ export default function GastoCompartido() {
         session!.user.id,
         expense!,
         personalFacts.paymentMethods.find((item) => item.id === currentPaymentMethodId) ?? null,
+        movedId,
       ),
     onSuccess: async () => {
       await invalidate();
@@ -283,15 +295,14 @@ export default function GastoCompartido() {
   }, [derived, expense, today]);
 
   if (derived == null || expense == null) {
+    // H-03 · "ya no existe" solo si la lectura salió bien y el gasto no está:
+    // mientras carga, o si falló la red, no se culpa al otro miembro.
     return (
-      <Screen>
-        <Stack gap="5">
-          <Text variant="body" tone="secondary">
-            Este gasto ya no existe. Puede que la otra persona lo haya eliminado.
-          </Text>
-          <Button label="Volver" variant="secondary" onPress={() => goBack(router)} />
-        </Stack>
-      </Screen>
+      <SpaceRecordFallback
+        state={state}
+        onRetry={() => void refetch()}
+        missing="Este gasto ya no existe. Puede que la otra persona lo haya eliminado."
+      />
     );
   }
 

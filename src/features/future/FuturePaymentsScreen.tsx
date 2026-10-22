@@ -6,7 +6,7 @@ import { StatementDetailSheet } from '@/features/upcoming/StatementDetailSheet';
 import { UpcomingPaymentRow } from '@/features/upcoming/UpcomingPaymentRow';
 import { canOpenPayment } from '@/features/upcoming/statementDetail';
 import { usePersonalFacts } from '@/features/shared/usePersonalFacts';
-import { Divider, Skeleton, Stack, Text } from '@/ui/primitives';
+import { Divider, ErrorState, Skeleton, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 import { FutureDetailShell } from './FutureDetailShell';
 import { paymentsFootnotes } from './futureView';
@@ -22,7 +22,7 @@ import { futurePaymentsView, initialPaymentsMonth } from './paymentsMonth';
 export function FuturePaymentsScreen() {
   const theme = useTheme();
   const { mes } = useLocalSearchParams<{ mes?: string }>();
-  const { facts, expansion, today, isLoading, refetch } = usePersonalFacts();
+  const { facts, expansion, today, state, refetch } = usePersonalFacts();
   // UX-08 · el resumen estimado abierto en la hoja de detalle.
   const [openPayment, setOpenPayment] = useState<UpcomingPayment | null>(null);
 
@@ -38,11 +38,14 @@ export function FuturePaymentsScreen() {
 
   return (
     <FutureDetailShell title={view.title} onRefresh={refetch}>
-      {isLoading ? (
+      {state === 'loading' ? (
         <Stack gap="3">
           <Skeleton height={44} />
           <Skeleton height={44} />
         </Stack>
+      ) : state === 'error' ? (
+        // H-03 · "No tenés más pagos este mes" sería falso si no se pudo leer.
+        <ErrorState onRetry={() => void refetch()} />
       ) : (
         <Stack gap="4">
           {view.payments.length === 0 && (

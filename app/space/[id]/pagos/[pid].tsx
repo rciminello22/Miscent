@@ -2,8 +2,9 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { X } from 'lucide-react-native';
 import { goBack } from '@/features/shared/navigation';
 import { SpacePaymentPanel } from '@/features/spaces/SpacePaymentPanel';
+import { SpaceRecordFallback } from '@/features/spaces/SpaceRecordFallback';
 import { useSpace } from '@/features/spaces/useSpaces';
-import { AudienceBadge, Button, IconButton, Row, Screen, Stack, Text } from '@/ui/primitives';
+import { AudienceBadge, IconButton, Row, Screen, Stack, Text } from '@/ui/primitives';
 import { useTheme } from '@/ui/theme';
 
 /**
@@ -18,20 +19,17 @@ export default function PagoEntreMiembros() {
   const router = useRouter();
   const { id, pid } = useLocalSearchParams<{ id: string; pid: string }>();
   const spaceId = id ?? '';
-  const { derived, today, isLoading } = useSpace(spaceId);
+  const { derived, today, state, refetch } = useSpace(spaceId);
 
   const payment = derived?.facts.payments.find((item) => item.id === pid);
 
   if (derived == null || payment == null) {
     return (
-      <Screen>
-        <Stack gap="5">
-          <Text variant="body" tone="secondary">
-            {isLoading ? 'Cargando…' : 'Este pago ya no existe. Puede que la otra persona lo haya eliminado.'}
-          </Text>
-          <Button label="Volver" variant="secondary" onPress={() => goBack(router)} />
-        </Stack>
-      </Screen>
+      <SpaceRecordFallback
+        state={state}
+        onRetry={() => void refetch()}
+        missing="Este pago ya no existe. Puede que la otra persona lo haya eliminado."
+      />
     );
   }
 

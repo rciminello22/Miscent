@@ -30,7 +30,7 @@ import {
  * cambian la lista, no los datos.
  */
 export function useMovementsMonth(initial?: { month?: string; filter?: MovementFilter }) {
-  const { facts, today, isLoading, refetch } = usePersonalFacts();
+  const { facts, today, isLoading, state, refetch } = usePersonalFacts();
 
   const [month, setMonth] = useState<Month>(() => startingMonth(initial?.month, today));
   const [filterChoice, setFilter] = useState<MovementFilter>(initial?.filter ?? 'all');
@@ -61,6 +61,7 @@ export function useMovementsMonth(initial?: { month?: string; filter?: MovementF
   return {
     today,
     isLoading,
+    state,
     refreshing,
     refresh,
     month,
