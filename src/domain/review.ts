@@ -77,6 +77,15 @@ export function pendingReview(
  */
 const QUICK_UNDO_MS = 10 * 60 * 1000;
 
+/** Lo eliminó quien lo había cargado, antes de `QUICK_UNDO_MS`: no es noticia. */
+export function isQuickUndo(item: DeletedRecord): boolean {
+  return (
+    item.createdBySlot === item.deletedBySlot &&
+    item.recordCreatedAt != null &&
+    Date.parse(item.deletedAt) - Date.parse(item.recordCreatedAt) < QUICK_UNDO_MS
+  );
+}
+
 /**
  * Lo que el otro eliminó y el usuario todavía no revisó, lo más reciente
  * primero. Un registro borrado no puede llevar la marca: la lleva su rastro.
@@ -99,11 +108,7 @@ export function pendingDeletions(
       if (item.amount == null) return false;
 
       const deletedAt = Date.parse(item.deletedAt);
-      const quickUndo =
-        item.createdBySlot === item.deletedBySlot &&
-        item.recordCreatedAt != null &&
-        deletedAt - Date.parse(item.recordCreatedAt) < QUICK_UNDO_MS;
-      if (quickUndo) return false;
+      if (isQuickUndo(item)) return false;
 
       const reviewed = reviewedAt.get(item.sourceId);
       return reviewed == null || reviewed < deletedAt;

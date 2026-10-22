@@ -35,7 +35,7 @@ import {
   type Month,
 } from './calendar';
 import { changeCardDays, hasApproxDay, isCardDateApprox, resolveCardStatement } from './cards';
-import { planInstallments } from './installments';
+import { hasInstallmentPlan, planInstallments } from './installments';
 import type {
   InstallmentPlan,
   PaymentMethod,
@@ -271,7 +271,8 @@ function labelOf(item: PersonalMovement | SharedExpense): string {
 }
 
 function hasPlan(plan: InstallmentPlan | null): plan is InstallmentPlan {
-  return plan != null && plan.count >= 2;
+  // Un plan de 1 cuota (H-06) también cae en el resumen: se rearma como los demás.
+  return plan != null && hasInstallmentPlan(plan.count);
 }
 
 /**

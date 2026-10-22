@@ -27,7 +27,10 @@ export function recentDeletionsByOther(
   return events
     .filter(
       (event) =>
-        event.verb === 'deleted' && event.bySlot !== mySlot && localDateOf(event.at) >= since,
+        event.verb === 'deleted' &&
+        event.bySlot !== mySlot &&
+        event.quickUndo !== true &&
+        localDateOf(event.at) >= since,
     )
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
 }

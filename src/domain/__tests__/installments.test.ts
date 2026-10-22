@@ -145,8 +145,11 @@ describe('cuotas · Q-01 a Q-07', () => {
     });
   });
 
-  it('una compra "en cuotas" de menos de 2 cuotas se rechaza (§17)', () => {
-    expect(() => installmentAmounts(100_000, 1)).toThrow();
+  // §17 · "en cuotas" con menos de 2 lo rechaza el formulario
+  // (`installmentCountIssue`). Un plan GUARDADO puede quedar en 1 (H-06).
+  it('un plan sin cuotas se rechaza; uno de 1 cuota es válido (Q-06, Q-07)', () => {
+    expect(() => installmentAmounts(100_000, 0)).toThrow();
+    expect(installmentAmounts(100_000, 1)).toEqual([100_000]);
   });
 });
 

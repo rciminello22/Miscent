@@ -30,6 +30,26 @@ export function resolveShares(total: Pesos, split: Split): Shares {
   return { slot1: shareSlot1, slot2: shareSlot2 };
 }
 
+/**
+ * H-04 / H-05 · un reparto personalizado son dos montos que el usuario
+ * escribió para UN total. Si el total cambia después (corregir el monto,
+ * "Terminar ahora"), esas partes ya no suman y C-02 se rompe. Esta función
+ * deriva el reparto para el total nuevo, en la misma proporción (como F-04 y
+ * Q-09): el slot 1 se redondea y el 2 es el resto, así que siempre suma exacto.
+ *
+ * Las pantallas guardan el reparto que escribió el usuario y le aplican esto
+ * al mostrar y al guardar: si el total pasa por 0 y vuelve, la proporción
+ * original sigue ahí.
+ */
+export function fitSplitToTotal(split: Split, total: Pesos): Split {
+  if (split.mode === 'even') return split;
+  const base = split.shareSlot1 + split.shareSlot2;
+  if (base === total) return split;
+  // Sin proporción de la que partir (las dos partes en 0): a la mitad.
+  const slot1 = base === 0 ? halve(total).slot1 : Math.round((total * split.shareSlot1) / base);
+  return { mode: 'custom', shareSlot1: slot1, shareSlot2: total - slot1 };
+}
+
 export function shareOf(shares: Shares, slot: Slot): Pesos {
   return slot === 1 ? shares.slot1 : shares.slot2;
 }

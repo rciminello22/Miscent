@@ -11,7 +11,8 @@
 import { addMonths, dateInMonth, dayOf, monthOf, type IsoDate, type Month } from './calendar';
 import { distribute, type Pesos } from './money';
 import { resolveCardPayment } from './cards';
-import type { InstallmentPlan, PaymentMethod, Slot } from './types';
+import { splitInstallmentShares } from './split';
+import type { InstallmentPlan, PaymentMethod, Slot, Split } from './types';
 
 export type ScheduledInstallment = {
   /** 1-indexado: "cuota 3 de 6". */
@@ -33,8 +34,20 @@ export type ScheduledInstallment = {
  * tasa: él copia el valor de cuota del resumen y listo.
  */
 export function installmentAmounts(total: Pesos, count: number): Pesos[] {
-  if (count < 2) throw new Error('Q · una compra en cuotas necesita al menos 2 cuotas.');
+  // Una compra NUEVA en cuotas pide al menos 2 (§17, lo valida el formulario),
+  // pero un plan guardado puede quedar en 1: la última cuota que falta (Q-06,
+  // "5 de 6") o la única que conserva "Terminar ahora" (Q-07). H-06.
+  if (count < 1) throw new Error('Q · un plan de cuotas necesita al menos 1 cuota.');
   return distribute(total, count);
+}
+
+/**
+ * ¿Hay un plan de cuotas? `null` es un solo pago. Un plan de 1 cuota existe
+ * (ver `installmentAmounts`) y NO es lo mismo que un pago único: su cuota cae
+ * en el mes de la cuota (Q-02, Q-03), no en el de la compra.
+ */
+export function hasInstallmentPlan(count: number | null | undefined): count is number {
+  return count != null && count >= 1;
 }
 
 export function totalFromInstallmentAmount(installmentAmount: Pesos, count: number): Pesos {
@@ -104,9 +117,10 @@ export type PlanDefiningFacts = {
  * edición no lo afecta lo pisaría con un cálculo sin tarjeta (Q-03).
  */
 export function shouldReplan(before: PlanDefiningFacts, after: PlanDefiningFacts): boolean {
-  const hasPlan = (count: number | null) => count != null && count >= 2;
   // Un solo pago antes y después: no hay plan que rearmar, cambie lo que cambie.
-  if (!hasPlan(before.installmentCount) && !hasPlan(after.installmentCount)) return false;
+  if (!hasInstallmentPlan(before.installmentCount) && !hasInstallmentPlan(after.installmentCount)) {
+    return false;
+  }
 
   return (
     before.installmentCount !== after.installmentCount ||
@@ -190,4 +204,29 @@ export function endInstallmentsNow(
     plan: { ...plan, count: kept.length },
     total: kept.reduce((acc, item) => acc + item.amount, 0),
   };
+}
+
+/**
+ * Q-07 en una compra COMPARTIDA. Con 50/50 alcanza `endInstallmentsNow`; con
+ * reparto personalizado, las partes viejas suman el total viejo y la base
+ * rechazaba el cambio (H-05). Las partes nuevas son la suma de lo que cada
+ * cuota conservada ya repartió (Q-09): así el saldo de las cuotas que ya
+ * pasaron no se mueve ni un peso (P2).
+ */
+export function endInstallmentsNowWithSplit(
+  total: Pesos,
+  plan: InstallmentPlan,
+  split: Split,
+  today: IsoDate,
+): { plan: InstallmentPlan; total: Pesos; split: Split } {
+  const result = endInstallmentsNow(total, plan, today);
+  if (split.mode === 'even' || result.plan.count === 0) return { ...result, split };
+
+  const kept = splitInstallmentShares(
+    scheduleInstallments(total, plan).map((item) => item.amount),
+    total,
+    split,
+  ).slice(0, result.plan.count);
+  const shareSlot1 = kept.reduce((acc, share) => acc + share.slot1, 0);
+  return { ...result, split: { mode: 'custom', shareSlot1, shareSlot2: result.total - shareSlot1 } };
 }

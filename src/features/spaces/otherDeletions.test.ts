@@ -40,6 +40,14 @@ describe('recentDeletionsByOther · qué eliminó el otro esta semana', () => {
     expect(recentDeletionsByOther(events, MI_SLOT, TODAY).map((item) => item.key)).toEqual(['c']);
   });
 
+  // H-14 · lo que el otro cargó y deshizo enseguida (Deshacer, un error de
+  // tipeo) nunca llegaste a verlo: "para revisar" ya lo dejaba afuera (K10).
+  it('no avisa lo que el otro cargó y eliminó enseguida', () => {
+    const events = [event({ key: 'deshecho', quickUndo: true }), event({ key: 'real' })];
+
+    expect(recentDeletionsByOther(events, MI_SLOT, TODAY).map((item) => item.key)).toEqual(['real']);
+  });
+
   it('solo las del otro: lo que eliminaste vos no se te avisa', () => {
     const events = [event({ key: 'mia', bySlot: 1 }), event({ key: 'suya', bySlot: 2 })];
 

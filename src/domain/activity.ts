@@ -13,6 +13,7 @@
 
 import type { IsoDate } from './calendar';
 import type { Pesos } from './money';
+import { isQuickUndo } from './review';
 import type { Category, DeletedRecord, Slot, SpaceFacts, Timestamp } from './types';
 
 export type ActivityEvent = {
@@ -29,6 +30,11 @@ export type ActivityEvent = {
   date: IsoDate | null;
   /** Solo pagos: quién le pagó a quién. */
   fromSlot: Slot | null;
+  /**
+   * Una eliminación de quien lo había cargado, enseguida (`isQuickUndo`): el
+   * otro nunca llegó a contar con eso. Sigue en la actividad, pero no es aviso.
+   */
+  quickUndo?: boolean;
 };
 
 /** Menos que esto entre el alta y el último cambio es el mismo guardado. */
@@ -105,6 +111,7 @@ export function recentActivity(
       description: item.description,
       date: item.occurredOn,
       fromSlot: item.fromSlot,
+      quickUndo: isQuickUndo(item),
     });
   }
 

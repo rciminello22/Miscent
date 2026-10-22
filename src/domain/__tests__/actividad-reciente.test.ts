@@ -70,6 +70,30 @@ describe('actividad reciente del espacio', () => {
     );
   });
 
+  it('marca lo que quien lo cargó eliminó enseguida (Deshacer): el aviso P27 no lo cuenta', () => {
+    const base: DeletedRecord = {
+      sourceId: 'x',
+      kind: 'expense',
+      deletedBySlot: MARTINA,
+      deletedAt: at('2026-10-08T10:05:00'),
+      amount: 5_000,
+      occurredOn: '2026-10-08',
+      category: 'farmacia',
+      description: null,
+      fromSlot: null,
+      createdBySlot: MARTINA,
+      recordCreatedAt: at('2026-10-08T10:00:00'),
+    };
+    const otherAuthor = { ...base, sourceId: 'y', createdBySlot: RENZO };
+    const old = { ...base, sourceId: 'z', recordCreatedAt: at('2026-10-02T10:00:00') };
+
+    const events = recentActivity(spaceFacts({}), [base, otherAuthor, old]);
+    const quick = (id: string) => events.find((event) => event.key === `${id}:d`)?.quickUndo;
+    expect(quick('x')).toBe(true);
+    expect(quick('y')).toBe(false);
+    expect(quick('z')).toBe(false);
+  });
+
   it('corta en el límite', () => {
     const many = Array.from({ length: 30 }, (_, index) => ({
       ...sharedExpense({ amount: 1_000 + index, date: '2026-10-05', payerSlot: RENZO }),
