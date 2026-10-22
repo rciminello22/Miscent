@@ -804,6 +804,10 @@ export type Database = {
       app_has_personal_account: { Args: never; Returns: boolean }
       app_is_anonymous: { Args: never; Returns: boolean }
       app_leave_space: { Args: { target_space_id: string }; Returns: undefined }
+      app_leave_space_as_shown: {
+        Args: { p_deletes_space: boolean; target_space_id: string }
+        Returns: undefined
+      }
       app_mark_reviewed: {
         Args: { source_ids: string[]; target_space_id: string }
         Returns: undefined
@@ -811,6 +815,30 @@ export type Database = {
       app_member_departs: {
         Args: { departing_slot: number; target_space_id: string }
         Returns: undefined
+      }
+      app_move_personal_to_space: {
+        Args: {
+          p_keep_payment_method: boolean
+          p_movement_id: string
+          p_new_id: string
+          p_share_slot_1: number
+          p_share_slot_2: number
+          p_space_id: string
+          p_split_mode: Database["public"]["Enums"]["split_mode"]
+        }
+        Returns: string
+      }
+      app_move_shared_to_personal: {
+        Args: {
+          p_expense_id: string
+          p_first_installment_month: string
+          p_installment_impact_day: number
+          p_installments_approximate: boolean
+          p_installments_count: number
+          p_new_id: string
+          p_payment_method_id: string
+        }
+        Returns: string
       }
       app_my_slot: { Args: { target_space_id: string }; Returns: number }
       app_my_space_ids: { Args: never; Returns: string[] }
@@ -840,6 +868,63 @@ export type Database = {
       app_resolve_stopped_recurrence: {
         Args: { keep: boolean; target_recurrence_id: string }
         Returns: string
+      }
+      app_save_card_debt: {
+        Args: {
+          p_card_id: string
+          p_pending_amount: number
+          p_pending_due_date: string
+          p_purchases: Json
+          p_recent_amount: number
+          p_today: string
+        }
+        Returns: undefined
+      }
+      app_save_new_shared_expense: {
+        Args: {
+          p_amount: number
+          p_category: Database["public"]["Enums"]["category"]
+          p_date: string
+          p_description: string
+          p_first_installment_month: string
+          p_id: string
+          p_installment_impact_day: number
+          p_installments_approximate: boolean
+          p_installments_count: number
+          p_my_payment_method_id: string
+          p_payer_slot: number
+          p_share_slot_1: number
+          p_share_slot_2: number
+          p_space_id: string
+          p_split_mode: Database["public"]["Enums"]["split_mode"]
+        }
+        Returns: string
+      }
+      app_save_new_shared_recurrence: {
+        Args: {
+          p_amount: number
+          p_category: Database["public"]["Enums"]["category"]
+          p_day_of_month: number
+          p_description: string
+          p_id: string
+          p_my_payment_method_id: string
+          p_payer_slot: number
+          p_share_slot_1: number
+          p_share_slot_2: number
+          p_space_id: string
+          p_split_mode: Database["public"]["Enums"]["split_mode"]
+          p_start_month: string
+        }
+        Returns: string
+      }
+      app_set_my_payment_detail: {
+        Args: {
+          p_my_slot: number
+          p_payment_method_id: string
+          p_source_id: string
+          p_space_id: string
+        }
+        Returns: undefined
       }
       app_space_snapshot: {
         Args: { my_slot_value: number; target_space_id: string }
