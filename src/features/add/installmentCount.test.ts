@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   INSTALLMENT_MAX,
   INSTALLMENT_MIN,
+  countToValidateOnEdit,
   installmentCountIssue,
   installmentCountMessage,
   isValidInstallmentCount,
@@ -82,5 +83,16 @@ describe('installmentCountMessage', () => {
 
   it('más de 36 explica el tope', () => {
     expect(installmentCountMessage('too-many')).toBe('Hasta 36 cuotas.');
+  });
+});
+
+describe('countToValidateOnEdit · H-06, una compra que quedó en 1 cuota se puede editar', () => {
+  it('si la cantidad no cambió, no se revalida: 1 cuota guardada no bloquea', () => {
+    expect(installmentCountIssue(countToValidateOnEdit(1, 1))).toBeNull();
+  });
+
+  it('si la cambió, vale el rango de una compra nueva', () => {
+    expect(installmentCountIssue(countToValidateOnEdit(1, 6))).toBe('too-few');
+    expect(countToValidateOnEdit(12, 6)).toBe(12);
   });
 });

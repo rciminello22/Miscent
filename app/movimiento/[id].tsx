@@ -33,7 +33,7 @@ import { moreOptionsSummary } from '@/features/add/addDefaults';
 import { Field, InstallmentCountPicker } from '@/features/add/fields';
 import { MoreOptions } from '@/features/add/MoreOptions';
 import { canSaveForm, saveBlockReason } from '@/features/add/saveBlockReason';
-import { isValidInstallmentCount } from '@/features/add/installmentCount';
+import { countToValidateOnEdit, isValidInstallmentCount } from '@/features/add/installmentCount';
 import { PaymentMethodField } from '@/features/add/PaymentMethodField';
 import { useFeedback } from '@/features/shared/useFeedback';
 import { oneOffIncomeDetail } from '@/features/detail/incomeDetail';
@@ -215,7 +215,13 @@ export default function MovimientoDetalle() {
     description,
   };
 
-  const saveForm = { amount, category, installmentCount, destinationLoading: false };
+  // H-06 · una compra que quedó en 1 cuota se sigue pudiendo editar.
+  const saveForm = {
+    amount,
+    category,
+    installmentCount: countToValidateOnEdit(installmentCount, initialForm.installmentCount),
+    destinationLoading: false,
+  };
 
   function stopEditing() {
     setAmount(initialForm.amount);

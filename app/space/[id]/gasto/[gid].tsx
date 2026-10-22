@@ -43,7 +43,7 @@ import { dateEditability, hasUnsavedChanges, type EditFormValues } from '@/featu
 import { AmountInput } from '@/features/add/AmountInput';
 import { moreOptionsSummary } from '@/features/add/addDefaults';
 import { MoreOptions } from '@/features/add/MoreOptions';
-import { isValidInstallmentCount } from '@/features/add/installmentCount';
+import { countToValidateOnEdit, isValidInstallmentCount } from '@/features/add/installmentCount';
 import { canSaveForm, saveBlockReason } from '@/features/add/saveBlockReason';
 import { CategoryGrid } from '@/features/add/CategoryGrid';
 import { EXPENSE_CATEGORIES, prettyLabel } from '@/features/add/categories';
@@ -372,7 +372,13 @@ export default function GastoCompartido() {
     split,
   };
 
-  const saveForm = { amount, category, installmentCount, destinationLoading: false };
+  // H-06 · una compra que quedó en 1 cuota se sigue pudiendo editar.
+  const saveForm = {
+    amount,
+    category,
+    installmentCount: countToValidateOnEdit(installmentCount, expense.installments?.count ?? null),
+    destinationLoading: false,
+  };
 
   /** "Cancelar" y la X: con cambios sin guardar, preguntan antes de tirarlos. */
   function leaveEditing(then: () => void) {

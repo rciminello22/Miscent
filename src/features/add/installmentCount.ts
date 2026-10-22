@@ -30,6 +30,16 @@ export function isValidInstallmentCount(count: number | null): count is number {
   return count != null && installmentCountIssue(count) == null;
 }
 
+/**
+ * Al EDITAR, qué cantidad se valida. El rango de §17 es para una compra nueva;
+ * un plan guardado puede tener 1 cuota (Q-06 "5 de 6", Q-07 "Terminar
+ * ahora", H-06). Si la cantidad no cambió, no se vuelve a validar: si no,
+ * esa compra no se podía editar en nada (ni la descripción).
+ */
+export function countToValidateOnEdit(current: number | null, saved: number | null): number | null {
+  return current === saved ? null : current;
+}
+
 export function installmentCountMessage(issue: InstallmentCountIssue): string {
   return issue === 'too-few'
     ? 'Para una sola cuota, desactivá En cuotas.'
