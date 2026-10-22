@@ -362,6 +362,7 @@ export type Database = {
           installments_approximate: boolean
           installments_count: number | null
           kind: Database["public"]["Enums"]["movement_kind"]
+          origin: string | null
           payment_method_id: string | null
           updated_at: string
           user_id: string
@@ -378,6 +379,7 @@ export type Database = {
           installments_approximate?: boolean
           installments_count?: number | null
           kind: Database["public"]["Enums"]["movement_kind"]
+          origin?: string | null
           payment_method_id?: string | null
           updated_at?: string
           user_id: string
@@ -394,6 +396,7 @@ export type Database = {
           installments_approximate?: boolean
           installments_count?: number | null
           kind?: Database["public"]["Enums"]["movement_kind"]
+          origin?: string | null
           payment_method_id?: string | null
           updated_at?: string
           user_id?: string

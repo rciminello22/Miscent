@@ -7,11 +7,14 @@
  * lugar y es la misma que validan los tests de §29.1.
  */
 
-import { planInstallments } from '@domain/installments';
+import { hasInstallmentPlan, planInstallments } from '@domain/installments';
 import type { IsoDate, Month } from '@domain/calendar';
-import type { Category, PaymentMethod, PaymentMethodKind, Slot, Split } from '@domain/types';
+import type { Category, InstallmentPlan, PaymentMethod, PaymentMethodKind, Slot, Split } from '@domain/types';
 import type { Pesos } from '@domain/money';
 import { supabase } from '../supabase';
+import { newId } from '../ids';
+import { isMissingFunction } from '../pendingMigration';
+import { rpcWithNulls } from '../rpc';
 import { cardDayColumns, installmentColumns, recurrenceDayColumns, splitColumns } from '../mappers';
 
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -29,6 +32,11 @@ export type NewPersonalMovement = {
   installmentCount: number | null;
   /** Q-04 · el mes de la primera cuota se puede fijar a mano. */
   pinnedFirstMonth: Month | null;
+  /**
+   * El id que generó el formulario (`newId`), el mismo en cada reintento: así
+   * un doble toque o una respuesta perdida no crea un segundo movimiento.
+   */
+  id?: string;
 };
 
 export async function createPersonalMovement(
@@ -36,19 +44,21 @@ export async function createPersonalMovement(
   input: NewPersonalMovement,
 ): Promise<string> {
   // Q-02 / Q-03 · el cronograma lo decide el dominio, no esta función.
-  const plan =
-    input.installmentCount != null && input.installmentCount >= 2
-      ? planInstallments({
-          purchaseDate: input.date,
-          count: input.installmentCount,
-          card: input.paymentMethod?.kind === 'card' ? input.paymentMethod : null,
-          pinnedFirstMonth: input.pinnedFirstMonth,
-        })
-      : null;
+  const plan = hasInstallmentPlan(input.installmentCount)
+    ? planInstallments({
+        purchaseDate: input.date,
+        count: input.installmentCount,
+        card: input.paymentMethod?.kind === 'card' ? input.paymentMethod : null,
+        pinnedFirstMonth: input.pinnedFirstMonth,
+      })
+    : null;
 
+  // Upsert por el id del formulario: el reintento pisa la misma fila, con lo
+  // último que tenía el formulario.
   const { data, error } = await supabase
     .from('personal_movements')
-    .insert({
+    .upsert({
+      id: input.id ?? newId(),
       user_id: userId,
       kind: input.kind,
       amount: input.amount,
@@ -165,6 +175,85 @@ export async function createDeclaredStatement(
   if (error != null) throw new Error('No pudimos guardar el resumen pendiente.');
 }
 
+/**
+ * O3 paso 4 · todo lo que ya debía con UNA tarjeta al activar la cuenta: el
+ * resumen pendiente (T-07), las cuotas en curso (Q-06) y los consumos desde el
+ * último cierre (T-08).
+ *
+ * H-01 · se guarda en una transacción y REEMPLAZA lo que este mismo paso había
+ * guardado para esa tarjeta: continuar dos veces, volver atrás y seguir, o
+ * reintentar después de una falla dejan una sola vez cada cosa.
+ */
+export type CardDebt = {
+  cardId: string;
+  /** T-07 · `null` si pagó el último resumen. */
+  pending: { amount: Pesos; dueDate: IsoDate } | null;
+  /** Q-06 · cada compra, ya con el plan de las cuotas que faltan. */
+  purchases: { remainingTotal: Pesos; description: string | null; plan: InstallmentPlan }[];
+  /** T-08 · 0 si no gastó nada desde el cierre. */
+  recentSpending: Pesos;
+  today: IsoDate;
+};
+
+export async function saveCardDebt(userId: string, debt: CardDebt): Promise<void> {
+  const { error } = await rpcWithNulls<null>('app_save_card_debt', {
+    p_card_id: debt.cardId,
+    p_pending_amount: debt.pending?.amount ?? 0,
+    p_pending_due_date: debt.pending?.dueDate ?? null,
+    p_purchases: debt.purchases.map((purchase) => ({
+      amount: purchase.remainingTotal,
+      description: cleanDescription(purchase.description),
+      count: purchase.plan.count,
+      first_month: purchase.plan.firstMonth,
+      impact_day: purchase.plan.impactDay,
+      approximate: purchase.plan.approximate,
+    })),
+    p_recent_amount: debt.recentSpending,
+    p_today: debt.today,
+  });
+
+  if (error == null) return;
+  if (!isMissingFunction(error)) throw new Error('No pudimos guardarlo.');
+
+  // Sin la 0022 todavía: el camino de antes, que no se puede deshacer a mitad.
+  await saveCardDebtWithoutTransaction(userId, debt);
+}
+
+async function saveCardDebtWithoutTransaction(userId: string, debt: CardDebt): Promise<void> {
+  if (debt.pending != null) {
+    await createDeclaredStatement(userId, { paymentMethodId: debt.cardId, ...debt.pending });
+  }
+  const rows = [
+    ...debt.purchases.map((purchase) => ({
+      user_id: userId,
+      kind: 'expense' as const,
+      amount: purchase.remainingTotal,
+      date: debt.today,
+      category: 'otros' as const,
+      description: cleanDescription(purchase.description),
+      payment_method_id: debt.cardId,
+      ...installmentColumns(purchase.plan),
+    })),
+    ...(debt.recentSpending > 0
+      ? [
+          {
+            user_id: userId,
+            kind: 'expense' as const,
+            amount: debt.recentSpending,
+            date: debt.today,
+            category: 'otros' as const,
+            description: 'Consumos previos (aprox.)',
+            payment_method_id: debt.cardId,
+            ...installmentColumns(null),
+          },
+        ]
+      : []),
+  ];
+  if (rows.length === 0) return;
+  const { error } = await supabase.from('personal_movements').insert(rows);
+  if (error != null) throw new Error('No pudimos guardar las cuotas.');
+}
+
 /* ────────────────────────────────────────────────────────────────────────── */
 /*  Recurrentes · "Fijos" (§21)                                              */
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -186,6 +275,8 @@ export type NewRecurrence = {
   spaceId?: string | null;
   payerSlot?: Slot | null;
   split?: Split | null;
+  /** El id del formulario, el mismo en cada reintento (ver `NewPersonalMovement`). */
+  id?: string;
 };
 
 /** El CHECK de la base no acepta texto vacío: vacío es `null`. */
@@ -202,7 +293,8 @@ export async function createRecurrence(
 
   const { data, error } = await supabase
     .from('recurrences')
-    .insert({
+    .upsert({
+      id: input.id ?? newId(),
       kind: input.kind,
       amount: input.amount,
       category: input.category,

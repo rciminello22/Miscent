@@ -113,6 +113,11 @@ export type PersonalMovement = {
   paymentMethodId: string | null;
   /** `null` si es de un solo pago. */
   installments: InstallmentPlan | null;
+  /**
+   * Lo cargó el paso "deuda" del onboarding (Q-06, T-08). Guardar ese paso de
+   * nuevo para la misma tarjeta lo reemplaza en vez de sumarlo (H-01).
+   */
+  fromOnboardingDebt?: boolean;
 };
 
 /** C-03 · P3: 50/50 o personalizado POR MONTO. Nunca porcentajes en la interfaz. */

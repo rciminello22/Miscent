@@ -504,7 +504,7 @@ select tests.authenticate_as('44444444-4444-4444-4444-444444444444');
 -- Modo 1: si la pantalla dijo "se conserva", el servidor no elimina.
 insert into tests.results(line) select throws_ok(
   $$ select app_leave_space_as_shown(tests.get('uno')::uuid, false) $$,
-  '40001',
+  'P0001',
   null,
   'H-07 · en Modo 1, salir sin haber avisado que se elimina no hace nada'
 );
@@ -528,7 +528,7 @@ select tests.authenticate_as('44444444-4444-4444-4444-444444444444');
 
 insert into tests.results(line) select throws_ok(
   $$ select app_leave_space_as_shown(tests.get('dos')::uuid, true) $$,
-  '40001',
+  'P0001',
   null,
   'H-07 · con el otro adentro, no se sale con el aviso de eliminar'
 );

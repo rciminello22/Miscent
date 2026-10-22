@@ -9,7 +9,7 @@
  * escrituras simples con RLS.
  */
 
-import { planInstallments } from '@domain/installments';
+import { hasInstallmentPlan, planInstallments } from '@domain/installments';
 import type { IsoDate, Month } from '@domain/calendar';
 import type { Pesos } from '@domain/money';
 import type {
@@ -23,6 +23,9 @@ import type {
   Split,
 } from '@domain/types';
 import { supabase } from '../supabase';
+import { newId } from '../ids';
+import { isMissingFunction } from '../pendingMigration';
+import { rpcWithNulls } from '../rpc';
 import { installmentColumns, splitColumns, toDeletedRecord, toReview, toSpaceFacts } from '../mappers';
 import { ownActiveMemberships } from '../memberships';
 import { removeFormerSpaceFailure } from '../removeFormerSpace';
@@ -183,35 +186,69 @@ export type NewSharedExpense = {
    * es el propio usuario: nadie puede declarar con qué pagó el otro.
    */
   myPaymentMethod: PaymentMethod | null;
+  /** El id del formulario, el mismo en cada reintento (H-14). */
+  id?: string;
 };
 
+/**
+ * H-14 · el gasto y con qué lo pagó (C-05) se guardan en UNA transacción
+ * (`app_save_new_shared_expense`, 0022), con el id del formulario: un
+ * reintento pisa el mismo gasto en vez de crear otro, y nunca queda un gasto
+ * sin su detalle ni un borrado compensatorio que el otro vea como
+ * "eliminación".
+ */
 export async function createSharedExpense(input: NewSharedExpense): Promise<string> {
   const iPaid = input.payerSlot === input.mySlot;
 
   // Q-02 / Q-03 · el cronograma lo decide el dominio. Para una compra en
   // cuotas que pagó el OTRO miembro, no hay tarjeta conocida (C-05), así que
   // cae en Q-03: un mes después, el mismo día.
-  const plan =
-    input.installmentCount != null && input.installmentCount >= 2
-      ? planInstallments({
-          purchaseDate: input.date,
-          count: input.installmentCount,
-          card: iPaid && input.myPaymentMethod?.kind === 'card' ? input.myPaymentMethod : null,
-          pinnedFirstMonth: input.pinnedFirstMonth,
-        })
-      : null;
+  const plan = hasInstallmentPlan(input.installmentCount)
+    ? planInstallments({
+        purchaseDate: input.date,
+        count: input.installmentCount,
+        card: iPaid && input.myPaymentMethod?.kind === 'card' ? input.myPaymentMethod : null,
+        pinnedFirstMonth: input.pinnedFirstMonth,
+      })
+    : null;
 
+  const id = input.id ?? newId();
+  const split = splitColumns(input.amount, input.split);
+  const installments = installmentColumns(plan);
+  const { error: rpcError } = await rpcWithNulls<string>('app_save_new_shared_expense', {
+    p_id: id,
+    p_space_id: input.spaceId,
+    p_amount: input.amount,
+    p_date: input.date,
+    p_category: input.category,
+    p_description: input.description,
+    p_payer_slot: input.payerSlot,
+    p_split_mode: split.split_mode,
+    p_share_slot_1: split.share_slot_1,
+    p_share_slot_2: split.share_slot_2,
+    p_installments_count: installments.installments_count,
+    p_first_installment_month: installments.first_installment_month,
+    p_installment_impact_day: installments.installment_impact_day,
+    p_installments_approximate: installments.installments_approximate,
+    p_my_payment_method_id: iPaid ? (input.myPaymentMethod?.id ?? null) : null,
+  });
+
+  if (rpcError == null) return id;
+  if (!isMissingFunction(rpcError)) throw new Error('No pudimos guardar el gasto.');
+
+  // Sin la 0022 todavía: el camino de antes, en dos pasos.
   const { data, error } = await supabase
     .from('shared_expenses')
     .insert({
+      id,
       space_id: input.spaceId,
       amount: input.amount,
       date: input.date,
       category: input.category,
       description: input.description,
       payer_slot: input.payerSlot,
-      ...splitColumns(input.amount, input.split),
-      ...installmentColumns(plan),
+      ...split,
+      ...installments,
       // K3 · la autoría se registra y RLS no deja falsearla.
       created_by_slot: input.mySlot,
       updated_by_slot: input.mySlot,
@@ -229,15 +266,25 @@ export async function createSharedExpense(input: NewSharedExpense): Promise<stri
       slot: input.mySlot,
       payment_method_id: input.myPaymentMethod.id,
     });
-    // O todo o nada: sin el medio, el gasto no llega al resumen de la tarjeta,
-    // y dejarlo guardado invita a tocar Guardar otra vez y duplicarlo.
     if (detail.error != null) {
-      await supabase.from('shared_expenses').delete().eq('id', data.id);
+      await undoOrExplain(supabase.from('shared_expenses').delete().eq('id', data.id));
       throw new Error('No pudimos guardar el gasto.');
     }
   }
 
   return data.id;
+}
+
+/**
+ * El borrado compensatorio del camino sin la 0022. Si TAMBIÉN falla, el gasto
+ * quedó guardado sin su medio: decirlo, en vez de "no pudimos guardarlo", que
+ * invita a cargarlo de nuevo y duplicarlo.
+ */
+async function undoOrExplain(undo: PromiseLike<{ error: unknown }>): Promise<void> {
+  const { error } = await undo;
+  if (error != null) {
+    throw new Error('Se guardó sin el medio de pago. Revisalo en el espacio antes de cargarlo de nuevo.');
+  }
 }
 
 /** X-02 / K3 · los dos miembros con acceso eliminan cualquier registro. */
@@ -258,10 +305,36 @@ export async function createSharedRecurrence(input: {
   myPaymentMethodId: string | null;
   mySlot: Slot;
   description?: string | null;
+  /** El id del formulario, el mismo en cada reintento (H-14). */
+  id?: string;
 }): Promise<string> {
+  const id = input.id ?? newId();
+  const split = splitColumns(input.amount, input.split);
+
+  // H-14 · el fijo y su detalle de pago, en una transacción (0022).
+  const { error: rpcError } = await rpcWithNulls<string>('app_save_new_shared_recurrence', {
+    p_id: id,
+    p_space_id: input.spaceId,
+    p_amount: input.amount,
+    p_category: input.category,
+    p_description: cleanDescription(input.description),
+    p_day_of_month: input.dayOfMonth,
+    p_start_month: input.startMonth,
+    p_payer_slot: input.payerSlot,
+    p_split_mode: split.split_mode,
+    p_share_slot_1: split.share_slot_1,
+    p_share_slot_2: split.share_slot_2,
+    p_my_payment_method_id: input.payerSlot === input.mySlot ? input.myPaymentMethodId : null,
+  });
+
+  if (rpcError == null) return id;
+  if (!isMissingFunction(rpcError)) throw new Error('No pudimos guardar el fijo compartido.');
+
+  // Sin la 0022 todavía: el camino de antes, en dos pasos.
   const { data, error } = await supabase
     .from('recurrences')
     .insert({
+      id,
       kind: 'expense',
       amount: input.amount,
       category: input.category,
@@ -272,7 +345,7 @@ export async function createSharedRecurrence(input: {
       owner_user_id: null,
       space_id: input.spaceId,
       payer_slot: input.payerSlot,
-      ...splitColumns(input.amount, input.split),
+      ...split,
       // El medio de pago de un fijo compartido también es privado de quien
       // paga, así que va en shared_payment_details y no en esta columna.
       payment_method_id: null,
@@ -289,9 +362,8 @@ export async function createSharedRecurrence(input: {
       slot: input.mySlot,
       payment_method_id: input.myPaymentMethodId,
     });
-    // O todo o nada, igual que en createSharedExpense.
     if (detail.error != null) {
-      await supabase.from('recurrences').delete().eq('id', data.id);
+      await undoOrExplain(supabase.from('recurrences').delete().eq('id', data.id));
       throw new Error('No pudimos guardar el fijo compartido.');
     }
   }
@@ -299,7 +371,10 @@ export async function createSharedRecurrence(input: {
   return data.id;
 }
 
-/** P-01 a P-04 · un pago entre miembros es una declaración. */
+/**
+ * P-01 a P-04 · un pago entre miembros es una declaración. Upsert por el id
+ * del formulario: un reintento no registra el pago dos veces (H-13).
+ */
 export async function createMemberPayment(input: {
   spaceId: string;
   fromSlot: Slot;
@@ -307,10 +382,12 @@ export async function createMemberPayment(input: {
   amount: Pesos;
   date: IsoDate;
   mySlot: Slot;
+  id?: string;
 }): Promise<string> {
   const { data, error } = await supabase
     .from('member_payments')
-    .insert({
+    .upsert({
+      id: input.id ?? newId(),
       space_id: input.spaceId,
       from_slot: input.fromSlot,
       to_slot: input.toSlot,
@@ -405,9 +482,11 @@ export async function setInitialBalance(
 
 /**
  * X-07 · un gasto compartido pasa a ser personal (cargado en el espacio por
- * error, §32). Primero se crea el personal y después se borra el compartido:
- * si el borrado falla, se deshace el alta. Nunca quedan los dos, que contaría
- * el gasto dos veces en el radar.
+ * error, §32). H-12 · nace el personal y se borra el compartido en UNA
+ * transacción (`app_move_shared_to_personal`, 0022): nunca quedan los dos,
+ * que contaría el gasto dos veces en el radar. `newId` es el id del personal,
+ * el mismo en cada reintento: si la respuesta se perdió, reintentar no crea
+ * otro. La base exige que lo mueva quien lo cargó.
  *
  * Las cuotas conservan su cronograma (Q-04): el mes de la primera cuota es un
  * hecho, no se recalcula.
@@ -416,8 +495,34 @@ export async function moveSharedExpenseToPersonal(
   userId: string,
   expense: SharedExpense,
   myPaymentMethod: PaymentMethod | null,
+  movementId: string = newId(),
 ): Promise<string> {
+  const plan = hasInstallmentPlan(expense.installments?.count)
+    ? planInstallments({
+        purchaseDate: expense.date,
+        count: expense.installments!.count,
+        card: myPaymentMethod?.kind === 'card' ? myPaymentMethod : null,
+        pinnedFirstMonth: expense.installments!.firstMonth,
+      })
+    : null;
+  const installments = installmentColumns(plan);
+
+  const { error: rpcError } = await rpcWithNulls<string>('app_move_shared_to_personal', {
+    p_expense_id: expense.id,
+    p_new_id: movementId,
+    p_payment_method_id: myPaymentMethod?.id ?? null,
+    p_installments_count: installments.installments_count,
+    p_first_installment_month: installments.first_installment_month,
+    p_installment_impact_day: installments.installment_impact_day,
+    p_installments_approximate: installments.installments_approximate,
+  });
+
+  if (rpcError == null) return movementId;
+  if (!isMissingFunction(rpcError)) throw new Error('No pudimos pasarlo a tus gastos personales.');
+
+  // Sin la 0022 todavía: el camino de antes, con el compensatorio verificado.
   const id = await createPersonalMovement(userId, {
+    id: movementId,
     kind: 'expense',
     amount: expense.amount,
     date: expense.date,
@@ -430,8 +535,40 @@ export async function moveSharedExpenseToPersonal(
 
   const { error } = await supabase.from('shared_expenses').delete().eq('id', expense.id);
   if (error != null) {
-    await supabase.from('personal_movements').delete().eq('id', id);
-    throw new Error('No pudimos pasarlo a tus gastos personales.');
+    const undo = await supabase.from('personal_movements').delete().eq('id', id);
+    throw new Error(
+      undo.error == null
+        ? 'No pudimos pasarlo a tus gastos personales.'
+        : 'Quedó en los dos lados. Eliminá uno antes de seguir.',
+    );
   }
   return id;
+}
+
+/** El otro dejó de tener acceso, o volvió, mientras la pantalla mostraba otra cosa. */
+export class LeaveChangedError extends Error {
+  constructor() {
+    super('Algo cambió en el espacio. Revisá lo que pasa al salir.');
+    this.name = 'LeaveChangedError';
+  }
+}
+
+/**
+ * §27 · salir de un espacio. H-07 · la app manda lo que MOSTRÓ: si dijo que el
+ * espacio se elimina (Modo 1, SA-06) o que queda para el otro. El servidor
+ * sale solo si eso sigue siendo cierto; si no, `LeaveChangedError` y la
+ * pantalla vuelve a leer.
+ */
+export async function leaveSpace(spaceId: string, deletesSpace: boolean): Promise<void> {
+  const { error } = await rpcWithNulls<null>('app_leave_space_as_shown', {
+    target_space_id: spaceId,
+    p_deletes_space: deletesSpace,
+  });
+  if (error == null) return;
+  if (error.message.includes('LEAVE_CHANGED')) throw new LeaveChangedError();
+  if (!isMissingFunction(error)) throw new Error('No pudimos sacarte del espacio.');
+
+  // Sin la 0022 todavía: la salida de siempre, sin la verificación.
+  const legacy = await supabase.rpc('app_leave_space', { target_space_id: spaceId });
+  if (legacy.error != null) throw new Error('No pudimos sacarte del espacio.');
 }

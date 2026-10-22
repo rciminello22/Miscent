@@ -11,6 +11,7 @@
  * sea (ver supabase/migrations/..._schema.sql).
  */
 
+import { resolveShares } from '@domain/split';
 import type { Database } from './database.types';
 import { toPastTerms } from './pastTerms';
 import type {
@@ -189,6 +190,8 @@ export function toPersonalMovement(row: Row<'personal_movements'>): PersonalMove
     description: row.description,
     paymentMethodId: row.payment_method_id,
     installments: toInstallmentPlan(row),
+    // Sin la 0022 la columna no viene (`undefined`): no es del onboarding.
+    fromOnboardingDebt: row.origin === 'onboarding_debt',
   };
 }
 
@@ -384,19 +387,16 @@ export function installmentDayColumns(plan: InstallmentPlan) {
   };
 }
 
-/** C-02 · las partes se guardan explícitas y el CHECK de la base las valida. */
+/**
+ * C-02 · las partes se guardan explícitas y el CHECK de la base las valida.
+ * `resolveShares` las valida ANTES de mandarlas: unas partes que no suman el
+ * total (H-05) son un error del que llama, no algo para descubrir en la base.
+ */
 export function splitColumns(amount: number, split: Split) {
-  if (split.mode === 'even') {
-    const slot1 = Math.round(amount / 2);
-    return {
-      split_mode: 'even' as const,
-      share_slot_1: slot1,
-      share_slot_2: amount - slot1,
-    };
-  }
+  const shares = resolveShares(amount, split);
   return {
-    split_mode: 'custom' as const,
-    share_slot_1: split.shareSlot1,
-    share_slot_2: split.shareSlot2,
+    split_mode: split.mode,
+    share_slot_1: shares.slot1,
+    share_slot_2: shares.slot2,
   };
 }

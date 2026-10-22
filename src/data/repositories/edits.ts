@@ -9,6 +9,8 @@
 
 import {
   endInstallmentsNow,
+  endInstallmentsNowWithSplit,
+  hasInstallmentPlan,
   planInstallments,
   shouldReplan,
   type PlanDefiningFacts,
@@ -27,6 +29,9 @@ import type {
 } from '@domain/types';
 import { changeAmountFrom } from '@domain/fixedChanges';
 import { supabase } from '../supabase';
+import { newId } from '../ids';
+import { isMissingFunction } from '../pendingMigration';
+import { rpcWithNulls } from '../rpc';
 import { installmentColumns, recurrenceDayColumns, splitColumns } from '../mappers';
 import { fromPastTerms } from '../pastTerms';
 
@@ -70,15 +75,14 @@ export async function updatePersonalMovement(
     payerMethodId: input.paymentMethod?.id ?? null,
   });
 
-  const plan =
-    input.installmentCount != null && input.installmentCount >= 2
-      ? planInstallments({
-          purchaseDate: input.date,
-          count: input.installmentCount,
-          card: input.paymentMethod?.kind === 'card' ? input.paymentMethod : null,
-          pinnedFirstMonth: input.pinnedFirstMonth,
-        })
-      : null;
+  const plan = hasInstallmentPlan(input.installmentCount)
+    ? planInstallments({
+        purchaseDate: input.date,
+        count: input.installmentCount,
+        card: input.paymentMethod?.kind === 'card' ? input.paymentMethod : null,
+        pinnedFirstMonth: input.pinnedFirstMonth,
+      })
+    : null;
 
   const { error } = await supabase
     .from('personal_movements')
@@ -144,6 +148,12 @@ export async function deletePersonalMovementById(id: string): Promise<void> {
  *
  * No es un UPDATE: son dos tablas distintas, con dueños distintos. El gasto
  * personal se borra y nace un gasto compartido.
+ *
+ * H-12 · las tres escrituras (el compartido, su detalle de pago, borrar el
+ * personal) van en UNA transacción (`app_move_personal_to_space`, 0022). Si
+ * fallaba la última, el gasto quedaba en los dos lados y se contaba dos
+ * veces. `newExpenseId` es el mismo en cada reintento: si la respuesta se
+ * perdió, reintentar devuelve el mismo gasto en vez de crear otro.
  */
 export async function movePersonalToSpace(args: {
   movement: PersonalMovement;
@@ -152,12 +162,30 @@ export async function movePersonalToSpace(args: {
   split: Split;
   /** C-05 · el medio de pago sigue siendo privado de quien pagó. */
   keepPaymentMethod: boolean;
+  newExpenseId?: string;
 }): Promise<string> {
   const { movement, spaceId, mySlot, split, keepPaymentMethod } = args;
+  const newExpenseId = args.newExpenseId ?? newId();
+  const shares = splitColumns(movement.amount, split);
 
+  const { error: rpcError } = await rpcWithNulls<string>('app_move_personal_to_space', {
+    p_movement_id: movement.id,
+    p_new_id: newExpenseId,
+    p_space_id: spaceId,
+    p_split_mode: shares.split_mode,
+    p_share_slot_1: shares.share_slot_1,
+    p_share_slot_2: shares.share_slot_2,
+    p_keep_payment_method: keepPaymentMethod,
+  });
+
+  if (rpcError == null) return newExpenseId;
+  if (!isMissingFunction(rpcError)) throw new Error('No pudimos moverlo al espacio.');
+
+  // Sin la 0022 todavía: el camino de antes, verificando cada compensación.
   const { data, error } = await supabase
     .from('shared_expenses')
     .insert({
+      id: newExpenseId,
       space_id: spaceId,
       amount: movement.amount,
       date: movement.date,
@@ -165,7 +193,7 @@ export async function movePersonalToSpace(args: {
       description: movement.description,
       // Quien cambia el destino es quien lo cargó, así que pagó él.
       payer_slot: mySlot,
-      ...splitColumns(movement.amount, split),
+      ...shares,
       ...installmentColumns(movement.installments),
       created_by_slot: mySlot,
       updated_by_slot: mySlot,
@@ -175,6 +203,17 @@ export async function movePersonalToSpace(args: {
 
   if (error != null) throw new Error('No pudimos moverlo al espacio.');
 
+  // Deshacer el compartido deja todo como estaba (el personal sigue). Si el
+  // deshacer TAMBIÉN falla, quedó en los dos lados: decirlo, no "no pudimos".
+  const undoShared = async () => {
+    const undo = await supabase.from('shared_expenses').delete().eq('id', data.id);
+    throw new Error(
+      undo.error == null
+        ? 'No pudimos moverlo al espacio.'
+        : 'Quedó en los dos lados. Eliminá uno antes de seguir.',
+    );
+  };
+
   if (keepPaymentMethod && movement.paymentMethodId != null) {
     const detail = await supabase.from('shared_payment_details').insert({
       source_id: data.id,
@@ -182,15 +221,11 @@ export async function movePersonalToSpace(args: {
       slot: mySlot,
       payment_method_id: movement.paymentMethodId,
     });
-    // O todo o nada: el personal todavía no se borró, así que deshacer el
-    // compartido deja todo como estaba.
-    if (detail.error != null) {
-      await supabase.from('shared_expenses').delete().eq('id', data.id);
-      throw new Error('No pudimos moverlo al espacio.');
-    }
+    if (detail.error != null) await undoShared();
   }
 
-  await deletePersonalMovementById(movement.id);
+  const removed = await supabase.from('personal_movements').delete().eq('id', movement.id);
+  if (removed.error != null) await undoShared();
   return data.id;
 }
 
@@ -265,14 +300,13 @@ export async function updateSharedExpense(
     payerMethodId: iPaid ? input.myPaymentMethod?.id ?? null : null,
   });
 
-  const plan =
-    input.installmentCount != null && input.installmentCount >= 2
-      ? planInstallments({
-          purchaseDate: input.date,
-          count: input.installmentCount,
-          card: iPaid && input.myPaymentMethod?.kind === 'card' ? input.myPaymentMethod : null,
-        })
-      : null;
+  const plan = hasInstallmentPlan(input.installmentCount)
+    ? planInstallments({
+        purchaseDate: input.date,
+        count: input.installmentCount,
+        card: iPaid && input.myPaymentMethod?.kind === 'card' ? input.myPaymentMethod : null,
+      })
+    : null;
 
   const { data, error } = await supabase
     .from('shared_expenses')
@@ -338,7 +372,8 @@ export async function endSharedInstallmentsNow(
 ): Promise<void> {
   if (expense.installments == null) return;
 
-  const result = endInstallmentsNow(expense.amount, expense.installments, today);
+  // H-05 · con reparto personalizado, las partes viejas sumaban el total viejo.
+  const result = endInstallmentsNowWithSplit(expense.amount, expense.installments, expense.split, today);
 
   if (result.plan.count === 0) {
     const { error } = await supabase.from('shared_expenses').delete().eq('id', expense.id);
@@ -346,18 +381,21 @@ export async function endSharedInstallmentsNow(
     return;
   }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('shared_expenses')
     .update({
       amount: result.total,
-      // C-02 · el reparto se recalcula sobre el total nuevo.
-      ...splitColumns(result.total, expense.split),
+      // C-02 · el reparto, sobre el total nuevo: lo que ya repartieron las cuotas que quedan.
+      ...splitColumns(result.total, result.split),
       ...installmentColumns(result.plan),
       updated_by_slot: mySlot,
     })
-    .eq('id', expense.id);
+    .eq('id', expense.id)
+    .select('id');
 
   if (error != null) throw new Error('No pudimos terminar las cuotas.');
+  // SY-02 · si el otro lo eliminó en el medio, no hay nada que terminar.
+  if (data.length === 0) throw new SharedExpenseDeletedError();
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */

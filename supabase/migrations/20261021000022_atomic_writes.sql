@@ -547,8 +547,11 @@ begin
   from space_members
   where space_id = target_space_id and slot <> my_slot_value and status = 'active';
 
+  -- P0001 a propósito, NO serialization_failure (40001): PostgREST reintenta
+  -- solo los 40001, y como esto falla igual cada vez, colgaba el pedido
+  -- hasta el timeout (probado contra Supabase local).
   if (others_active = 0) is distinct from p_deletes_space then
-    raise exception 'LEAVE_CHANGED: lo que pasa al salir cambió' using errcode = 'serialization_failure';
+    raise exception 'LEAVE_CHANGED: lo que pasa al salir cambió' using errcode = 'P0001';
   end if;
 
   perform app_leave_space(target_space_id);

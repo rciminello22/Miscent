@@ -68,7 +68,8 @@
     "test:rls": "supabase db query --linked -f supabase/tests/privacidad.test.sql",
     "test:rls:docker": "supabase test db",
     "test:rls:smoke": "tsx tools/rls-smoke.ts",
-    "test:integridad": "supabase db query --linked -f supabase/tests/integridad.test.sql",
+    "test:integracion": "tsx tools/integration-local.ts",
+    "test:integridad":"supabase db query --linked -f supabase/tests/integridad.test.sql",
     "verify:full": "npm run verify && npm run test:rls && npm run test:integridad && npm run test:rls:smoke",
     "test:componentes": "jest"
   },
