@@ -1,7 +1,7 @@
 # Handoff · Radar del sueldo comprometido
 
 Contexto para retomar el proyecto en una sesión nueva.
-Última actualización: 20 de octubre de 2026 · rediseño de UX terminado, con P26 y P27 (espacios que dejaste detrás de una puerta, aviso de lo que elimina el otro) · migraciones hasta la 0021 aplicadas (pgTAP 98/98) · todo commiteado en `master`, **sin push** · **lo próximo: branding** · la app todavía NO está lista para las tiendas (ver §5).
+Última actualización: 21 de octubre de 2026 · **corrección de integridad financiera y persistencia** (auditoría del 20/10, H-01 a H-16) · **migración 0022 preparada y SIN aplicar** (ver "Integridad de escrituras (0022)" en §5) · migraciones hasta la 0021 aplicadas · todo commiteado en `master` (no hay remoto) · después: branding · la app todavía NO está lista para las tiendas (ver §5).
 
 ---
 
@@ -211,6 +211,54 @@ cuotas"). El nivel 3 encontró **2 bugs reales**.
 la 0020 el 16/10, la 0021 el 20/10) · pgTAP **98/98** · `npm run verify` en
 verde (vitest 1318, jest 434, CA-00) · **todo commiteado en `master`, sin
 push** (unos 60 commits desde `697b52b`). **El rediseño de UX está terminado.**
+
+### Integridad de escrituras (0022) · 21/10
+
+Corrección de los grupos P0/P1 de `AUDITORIA_INICIAL_MISCENT.md`. Punto de
+recuperación: tag `pre-integridad-financiera` (= `ef76b6c`).
+
+| Hallazgo | Qué se hizo | Dónde |
+|---|---|---|
+| H-01 deuda duplicada | `app_save_card_debt` REEMPLAZA lo de esa tarjeta en una transacción (`personal_movements.origin = 'onboarding_debt'`); borrador por usuario y tarjeta (`cardDebtDraft.ts`) | 0022, `deuda.tsx` |
+| H-02 fijo con tarjeta fuera del mes | Los fijos se expanden desde `CARD_PAYMENT_LAG_MONTHS` (2) antes y se filtran por mes de PAGO | `occurrences.ts` |
+| H-03 error mostrado como vacío | `loadState` (loading/error/ready; sin red = error), `SpaceRecordFallback` | `features/shared`, pantallas |
+| H-04 / H-05 reparto que no suma | `fitSplitToTotal` (proporción, F-04/Q-09); `endInstallmentsNowWithSplit` | `split.ts`, `installments.ts` |
+| H-06 plan de 1 cuota | CHECK `>= 1` en planes guardados; §17 (mínimo 2) sigue en el formulario; editar no revalida una cantidad sin cambios | 0022, `installmentCount.ts` |
+| H-07 salir en Modo 1 | La pantalla dice que el espacio se elimina (SA-06) y pide "Eliminar X y salir"; `app_leave_space_as_shown` sale solo si coincide con lo mostrado | 0022, `salir.tsx`, `leaveConsequences.ts` |
+| H-12 / H-14 varios pasos | RPC `app_move_*` y `app_save_new_shared_*`: todo o nada, idempotentes por id | 0022, repositorios |
+| H-13 reintentos | Toda alta lleva un id de la app (`newId`/`draftId`) y es upsert; mutaciones `networkMode: 'always'` | `ids.ts`, `queryClient.ts` |
+| H-16 onboarding | Fijos en una escritura; ingreso avisa el error; tarjeta escrita se guarda al continuar | `onboarding/*` |
+
+**Gotchas nuevos:**
+- **PostgREST reintenta los errores 40001 (serialization_failure)** solo,
+  hasta el timeout: una función que los tira siempre cuelga el pedido 60 s.
+  Para errores de negocio, `P0001`. Lo cazó `test:integracion`, no pgTAP.
+- Una función `security invoker` que llama a otra necesita EXECUTE para
+  `authenticated` sobre la segunda.
+- Las RPC de la 0022 se llaman con `rpcWithNulls` (sin tipos generados: sus
+  argumentos pueden ser null y `db:types` los genera no nulos). Por eso
+  existe `test:integracion`, que corre los repositorios contra la base.
+- Sin la 0022 aplicada, cada repositorio vuelve al camino de antes
+  (`isMissingFunction`, PGRST202). Ese camino conserva los riesgos viejos.
+
+**Pasos de Renzo, en orden (nada de esto se corrió contra el remoto):**
+1. `npx supabase login`
+2. `npm run db:push` (aplica SOLO la 0022) → `npx supabase migration list`
+3. `npm run db:types` (agrega `origin` y las funciones nuevas)
+4. `npm run test:rls` (98) y `npm run test:integridad` (46): contar los `ok N`
+5. Diagnóstico de duplicados históricos, solo lectura:
+   `npx supabase db query --linked -f supabase/diagnostics/duplicados_historicos.sql`.
+   Si aparece algo: respaldo (`create table backup_x as select ... where id in (...)`),
+   revisión fila por fila y `delete ... where id in (...)` por ids concretos.
+   Nunca un borrado por patrón.
+6. Probar en el iPhone: onboarding con deuda (volver atrás y continuar),
+   Agregar con reparto personalizado y corregir el monto, Terminar ahora,
+   salir de un espacio donde el otro nunca entró, y modo avión en Futuro.
+
+**Pruebas locales (Docker, nunca el remoto):** `npx supabase start`,
+`npx supabase test db --local` (144 = 98 + 46) y `npm run test:integracion`
+(11, repositorios contra la base local; el script se niega si la URL no es
+localhost).
 
 **Los wireframes (la referencia visual de todo lo que sigue):**
 **https://claude.ai/artifact/6m96ypiCKBpUxwxDZk9M19** ("Jerarquía visual
@@ -697,6 +745,8 @@ npm run lint:lenguaje      # CA-00
 npm run test:rls           # 98 asserts (necesita supabase login; la salida es JSON)
 npx supabase migration list  # qué migraciones están aplicadas en el remoto
 npm run test:rls:smoke     # RLS con la anon key (no necesita login)
+npm run test:integridad    # 46 asserts de la 0022 (base enlazada, con rollback)
+npm run test:integracion   # repositorios contra Supabase LOCAL (npx supabase start)
 npm run db:push            # migraciones
 npm run db:types           # regenerar tipos desde el esquema
 npx expo install --check   # verificar versiones del SDK
