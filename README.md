@@ -7,11 +7,9 @@
 <p align="center"><strong>El radar de tus finanzas.</strong><br>
 App móvil de finanzas personales y compartidas: qué parte de tus ingresos ya tiene destino, qué pagos se vienen y quién le debe a quién.</p>
 
-<!-- TODO (dueño del repo): cuando el repo esté en GitHub, descomentar y reemplazar <USUARIO>/<REPO>:
 <p align="center">
-  <a href="https://github.com/<USUARIO>/<REPO>/actions/workflows/ci.yml"><img src="https://github.com/<USUARIO>/<REPO>/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/rciminello22/Miscent/actions/workflows/ci.yml"><img src="https://github.com/rciminello22/Miscent/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
 </p>
--->
 
 > **English summary.** Miscent is a mobile finance app (Expo SDK 57 / React Native / TypeScript strict / Supabase) for personal and two-person shared finances, built for the Argentine context (pesos, credit-card cut-off and due dates, installments). Its core idea is a "committed income radar": the app never claims to know how much money the user *has*; it only shows what the user declared, what is already committed and what is coming. **This is a portfolio project, not published to any store**, and the cloud Supabase project is paused. What is worth reading: a pure-TypeScript domain layer with a full business-rules spec behind it ([`src/domain/`](src/domain/)), Postgres RLS with pgTAP authorization tests ([`supabase/`](supabase/)), atomic and idempotent writes through RPCs ([migration 0022](supabase/migrations/20261021000022_atomic_writes.sql)), and a custom linter that enforces product-language rules ([`tools/language-lint.ts`](tools/language-lint.ts)). Docs are in Spanish. The code was written with AI coding agents directed by the author: an orchestrator delegating scoped tasks to subagents, spec-driven development against numbered business rules, TDD, and automated guardrails (see [Uso de IA](#uso-de-ia)). All rights reserved ([LICENSE](LICENSE)).
 
