@@ -51,7 +51,7 @@ const ENCODED = encodeURIComponent(TOKEN);
 describe('parseInvitationToken', () => {
   it('el enlace de Expo Go', () => {
     expect(
-      parseInvitationToken(`exp://znfuh80-rciminello22-8081.exp.direct/--/invite/${ENCODED}`),
+      parseInvitationToken(`exp://abc1234-usuario-8081.exp.direct/--/invite/${ENCODED}`),
     ).toBe(TOKEN);
   });
 
@@ -77,14 +77,14 @@ describe('parseInvitationToken', () => {
     // convertían el "=" final en %253D.
     expect(
       parseInvitationToken(
-        'exp://znfuh80-rciminello22-8081.exp.direct/--/invite/ns-VdxNmbw1yzyTnHu6EYbk8wPHGJg6eFw-IjkooyGU%253D',
+        'exp://abc1234-usuario-8081.exp.direct/--/invite/Zq-8LmNp3RtVw5XyB7cD9fGh1JkM4nPq6sTu2vWx0yA%253D',
       ),
-    ).toBe('ns-VdxNmbw1yzyTnHu6EYbk8wPHGJg6eFw-IjkooyGU=');
+    ).toBe('Zq-8LmNp3RtVw5XyB7cD9fGh1JkM4nPq6sTu2vWx0yA=');
   });
 
   it('lo que llega como parámetro de ruta, todavía con un %3D', () => {
-    expect(parseInvitationToken('ns-VdxNmbw1yzyTnHu6EYbk8wPHGJg6eFw-IjkooyGU%3D')).toBe(
-      'ns-VdxNmbw1yzyTnHu6EYbk8wPHGJg6eFw-IjkooyGU=',
+    expect(parseInvitationToken('Zq-8LmNp3RtVw5XyB7cD9fGh1JkM4nPq6sTu2vWx0yA%3D')).toBe(
+      'Zq-8LmNp3RtVw5XyB7cD9fGh1JkM4nPq6sTu2vWx0yA=',
     );
   });
 

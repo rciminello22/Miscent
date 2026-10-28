@@ -44,3 +44,8 @@ yarn-error.*
 .env
 .env.local
 .env*.local
+.env.keys
+
+# logs y cobertura
+*.log
+coverage/

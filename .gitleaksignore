@@ -1,0 +1,2 @@
+# Token ficticio de test (formato de app_create_invitation), no es un secreto.
+463a9ea3756d006f7593b00853001227edb7ccc0:src/features/auth/invitationLink.test.ts:generic-api-key:14

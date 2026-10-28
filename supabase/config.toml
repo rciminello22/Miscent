@@ -160,13 +160,15 @@ site_url = "radar://auth/callback"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-# La segunda es el tunnel de Expo (npm run start:tunnel) para probar en Expo Go.
+# Para probar el enlace magico en Expo Go con `npm run start:tunnel`, sumar la
+# URL exacta del tunnel: exp://<subdominio>-<usuario>-8081.exp.direct/--/auth/callback
+# (sale de `npx expo start --tunnel`; el codigo de 8 digitos no la necesita).
 # NO sirve una IP de LAN (exp://192.168.x.x): GoTrue rechaza cualquier IP
 # literal que no sea loopback ANTES de mirar esta lista. Las de 127.0.0.1
 # pasan siempre (RFC 8252); quedan solo como documentacion. NUNCA un comodin
 # *.exp.direct: el dominio es compartido y el flujo implicito manda los tokens
 # en la URL. En un build propio alcanza radar://, que es el scheme de la app.
-additional_redirect_urls = ["radar://auth/callback", "exp://znfuh80-rciminello22-8081.exp.direct/--/auth/callback", "exp://127.0.0.1:8081/--/auth/callback", "http://127.0.0.1:8081/auth/callback"]
+additional_redirect_urls = ["radar://auth/callback", "exp://127.0.0.1:8081/--/auth/callback", "http://127.0.0.1:8081/auth/callback"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -181,7 +183,8 @@ refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
 enable_signup = true
 # Allow/disallow anonymous sign-ins to your project.
-enable_anonymous_sign_ins = false
+# Activado para reflejar el proyecto real: el flujo de invitadas usa usuarios anónimos.
+enable_anonymous_sign_ins = true
 # Allow/disallow testing manual linking of accounts
 enable_manual_linking = false
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.

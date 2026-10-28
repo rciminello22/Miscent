@@ -18,8 +18,8 @@ describe('intentFor · la elección de "Empezar" es de un email', () => {
   });
 
   it('el bug del 9/10: otro email NO la hereda', () => {
-    const queDejoRenzo = encodeIntent('ciminellorenzo@gmail.com', 'both');
-    expect(intentFor(queDejoRenzo, 'ciminellorenzo+martina@gmail.com')).toBeNull();
+    const queDejoRenzo = encodeIntent('renzo@example.com', 'both');
+    expect(intentFor(queDejoRenzo, 'renzo+martina@example.com')).toBeNull();
   });
 
   it('el formato viejo (sin email) no se le atribuye a nadie', () => {
