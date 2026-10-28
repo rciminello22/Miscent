@@ -1,5 +1,12 @@
 # Handoff · Radar del sueldo comprometido
 
+> **Nota para quien lee el repo.** Este es el documento de traspaso que mantuve
+> durante el desarrollo para retomar el trabajo entre sesiones (propias y con
+> agentes de IA). Lo dejo tal como quedó el 21/10/2026, cuando el proyecto pasó
+> a ser de portfolio: las referencias a "tiendas", "piloto" o "producción"
+> describen el plan de ese momento, no el objetivo actual. Ver el
+> [README](../README.md) para el estado vigente.
+
 Contexto para retomar el proyecto en una sesión nueva.
 Última actualización: 21 de octubre de 2026 · **corrección de integridad financiera y persistencia** (auditoría del 20/10, H-01 a H-16) · **migración 0022 preparada y SIN aplicar** (ver "Integridad de escrituras (0022)" en §5) · migraciones hasta la 0021 aplicadas · todo commiteado en `master` (no hay remoto) · después: branding · la app todavía NO está lista para las tiendas (ver §5).
 
@@ -20,9 +27,7 @@ el usuario registra, y no verifica ninguna.
 
 ### La fuente de verdad
 
-```
-C:\Users\cimin\Desktop\Especificación funcional V1.1.2 — Radar del sueldo comprometido.md
-```
+[`docs/especificacion-funcional-v1.1.2.md`](especificacion-funcional-v1.1.2.md)
 
 **1788 líneas. Leela antes de tocar reglas de negocio.** Secciones mandantes:
 
@@ -214,7 +219,7 @@ push** (unos 60 commits desde `697b52b`). **El rediseño de UX está terminado.*
 
 ### Integridad de escrituras (0022) · 21/10
 
-Corrección de los grupos P0/P1 de `AUDITORIA_INICIAL_MISCENT.md`. Punto de
+Corrección de los grupos P0/P1 de [`docs/auditoria-inicial.md`](auditoria-inicial.md). Punto de
 recuperación: tag `pre-integridad-financiera` (= `ef76b6c`).
 
 | Hallazgo | Qué se hizo | Dónde |
@@ -260,12 +265,9 @@ recuperación: tag `pre-integridad-financiera` (= `ef76b6c`).
 (11, repositorios contra la base local; el script se niega si la URL no es
 localhost).
 
-**Los wireframes (la referencia visual de todo lo que sigue):**
-**https://claude.ai/artifact/6m96ypiCKBpUxwxDZk9M19** ("Jerarquía visual
-Radar"). La sección `#decisiones` tiene los bloques 1 a 17, cada uno con la
-opción elegida marcada "Elegida". El archivo fuente vivía en el scratchpad de
-la sesión del 15 al 19/10, que se pierde. Para editarlo en otra sesión:
-`Artifact read` de esa URL, editar la copia local y republicar con `url`.
+**Los wireframes (la referencia visual de todo lo que sigue):** una página
+privada, "Jerarquía visual Radar", fuera del repo. Su sección `#decisiones`
+tiene los bloques 1 a 17, cada uno con la opción elegida marcada "Elegida".
 
 **Lo próximo, en orden:**
 1. **Branding: nombre, logo e identidad visual** (P17 en §38, pendiente
@@ -576,7 +578,7 @@ datos, y cifrado/ubicación/uso para entrenar IA del proveedor. La base está en
 ## 6. Entorno y gotchas
 
 ### Supabase
-- Proyecto `vfmjurbvgysdqmqcucul` · sa-east-1 · Postgres 17.11
+- Proyecto de Supabase en sa-east-1 · Postgres 17.11 (hoy pausado)
 - Credenciales en `.env.local` (gitignored)
 - **El access token de la CLI expira rápido.** Para `db push`, `config push` o
   `test:rls` hay que rehacer `npx supabase login`. El smoke (`test:rls:smoke`)
@@ -651,15 +653,15 @@ datos, y cifrado/ubicación/uso para entrenar IA del proveedor. La base está en
 - **Enlace mágico en Expo Go: SIEMPRE `npm run start:tunnel`.** Con `npm start`
   el deep link es `exp://192.168.x.x:8081/...`, y GoTrue rechaza cualquier IP
   literal que no sea loopback **antes de mirar la allowlist**: cae al site_url
-  `radar://`, que Expo Go no abre ("Se ha producido un error"). Está permitida
-  `exp://znfuh80-rciminello22-8081.exp.direct/--/auth/callback`. Nunca un
+  `radar://`, que Expo Go no abre ("Se ha producido un error"). Hay que permitir
+  la URL exacta del tunnel, `exp://<subdominio>-<usuario>-8081.exp.direct/--/auth/callback`. Nunca un
   comodín `*.exp.direct`: el dominio es compartido y el flujo implícito manda
   los tokens en la URL.
 - **El subdominio del tunnel NO es fijo.** Sale de `urlRandomness` en
   `.expo/settings.json` (local, gitignored), y Expo lo puede regenerar: el
-  10/10 pasó a `irCGR0k` y Expo Go daba "no se pudo conectar" (abría la URL
-  vieja desde "Recently opened"), y el enlace del mail ya no volvía. Se fijó en
-  `"urlRandomness": "znfuh80"`. Si vuelve a cambiar: restaurarlo ahí, o sumar
+  10/10 cambió y Expo Go daba "no se pudo conectar" (abría la URL
+  vieja desde "Recently opened"), y el enlace del mail ya no volvía. Se fijó
+  `urlRandomness` a mano. Si vuelve a cambiar: restaurarlo ahí, o sumar
   la URL nueva a la allowlist. El código de 8 dígitos funciona igual, porque no
   usa redirect. Diagnóstico: `curl http://127.0.0.1:4040/api/tunnels` muestra
   la URL viva.
@@ -774,8 +776,7 @@ que pasar `project: "radar-sueldo-comprometido"` explícito.
 Las decisiones de UX del 15 al 19/10 están en engram con los topics
 `ux/decisiones-*`, `ux/rediseno-jerarquia`, `workflow/wireframe-primero`,
 `copy/cuotas-ciclo`, `db/migraciones-0019-0020` y `bug/edits-replan-cuotas`.
-Los wireframes, en el artifact
-https://claude.ai/artifact/6m96ypiCKBpUxwxDZk9M19.
+Los wireframes, en una página privada fuera del repo.
 
 ---
 
