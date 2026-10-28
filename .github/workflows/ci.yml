@@ -1,0 +1,40 @@
+name: CI
+
+# Verificación sin red ni Supabase: es el equivalente de `npm run verify`,
+# partido en pasos para que el log diga cuál falló.
+# Los tests de RLS (pgTAP) y de integración necesitan una base y no corren acá.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Expo SDK 57 exige Node >= 22.13.
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck (app, tools y specs)
+        run: npm run typecheck
+
+      - name: Tests de dominio y reglas puras (vitest)
+        run: npm run test
+
+      - name: Tests de componentes (jest-expo)
+        run: npm run test:componentes
+
+      - name: Lint de lenguaje (CA-00)
+        run: npm run lint:lenguaje
